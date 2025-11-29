@@ -1,0 +1,65 @@
+# Vector Store Configuration
+image:
+  repository: chromadb/chroma
+  tag: latest
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 8000
+  targetPort: 8000
+
+persistence:
+  enabled: true
+  size: 10Gi
+  storageClass: ""
+  accessMode: ReadWriteOnce
+
+resources:
+  requests:
+    memory: "1Gi"
+    cpu: "500m"
+  limits:
+    memory: "2Gi"
+    cpu: "1000m"
+
+# ChromaDB specific configuration
+chroma:
+  # Authentication (if needed)
+  auth: false
+  # Persistence settings
+  dataPath: "/chroma/data"
+  # Server settings
+  host: "0.0.0.0"
+  port: 8000
+
+# Environment variables
+env:
+  - name: CHROMA_SERVER_HOST
+    value: "0.0.0.0"
+  - name: CHROMA_SERVER_HTTP_PORT
+    value: "8000"
+  - name: CHROMA_PERSIST_DIRECTORY
+    value: "/chroma/data"
+
+# Security context
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+
+# Probes
+livenessProbe:
+  httpGet:
+    path: /api/v1/heartbeat
+    port: 8000
+  initialDelaySeconds: 30
+  periodSeconds: 10
+
+readinessProbe:
+  httpGet:
+    path: /api/v1/heartbeat
+    port: 8000
+  initialDelaySeconds: 5
+  periodSeconds: 5

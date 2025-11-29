@@ -1,0 +1,108 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "financial-rag-agent.fullname" . }}-config
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "financial-rag-agent.labels" . | nindent 4 }}
+data:
+  # Application configuration
+  config.py: |
+    import os
+    from dotenv import load_dotenv
+
+    load_dotenv()
+
+    class Config:
+        # Environment
+        ENVIRONMENT = "{{ .Values.global.env }}"
+        LOG_LEVEL = "{{ .Values.app.env | mustFirst (where "name" "LOG_LEVEL") | dig "value" "INFO" }}"
+        
+        # API Settings
+        API_HOST = "0.0.0.0"
+        API_PORT = {{ .Values.app.service.port | quote }}
+        API_WORKERS = {{ .Values.app.env | mustFirst (where "name" "API_WORKERS") | dig "value" "4" | quote }}
+        
+        # Database Settings
+        DATABASE_URL = "postgresql://{{ .Values.postgresql.auth.username }}:{{ .Values.postgresql.auth.password }}@{{ include "financial-rag-agent.fullname" . }}-postgresql:5432/{{ .Values.postgresql.auth.database }}"
+        REDIS_URL = "redis://:{{ .Values.redis.auth.password }}@{{ include "financial-rag-agent.fullname" . }}-redis-master:6379/0"
+        
+        # Vector Store Settings
+        VECTOR_STORE_TYPE = "{{ .Values.vectorStore.type }}"
+        VECTOR_STORE_URL = "http://{{ include "financial-rag-agent.fullname" . }}-vector-store:8000"
+        
+        # Model Settings
+        EMBEDDING_MODEL = "all-MiniLM-L6-v2"
+        LLM_MODEL = "gpt-4"
+        LLM_TEMPERATURE = 0.1
+        
+        # RAG Settings
+        CHUNK_SIZE = 1000
+        CHUNK_OVERLAP = 200
+        TOP_K_RESULTS = 3
+
+    config = Config()
+
+  # Logging configuration
+  logging.conf: |
+    [loggers]
+    keys=root,financial_rag
+
+    [handlers]
+    keys=console,file
+
+    [formatters]
+    keys=standard,detailed
+
+    [logger_root]
+    level={{ .Values.app.env | mustFirst (where "name" "LOG_LEVEL") | dig "value" "INFO" }}
+    handlers=console
+
+    [logger_financial_rag]
+    level=DEBUG
+    handlers=console,file
+    qualname=financial_rag
+    propagate=0
+
+    [handler_console]
+    class=logging.StreamHandler
+    level=INFO
+    formatter=standard
+    args=(sys.stdout,)
+
+    [handler_file]
+    class=logging.handlers.RotatingFileHandler
+    level=DEBUG
+    formatter=detailed
+    args=('/app/logs/financial_rag.log', 'a', 10485760, 5)
+
+    [formatter_standard]
+    format=%(asctime)s - %(name)s - %(levelname)s - %(message)s
+
+    [formatter_detailed]
+    format=%(asctime)s - %(name)s - %(levelname)s - %(module)s:%(lineno)d - %(message)s
+
+  # Nginx configuration (if using ingress)
+  nginx.conf: |
+    server {
+        listen 80;
+        server_name {{ .Values.global.domain }};
+        
+        location / {
+            proxy_pass http://{{ include "financial-rag-agent.fullname" . }}:{{ .Values.app.service.port }};
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+        
+        location /health {
+            proxy_pass http://{{ include "financial-rag-agent.fullname" . }}:{{ .Values.app.service.port }}/health;
+            access_log off;
+        }
+        
+        location /metrics {
+            proxy_pass http://{{ include "financial-rag-agent.fullname" . }}:{{ .Values.app.service.port }}/metrics;
+            access_log off;
+        }
+    }

@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "{{ include "financial-rag-agent.fullname" . }}-test-health"
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "financial-rag-agent.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": test-success
+spec:
+  containers:
+    - name: test-health
+      image: curlimages/curl:8.2.1
+      command: ['sh', '-c', 
+        'echo "Testing API endpoints..." &&
+         curl -f http://{{ include "financial-rag-agent.fullname" . }}:{{ .Values.app.service.port }}/health &&
+         curl -f http://{{ include "financial-rag-agent.fullname" . }}:{{ .Values.app.service.port }}/docs &&
+         echo "All API tests passed"']
+  restartPolicy: Never

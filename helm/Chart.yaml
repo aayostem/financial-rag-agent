@@ -1,0 +1,45 @@
+apiVersion: v2
+name: financial-rag-agent
+description: Enterprise Financial AI Platform with Multi-Agent RAG System
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+
+# Dependencies
+dependencies:
+  - name: redis
+    version: 17.0.0
+    repository: https://charts.bitnami.com/bitnami
+    condition: redis.enabled
+  - name: postgresql
+    version: 12.0.0
+    repository: https://charts.bitnami.com/bitnami
+    condition: postgresql.enabled
+  - name: vector-store
+    version: 0.1.0
+    repository: file://../charts/vector-store
+    condition: vectorStore.enabled
+
+# Maintainers
+maintainers:
+  - name: AI Engineering Team
+    email: ai-engineering@company.com
+
+# Keywords
+keywords:
+  - ai
+  - ml
+  - financial
+  - rag
+  - llm
+  - kubernetes
+  - fastapi
+
+# Annotations
+annotations:
+  category: AI/ML
+  website: https://github.com/your-org/financial-rag-agent
+  source: https://github.com/your-org/financial-rag-agent
+
+# Icon (optional)
+icon: https://raw.githubusercontent.com/your-org/financial-rag-agent/main/docs/icon.png

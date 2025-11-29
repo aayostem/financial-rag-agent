@@ -1,0 +1,14 @@
+# custom-values.yaml
+app:
+  replicaCount: 3
+  resources:
+    requests:
+      memory: "2Gi"
+      cpu: "1000m"
+    limits:
+      memory: "4Gi"
+      cpu: "2000m"
+
+postgresql:
+  persistence:
+    size: "50Gi"

@@ -1,0 +1,100 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: financial-rag-api
+  namespace: financial-rag
+  labels:
+    app: financial-rag-api
+    version: v1
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: financial-rag-api
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: financial-rag-api
+        version: v1
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8000"
+        prometheus.io/path: "/metrics"
+    spec:
+      containers:
+      - name: financial-rag-api
+        image: financial-rag-agent:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8000
+          name: http
+        env:
+        - name: OPENAI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: financial-rag-secrets
+              key: OPENAI_API_KEY
+        - name: WANDB_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: financial-rag-secrets
+              key: WANDB_API_KEY
+        - name: LOG_LEVEL
+          valueFrom:
+            configMapKeyRef:
+              name: financial-rag-config
+              key: LOG_LEVEL
+        - name: ENVIRONMENT
+          valueFrom:
+            configMapKeyRef:
+              name: financial-rag-config
+              key: ENVIRONMENT
+        - name: EMBEDDING_MODEL
+          valueFrom:
+            configMapKeyRef:
+              name: financial-rag-config
+              key: EMBEDDING_MODEL
+        - name: LLM_MODEL
+          valueFrom:
+            configMapKeyRef:
+              name: financial-rag-config
+              key: LLM_MODEL
+        resources:
+          requests:
+            memory: "1Gi"
+            cpu: "500m"
+          limits:
+            memory: "2Gi"
+            cpu: "1000m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+        volumeMounts:
+        - name: data-storage
+          mountPath: /app/data
+        - name: log-storage
+          mountPath: /app/logs
+      volumes:
+      - name: data-storage
+        persistentVolumeClaim:
+          claimName: financial-rag-pvc
+      - name: log-storage
+        emptyDir: {}
+      restartPolicy: Always

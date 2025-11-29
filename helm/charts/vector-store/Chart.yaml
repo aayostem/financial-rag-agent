@@ -1,0 +1,12 @@
+apiVersion: v2
+name: vector-store
+description: Vector Store for Financial RAG Agent (ChromaDB)
+type: application
+version: 0.1.0
+appVersion: "0.4.15"
+
+dependencies: []
+
+maintainers:
+  - name: AI Engineering Team
+    email: ai-engineering@company.com

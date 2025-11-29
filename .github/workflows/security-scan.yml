@@ -1,0 +1,209 @@
+name: Security Scan
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  schedule:
+    - cron: '0 6 * * 1'  # Weekly on Monday at 6 AM
+
+jobs:
+  # Comprehensive Security Scanning
+  code-security:
+    name: Code Security Analysis
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+
+    - name: Install security tools
+      run: |
+        pip install bandit safety pip-audit semgrep
+
+    - name: Run Bandit (Python SAST)
+      run: |
+        bandit -r src/ -f json -o bandit-results.json -ll
+      continue-on-error: true
+
+    - name: Run Safety (Vulnerability Scan)
+      run: |
+        safety check --json --output safety-results.json
+      continue-on-error: true
+
+    - name: Run pip-audit
+      run: |
+        pip-audit --format json --output pip-audit-results.json
+      continue-on-error: true
+
+    - name: Run Semgrep
+      uses: returntocorp/semgrep-action@v1
+      with:
+        config: p/ci
+        output: semgrep-results.json
+
+    - name: Upload security reports
+      uses: actions/upload-artifact@v4
+      with:
+        name: security-reports
+        path: |
+          bandit-results.json
+          safety-results.json
+          pip-audit-results.json
+          semgrep-results.json
+        retention-days: 30
+
+  # Container Security
+  container-security:
+    name: Container Security Scan
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Build Docker image
+      run: |
+        docker build -t financial-rag-agent:security-scan .
+
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: 'financial-rag-agent:security-scan'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+        severity: 'HIGH,CRITICAL'
+
+    - name: Run Docker Bench Security
+      run: |
+        docker run --rm --net host --pid host --userns host --cap-add audit_control \
+          -e DOCKER_CONTENT_TRUST=1 \
+          -v /var/lib:/var/lib \
+          -v /var/run/docker.sock:/var/run/docker.sock \
+          --label docker_bench_security \
+          docker/docker-bench-security
+
+    - name: Upload Trivy results
+      uses: github/codeql-action/upload-sarif@v3
+      with:
+        sarif_file: 'trivy-results.sarif'
+
+  # Secret Scanning
+  secret-scan:
+    name: Secret Scanning
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Run Gitleaks
+      uses: gitleaks/gitleaks-action@v2
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        config-path: .gitleaks.toml
+
+    - name: Run TruffleHog
+      uses: trufflesecurity/trufflehog@main
+      with:
+        path: ./
+        base: ${{ github.event.before }}
+        head: ${{ github.event.after }}
+        extra_args: --json
+
+  # Infrastructure Security
+  infrastructure-security:
+    name: Infrastructure Security
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Terraform
+      uses: hashicorp/setup-terraform@v3
+
+    - name: Terraform Security Scan
+      uses: aquasecurity/tfsec-action@master
+      with:
+        directory: ./terraform
+
+    - name: Checkov Security Scan
+      uses: bridgecrewio/checkov-action@master
+      with:
+        directory: ./kubernetes
+        framework: kubernetes
+
+    - name: KubeSec Scan
+      run: |
+        docker run --rm -v $(pwd)/kubernetes:/k8s kubesec/kubesec scan /k8s
+
+  # Dependency Security
+  dependency-security:
+    name: Dependency Security
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+
+    - name: Install dependencies
+      run: |
+        pip install -e .[dev,ml,monitoring]
+
+    - name: Run OWASP Dependency Check
+      uses: dependency-check/Dependency-Check_Action@main
+      with:
+        project: 'financial-rag-agent'
+        path: '.'
+        format: 'HTML'
+        out: 'reports'
+
+    - name: Upload dependency check report
+      uses: actions/upload-artifact@v4
+      with:
+        name: dependency-check-report
+        path: reports/
+        retention-days: 30
+
+  # Security Notifications
+  security-notifications:
+    name: Security Notifications
+    runs-on: ubuntu-latest
+    needs: [code-security, container-security, secret-scan, infrastructure-security, dependency-security]
+    if: always()
+
+    steps:
+    - name: Security Summary
+      run: |
+        echo "🔒 Security Scan Summary"
+        echo "========================"
+        echo "✅ Code Security: ${{ needs.code-security.result }}"
+        echo "✅ Container Security: ${{ needs.container-security.result }}"
+        echo "✅ Secret Scanning: ${{ needs.secret-scan.result }}"
+        echo "✅ Infrastructure Security: ${{ needs.infrastructure-security.result }}"
+        echo "✅ Dependency Security: ${{ needs.dependency-security.result }}"
+
+    - name: Send Security Alert
+      uses: 8398a7/action-slack@v3
+      with:
+        status: ${{ job.status }}
+        text: 'Security scan completed for ${{ github.repository }}'
+        webhook_url: ${{ secrets.SLACK_SECURITY_WEBHOOK }}
+      if: failure()

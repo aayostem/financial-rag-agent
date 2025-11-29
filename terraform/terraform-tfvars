@@ -1,0 +1,17 @@
+# environments/dev/terraform.tfvars
+project_name = "financial-rag-agent"
+environment  = "dev"
+aws_region   = "us-west-2"
+
+# Database
+database_config = {
+  instance_class    = "db.t3.small"
+  allocated_storage = 20
+  multi_az          = false
+}
+
+# Monitoring
+monitoring_config = {
+  enabled     = true
+  alarm_email = "your-email@company.com"
+}

@@ -1,0 +1,21 @@
+title = "gitleaks config"
+
+[[rules]]
+description = "OpenAI API Key"
+regex = '''sk-[a-zA-Z0-9]{20,48}'''
+tags = ["key", "OpenAI"]
+
+[[rules]]
+description = "Generic API Key"
+regex = '''(?i)(api_key|apikey|secret_key|private_key|access_key)["']?\\s*[:=]\\s*["']?[a-zA-Z0-9]{32,45}["']?'''
+tags = ["key", "API"]
+
+[[rules]]
+description = "JWT Token"
+regex = '''eyJ[a-zA-Z0-9]{10,}\\.eyJ[a-zA-Z0-9]{10,}\\.([a-zA-Z0-9]{10,})?'''
+tags = ["key", "JWT"]
+
+[[rules]]
+description = "AWS Access Key"
+regex = '''(A3T[A-Z0-9]|AKIA|AGPA|AIDA|AROA|AIPA|ANPA|ANVA|ASIA)[A-Z0-9]{16}'''
+tags = ["key", "AWS"]

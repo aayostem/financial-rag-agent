@@ -1,0 +1,217 @@
+# Global configuration
+global:
+  env: development
+  cluster: default
+  region: us-west-2
+  domain: financial-rag.internal
+
+# Application configuration
+app:
+  name: financial-rag-agent
+  replicaCount: 2
+  image:
+    repository: ghcr.io/your-org/financial-rag-agent
+    tag: latest
+    pullPolicy: IfNotPresent
+    # Image pull secrets for private registry
+    pullSecrets: []
+  
+  # Service configuration
+  service:
+    type: ClusterIP
+    port: 8000
+    targetPort: 8000
+    annotations: {}
+  
+  # Ingress configuration
+  ingress:
+    enabled: false
+    className: "nginx"
+    annotations: 
+      nginx.ingress.kubernetes.io/rewrite-target: /
+      nginx.ingress.kubernetes.io/ssl-redirect: "true"
+      cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    hosts:
+      - host: financial-rag.yourcompany.com
+        paths:
+          - path: /
+            pathType: Prefix
+    tls: 
+      - secretName: financial-rag-tls
+        hosts:
+          - financial-rag.yourcompany.com
+  
+  # Resource configuration
+  resources:
+    requests:
+      memory: "1Gi"
+      cpu: "500m"
+    limits:
+      memory: "2Gi"
+      cpu: "1000m"
+  
+  # Autoscaling configuration
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+  
+  # Pod configuration
+  pod:
+    securityContext:
+      runAsNonRoot: true
+      runAsUser: 1000
+      runAsGroup: 1000
+      fsGroup: 1000
+    containerSecurityContext:
+      allowPrivilegeEscalation: false
+      readOnlyRootFilesystem: true
+      runAsNonRoot: true
+      runAsUser: 1000
+      capabilities:
+        drop:
+          - ALL
+  
+  # Environment variables
+  env:
+    - name: ENVIRONMENT
+      value: "development"
+    - name: LOG_LEVEL
+      value: "INFO"
+    - name: API_WORKERS
+      value: "4"
+  
+  # Environment variables from secrets
+  envFromSecret: []
+  
+  # Liveness and readiness probes
+  livenessProbe:
+    httpGet:
+      path: /health
+      port: 8000
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+  
+  readinessProbe:
+    httpGet:
+      path: /health
+      port: 8000
+    initialDelaySeconds: 5
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 3
+  
+  # Volumes and storage
+  volumes:
+    - name: data-storage
+      persistentVolumeClaim:
+        claimName: financial-rag-data
+  
+  volumeMounts:
+    - name: data-storage
+      mountPath: /app/data
+  
+  # Node selector and affinity
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+# Redis configuration
+redis:
+  enabled: true
+  architecture: standalone
+  auth:
+    enabled: true
+    password: "redis-password"
+  master:
+    persistence:
+      enabled: true
+      size: 8Gi
+    resources:
+      requests:
+        memory: 256Mi
+        cpu: 100m
+      limits:
+        memory: 1Gi
+        cpu: 500m
+  replica:
+    replicaCount: 1
+    persistence:
+      enabled: true
+
+# PostgreSQL configuration
+postgresql:
+  enabled: true
+  auth:
+    postgresPassword: "postgres-password"
+    database: "financial_rag"
+    username: "financial_user"
+    password: "financial-password"
+  primary:
+    persistence:
+      enabled: true
+      size: 20Gi
+    resources:
+      requests:
+        memory: 512Mi
+        cpu: 200m
+      limits:
+        memory: 2Gi
+        cpu: 1000m
+  readReplicas:
+    enabled: false
+
+# Vector Store configuration
+vectorStore:
+  enabled: true
+  type: "chroma"  # chroma, qdrant, or weaviate
+  chroma:
+    image:
+      repository: chromadb/chroma
+      tag: latest
+    persistence:
+      enabled: true
+      size: 10Gi
+    resources:
+      requests:
+        memory: 1Gi
+        cpu: 500m
+      limits:
+        memory: 2Gi
+        cpu: 1000m
+
+# Monitoring configuration
+monitoring:
+  enabled: true
+  prometheus:
+    enabled: true
+  grafana:
+    enabled: true
+  serviceMonitor:
+    enabled: true
+
+# Backup configuration
+backup:
+  enabled: true
+  schedule: "0 2 * * *"  # Daily at 2 AM
+  retention: 30d
+
+# Network policies
+networkPolicy:
+  enabled: true
+  allowExternal: false
+
+# Service account
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+
+# Pod disruption budget
+pdb:
+  enabled: true
+  minAvailable: 1

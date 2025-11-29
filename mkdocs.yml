@@ -1,0 +1,44 @@
+site_name: Financial RAG Agent
+site_description: Enterprise Financial AI Platform Documentation
+repo_url: https://github.com/your-org/financial-rag-agent
+repo_name: financial-rag-agent
+
+theme:
+  name: material
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - toc.integrate
+    - navigation.top
+    - search.suggest
+    - search.highlight
+
+plugins:
+  - search
+  - mkdocstrings
+
+nav:
+  - Home: index.md
+  - Getting Started:
+    - Installation: getting-started/installation.md
+    - Configuration: getting-started/configuration.md
+    - Quick Start: getting-started/quick-start.md
+  - API Reference:
+    - Endpoints: api/endpoints.md
+    - Models: api/models.md
+    - Examples: api/examples.md
+  - Deployment:
+    - Kubernetes: deployment/kubernetes.md
+    - Docker: deployment/docker.md
+    - Monitoring: deployment/monitoring.md
+  - Development:
+    - Contributing: development/contributing.md
+    - Testing: development/testing.md
+    - Security: development/security.md
+
+markdown_extensions:
+  - pymdownx.highlight
+  - pymdownx.superfences
+  - pymdownx.tabbed
+  - admonition
+  - pymdownx.details

@@ -1,0 +1,60 @@
+# Development-specific overrides
+global:
+  env: development
+
+app:
+  replicaCount: 1
+  image:
+    tag: "latest"
+    pullPolicy: IfNotPresent
+  
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "250m"
+    limits:
+      memory: "1Gi"
+      cpu: "500m"
+  
+  autoscaling:
+    enabled: false
+
+# app:
+  env:
+    - name: ENVIRONMENT
+      value: "development"
+    - name: LOG_LEVEL
+      value: "DEBUG"
+    - name: API_WORKERS
+      value: "2"
+
+redis:
+  auth:
+    enabled: false
+  master:
+    persistence:
+      enabled: false
+    resources:
+      requests:
+        memory: 128Mi
+        cpu: 50m
+
+postgresql:
+  auth:
+    postgresPassword: "dev-password"
+  primary:
+    persistence:
+      enabled: false
+    resources:
+      requests:
+        memory: 256Mi
+        cpu: 100m
+
+vectorStore:
+  chroma:
+    persistence:
+      enabled: false
+    resources:
+      requests:
+        memory: 512Mi
+        cpu: 250m

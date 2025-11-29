@@ -1,0 +1,93 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "financial-rag-agent.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "financial-rag-agent.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.app.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "financial-rag-agent.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "financial-rag-agent.selectorLabels" . | nindent 8 }}
+        version: {{ .Values.app.image.tag | default "latest" }}
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "{{ .Values.app.service.port }}"
+        prometheus.io/path: "/metrics"
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "financial-rag-agent.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.app.pod.securityContext | nindent 8 }}
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.app.pod.containerSecurityContext | nindent 12 }}
+          image: "{{ include "financial-rag-agent.image" . }}"
+          imagePullPolicy: {{ .Values.app.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.app.service.targetPort }}
+              protocol: TCP
+          env:
+            {{- include "financial-rag-agent.env" . | nindent 12 }}
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "financial-rag-agent.fullname" . }}-postgresql
+                  key: postgresql-url
+            - name: REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "financial-rag-agent.fullname" . }}-redis
+                  key: redis-url
+          envFrom:
+            - secretRef:
+                name: {{ include "financial-rag-agent.fullname" . }}-api-keys
+          volumeMounts:
+            {{- include "financial-rag-agent.volumeMounts" . | nindent 12 }}
+            - name: config
+              mountPath: /app/config.py
+              subPath: config.py
+            - name: config
+              mountPath: /app/logging.conf
+              subPath: logging.conf
+          resources:
+            {{- toYaml .Values.app.resources | nindent 12 }}
+          livenessProbe:
+            {{- toYaml .Values.app.livenessProbe | nindent 12 }}
+          readinessProbe:
+            {{- toYaml .Values.app.readinessProbe | nindent 12 }}
+          startupProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            failureThreshold: 10
+      volumes:
+        {{- include "financial-rag-agent.volumes" . | nindent 8 }}
+        - name: config
+          configMap:
+            name: {{ include "financial-rag-agent.fullname" . }}-config
+      {{- with .Values.app.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.app.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.app.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
