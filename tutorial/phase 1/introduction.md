@@ -93,7 +93,6 @@ The magic happens in our multi-agent approach. Instead of one AI trying to do ev
 
 This creates much more nuanced and reliable analysis than a single AI could produce.
 
-
 Let's talk about the Technology Stack & Prerequisites
 
 We have a fully documented REST API with WebSocket support for real-time streaming analysis. This is production-ready code that could serve thousands of users simultaneously.
@@ -133,7 +132,27 @@ You DON'T need to be an expert in:
 This course is designed for software developers who want to level up into AI engineering and production deployment.
 
 
-This is what modern AI engineering looks like. It's not just about the models - it's about building reliable, scalable systems that deliver real business value.
+This is what modern AI engineering looks like. It's not just about the models - it's about building reliable, scalable systems that deliver real business value. You will cover three main objectives.
+
+Let's start with the technical objectives, you will
+- "Built a production-grade AI system with proper DevOps and monitoring"
+- "Implemented sophisticated multi-agent architecture with specialized roles"
+- "Combined RAG with real-time data and predictive analytics"
+- "Designed for enterprise-scale deployment with Kubernetes"
+
+You will move into AI and work on
+- "Advanced ensemble forecasting with multiple ML models"
+- "Multi-modal analysis combining text, audio, and numerical data"
+- "Real-time agent coordination with consensus building"
+- "Sophisticated prompt engineering for financial domain"
+
+Finally, this project will fufil finncial objectives of
+- "90% reduction in financial research time"
+- "Institutional-grade analysis accessible to all users"
+- "Real-time intelligence for timely decision making"
+- "Scalable platform supporting enterprise workloads"
+
+
 
 Now, you might be thinking: "I'm not a financial expert" or "I've never deployed to production before." Don't worry. We're building this together, step by step. I'll be with you through every line of code, every configuration, every deployment decision.
 
@@ -155,27 +174,39 @@ However, If you encounter any issues or need assistance, feel free to reach out:
 
 Now let's get your hands dirty! We're going to set up your development environment. Follow along with me.
 
-I have vscode opened alredy, create a folder, lets call this financial-rag-course, 
+create a folder, lets call this financial-rag-course, 
+I will be using vscode editor for development because it is  free open source code editor that has gin widespread adoption mong developers due to its lightweight nature, extensive fgetures and vst ecoystem of extensions. However, feel free to use any code editor of choice.
+
+I have vscode opened alredy, 
 
 drag and drop this folder into the vscode
 
 
 Now, let's create our project directory and virtual environment:
+To do this, on the top bar, click terminl nd new terminal
 
+let's run ```python --version```, this is going to give us the current active version of python on our system.
+currently, i'm using python 3.13.9 
+
+if for some reason you don't get the python version number, you cn go to www.python.org/download  to downlod the latest version of python
+
+On downlod, install it and reload your vscode 
+
+i will use virtulenv to create iolted python environments. it helps to prevent conflicts between projects nd keep globl python intllation clean
+
+I have virtualenv installed, for thoe who do not have, you can install using 
+
+```pip instll virtualenv``` or ```pip3 instll virtualenv```
+
+let's create a virtual environment with
 ```bash
-# Create virtual environment
 python -m venv .venv
-
-# Activate it (Linux/Mac)
-source .venv/bin/activate
-
-# financial-rag-env\Scripts\activate  # Windows
-
 ```
-See the `(venv)` in your terminal? That means you're in the virtual environment. This keeps our project dependencies isolated.
+
+See the `(venv)` in your terminal? That means you're in the virtual environment. 
 
 We will be using pyproject with the virtual environemnt
-I have prepred a pyproject.toml that contain all dependencies nd devdependencies needed for this project. Just copy and past here:
+I have prepared a pyproject.toml that contain all dependencies and devdependencies needed for this project. Just copy and paste here:
 
 Now let's install our core dependencies. I've created a requirements file for you:
 

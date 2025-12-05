@@ -1,12 +1,10 @@
-Excellent! Let's start with the most impressive advancement: **Real-Time Market Intelligence**. This will transform our RAG system from a historical document analyzer into a live financial analyst.
+Excellent! Let's start with the most impressive advancement: Real-Time Market Intelligence. This will transform our RAG system from a historical document analyzer into a live financial analyst.
 
-## 🚀 **Advancement 1: Real-Time Market Intelligence**
+<!-- ## 🚀 Advancement 1: Real-Time Market Intelligence -->
 
-### **Step 1: Enhanced Real-Time Data Integration**
+Let's start with Enhanced Real-Time Data Integration by creating a comprehensive real-time data layer.
 
-Let's create a comprehensive real-time data layer.
-
-#### Create `src/financial_rag/data/real_time_sources.py`
+Create a `src/financial_rag/data/real_time_sources.py`
 
 ```python
 import asyncio
@@ -246,9 +244,9 @@ class MarketSentimentAnalyzer:
             return 'strongly_bearish'
 ```
 
-### **Step 2: Real-Time Analysis Agent**
+Let's proceed to Real-Time Analysis Agent
 
-#### Create `src/financial_rag/agents/real_time_analyst.py`
+Create a `src/financial_rag/agents/real_time_analyst.py`
 
 ```python
 from typing import Dict, List, Any, Optional
@@ -476,7 +474,7 @@ class MarketAlertSystem:
             market_data = context.get('market_data', {}).get(ticker, {})
             sentiment_data = context.get('sentiment_analysis', {}).get(ticker, {})
             
-            data = {**market_data, 'sentiment': sentiment_data}
+            data = {market_data, 'sentiment': sentiment_data}
             
             for rule in self.alert_rules:
                 try:
@@ -496,7 +494,7 @@ class MarketAlertSystem:
         return alerts
 ```
 
-### **Step 3: Enhanced API for Real-Time Features**
+next is to build the Enhanced API for Real-Time Features
 
 #### Update `src/financial_rag/api/models.py`
 
@@ -638,9 +636,9 @@ class FinancialRAGAPI:
                 raise HTTPException(status_code=500, detail=str(e))
 ```
 
-### **Step 4: Enhanced Test for Real-Time Features**
+Let's proceed to Enhanced Test for Real-Time Features
 
-#### Create `test_real_time.py`
+Create a `test_real_time.py`
 
 ```python
 #!/usr/bin/env python3
@@ -752,7 +750,7 @@ if __name__ == "__main__":
     sys.exit(0 if success else 1)
 ```
 
-### **Step 5: Updated Requirements**
+Let's proceed to Updated Requirements
 
 Update `pyproject.toml` with new dependencies:
 
@@ -772,24 +770,24 @@ dev = [
 ]
 ```
 
-## 🚀 **What We've Built Now:**
+## 🚀 What We've Built Now:
 
-### **Real-Time Capabilities:**
-1. **Live Market Data Integration** - Real-time stock prices, news, and sentiment
-2. **Market Sentiment Analysis** - Combined news and social sentiment scoring
-3. **Real-Time Context Enhancement** - Dynamic question enhancement with live data
-4. **Market Alert System** - Automated alerts for significant market movements
-5. **WebSocket Support** - Real-time streaming updates
-6. **Alternative Data Integration** - Social media and news sentiment
+### Real-Time Capabilities:
+1. Live Market Data Integration - Real-time stock prices, news, and sentiment
+2. Market Sentiment Analysis - Combined news and social sentiment scoring
+3. Real-Time Context Enhancement - Dynamic question enhancement with live data
+4. Market Alert System - Automated alerts for significant market movements
+5. WebSocket Support - Real-time streaming updates
+6. Alternative Data Integration - Social media and news sentiment
 
-### **Advanced Features:**
-- **Intelligent Ticker Extraction** from natural language questions
-- **Multi-source Sentiment Analysis** combining news and social data
-- **Real-time Insights Generation** based on market conditions
-- **Streaming Market Updates** via WebSocket
-- **Smart Alert System** with customizable rules
+### Advanced Features:
+- Intelligent Ticker Extraction from natural language questions
+- Multi-source Sentiment Analysis combining news and social data
+- Real-time Insights Generation based on market conditions
+- Streaming Market Updates via WebSocket
+- Smart Alert System with customizable rules
 
-### **Interview Demonstration Script:**
+### Interview Demonstration Script:
 
 ```python
 # Demo 1: Real-time context-aware analysis
@@ -808,7 +806,7 @@ async for update in agent.stream_market_updates(['AAPL'], callback):
 # Shows: Real-time data streaming
 ```
 
-## 🎯 **Next Steps:**
+## 🎯 Next Steps:
 
 Run the real-time test:
 ```bash
@@ -818,4 +816,4 @@ python test_real_time.py
 
 This advancement transforms your project from a historical document analyzer into a live financial intelligence platform - perfect for demonstrating cutting-edge AI engineering in your interview!
 
-**Ready to test the real-time features?**
+Ready to test the real-time features?
