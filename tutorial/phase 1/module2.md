@@ -1,12 +1,12 @@
 <!-- `src/financial_rag/config.py` -->
 inside of the financial_rag, create a config.py file.
-This file is used for storing configuration settings and constants for your application. It centralizes all configuration in one place, making it easy to manage and modify settings.
+This file is used for storing configuration settings and constants, for your application. It centralizes all configuration in one place, making it easy to manage and modify settings.
 
 ```python
 import os # import the built in os module
 from dotenv import load_dotenv # as specified in this documentation, we'll say from... 
 
-load_dotenv() # and load dotenv
+load_dotenv() # and let's call the method load dotenv
 
 class Config: # lets create a class Config to hve a centralized configuration management to access all application settings. now, let's add
     # API Keys
