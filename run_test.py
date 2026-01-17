@@ -12,7 +12,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "src"))
 from financial_rag.ingestion.sec_ingestor import SECIngestor
 from financial_rag.ingestion.document_processor import DocumentProcessor
 from financial_rag.retrieval.vector_store import VectorStoreManager
-from financial_rag.config import config
+from financial_rag.config.development import config
 
 
 def test_foundation():

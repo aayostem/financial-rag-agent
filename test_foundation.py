@@ -3,10 +3,10 @@ import os
 
 sys.path.append("src")
 
-from ingestion.sec_ingestor import SECIngestor
-from ingestion.document_processor import DocumentProcessor
-from retrieval.vector_store import VectorStoreManager
-from config import config
+from financial_rag.ingestion.sec_ingestor import SECIngestor
+from financial_rag.ingestion.document_processor import DocumentProcessor
+from financial_rag.retrieval.vector_store import VectorStoreManager
+from financial_rag.config import config
 
 
 def test_foundation():

@@ -1,7 +1,7 @@
 # Create and activate virtual environment (choose one)
 
 # Option A: venv (built-in)
-python -m venv financial-rag-env
+python -m venv .venv
 source financial-rag-env/bin/activate  # Linux/Mac
 # financial-rag-env\Scripts\activate  # Windows
 
