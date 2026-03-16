@@ -10,12 +10,9 @@ from __future__ import annotations
 
 import logging
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING
+from uuid import UUID
 
 from sqlalchemy import Boolean, Integer, String, Text, func, select
-
-if TYPE_CHECKING:
-    from uuid import UUID
 from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column

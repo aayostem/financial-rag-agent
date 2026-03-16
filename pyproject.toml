@@ -134,6 +134,8 @@ ignore = [
 
 [tool.ruff.lint.isort]
 known-first-party = ["financial_rag"]
+[tool.ruff.lint.per-file-ignores]
+"src/financial_rag/storage/repositories/*.py" = ["TCH002", "TCH003"]
 
 # =============================================================================
 # Mypy
