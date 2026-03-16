@@ -46,3 +46,7 @@ wheels/
 
 # ChromaDB
 chroma.sqlite
+
+# Infrastructure
+infrastructure/docker/.env
+infrastructure/docker/data/
