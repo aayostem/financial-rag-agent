@@ -9,7 +9,8 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING
+from datetime import date
+from uuid import UUID
 
 from sqlalchemy import Boolean, Date, Integer, SmallInteger, String, select
 from sqlalchemy.orm import Mapped, mapped_column
@@ -17,10 +18,6 @@ from sqlalchemy.orm import Mapped, mapped_column
 from financial_rag.storage.database import Base
 from financial_rag.storage.repositories.base import BaseRepository
 from financial_rag.utils.exceptions import DatabaseQueryError
-
-if TYPE_CHECKING:
-    from datetime import date
-    from uuid import UUID
 
 logger = logging.getLogger(__name__)
 

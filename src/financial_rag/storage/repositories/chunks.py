@@ -9,12 +9,9 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING
+from uuid import UUID
 
 from pgvector.sqlalchemy import Vector
-
-if TYPE_CHECKING:
-    from uuid import UUID
 from sqlalchemy import (
     Float,
     Integer,
