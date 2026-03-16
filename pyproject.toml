@@ -177,3 +177,14 @@ ignore_errors = true
 [[tool.mypy.overrides]]
 module = "financial_rag.ingestion.sec_ingestor"
 ignore_errors = true
+
+# Retrieval: OpenAI and sentence-transformers lack complete stubs.
+# tenacity @retry on embed methods strips return types.
+[[tool.mypy.overrides]]
+module = "financial_rag.retrieval.*"
+ignore_errors = true
+
+# Vector store orchestrates multiple untyped libraries.
+[[tool.mypy.overrides]]
+module = "financial_rag.storage.vector_store"
+ignore_errors = true
