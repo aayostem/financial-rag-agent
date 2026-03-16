@@ -111,7 +111,7 @@ class FilingsRepository(BaseRepository[Filing]):
             stmt = (
                 select(Filing)
                 .where(Filing.ticker == ticker.upper())
-                .order_by(Filing.fiscal_year.desc())  # type: ignore[arg-type]
+                .order_by(Filing.fiscal_year.desc())
                 .limit(limit)
             )
             if active_only:
@@ -143,7 +143,7 @@ class FilingsRepository(BaseRepository[Filing]):
                     Filing.ticker == ticker.upper(),
                     Filing.filing_type == filing_type,
                 )
-                .order_by(Filing.fiscal_year.desc())  # type: ignore[arg-type]
+                .order_by(Filing.fiscal_year.desc())
             )
             if fiscal_year is not None:
                 stmt = stmt.where(Filing.fiscal_year == fiscal_year)
@@ -174,7 +174,7 @@ class FilingsRepository(BaseRepository[Filing]):
                     Filing.filing_type == filing_type,
                     Filing.is_active.is_(True),
                 )
-                .order_by(Filing.fiscal_year.desc())  # type: ignore[arg-type]
+                .order_by(Filing.fiscal_year.desc())
                 .limit(1)
             )
             return result.scalar_one_or_none()

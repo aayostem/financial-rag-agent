@@ -1,4 +1,10 @@
-# .pre-commit-config.yaml
+# =============================================================================
+# Financial RAG Agent — Pre-commit Configuration
+# =============================================================================
+# black is intentionally absent — ruff-format is black-compatible and
+# the two must not coexist (they have conflicting opinions on some formatting).
+# =============================================================================
+
 repos:
   - repo: https://github.com/gitleaks/gitleaks
     rev: v8.18.4
@@ -6,16 +12,12 @@ repos:
       - id: gitleaks
         name: Detect hardcoded secrets
 
-  - repo: https://github.com/psf/black
-    rev: 24.4.2
-    hooks:
-      - id: black
-
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.4.9
     hooks:
       - id: ruff
         args: [--fix]
+      - id: ruff-format
 
   - repo: local
     hooks:
@@ -26,17 +28,8 @@ repos:
         pass_filenames: false
         always_run: true
 
-  - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.4.9
-    hooks:
-      - id: ruff
-        args: [--fix]
-      - id: ruff-format    # ← this replaces black
-
   - repo: https://github.com/pre-commit/mirrors-mypy
     rev: v1.10.0
     hooks:
       - id: mypy
         additional_dependencies: [pydantic, sqlalchemy]
-
-
