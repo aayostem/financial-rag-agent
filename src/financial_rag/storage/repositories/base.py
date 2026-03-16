@@ -55,11 +55,9 @@ class BaseRepository(Generic[ModelT]):
                 self.model_class.__name__,
                 getattr(instance, "id", "?"),
             )
-            return instance
+            return instance  # type: ignore[return-value]
         except Exception as exc:
-            raise DatabaseQueryError(
-                f"Failed to add {self.model_class.__name__}: {exc}"
-            ) from exc
+            raise DatabaseQueryError(f"Failed to add {self.model_class.__name__}: {exc}") from exc
 
     async def add_many(self, instances: list[ModelT]) -> list[ModelT]:
         """
@@ -128,21 +126,15 @@ class BaseRepository(Generic[ModelT]):
             result = await self._session.execute(stmt)
             return list(result.scalars().all())
         except Exception as exc:
-            raise DatabaseQueryError(
-                f"Failed to list {self.model_class.__name__}: {exc}"
-            ) from exc
+            raise DatabaseQueryError(f"Failed to list {self.model_class.__name__}: {exc}") from exc
 
     async def count(self) -> int:
         """Return the total number of records in the table."""
         try:
-            result = await self._session.execute(
-                select(func.count()).select_from(self.model_class)
-            )
+            result = await self._session.execute(select(func.count()).select_from(self.model_class))
             return result.scalar_one()
         except Exception as exc:
-            raise DatabaseQueryError(
-                f"Failed to count {self.model_class.__name__}: {exc}"
-            ) from exc
+            raise DatabaseQueryError(f"Failed to count {self.model_class.__name__}: {exc}") from exc
 
     # ── Update ────────────────────────────────────────────────────────────────
 

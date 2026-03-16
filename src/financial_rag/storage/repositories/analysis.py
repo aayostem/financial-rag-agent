@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import logging
 from datetime import UTC, datetime
+from typing import Any
 from uuid import UUID
 
 from sqlalchemy import Boolean, Integer, String, Text, func, select
@@ -42,17 +43,11 @@ class AnalysisRecord(Base):
     ticker: Mapped[str | None] = mapped_column(String(10))
     question: Mapped[str] = mapped_column(Text, nullable=False)
     answer: Mapped[str] = mapped_column(Text, nullable=False)
-    analysis_style: Mapped[str] = mapped_column(
-        String(20), nullable=False, default="analyst"
-    )
+    analysis_style: Mapped[str] = mapped_column(String(20), nullable=False, default="analyst")
     agent_type: Mapped[str] = mapped_column(String(50), nullable=False)
-    search_type: Mapped[str] = mapped_column(
-        String(20), nullable=False, default="similarity"
-    )
+    search_type: Mapped[str] = mapped_column(String(20), nullable=False, default="similarity")
     latency_ms: Mapped[int] = mapped_column(Integer, nullable=False)
-    source_chunk_ids: Mapped[list] = mapped_column(
-        ARRAY(PG_UUID(as_uuid=True)), default=list
-    )
+    source_chunk_ids: Mapped[list[Any]] = mapped_column(ARRAY(PG_UUID(as_uuid=True)), default=list)
     real_time_used: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     error: Mapped[str | None] = mapped_column(Text)
     session_id: Mapped[UUID | None] = mapped_column(PG_UUID(as_uuid=True), index=True)
@@ -140,7 +135,7 @@ class AnalysisRepository(BaseRepository[AnalysisRecord]):
             result = await self._session.execute(
                 select(AnalysisRecord)
                 .where(AnalysisRecord.ticker == ticker.upper())
-                .order_by(AnalysisRecord.created_at.desc())  # type: ignore[arg-type]
+                .order_by(AnalysisRecord.created_at.desc())
                 .limit(limit)
                 .offset(offset)
             )
@@ -156,7 +151,7 @@ class AnalysisRepository(BaseRepository[AnalysisRecord]):
             result = await self._session.execute(
                 select(AnalysisRecord)
                 .where(AnalysisRecord.session_id == session_id)
-                .order_by(AnalysisRecord.created_at)  # type: ignore[arg-type]
+                .order_by(AnalysisRecord.created_at)
             )
             return list(result.scalars().all())
         except Exception as exc:
@@ -176,11 +171,7 @@ class AnalysisRepository(BaseRepository[AnalysisRecord]):
         Useful for monitoring dashboards and debugging.
         """
         try:
-            stmt = (
-                select(AnalysisRecord)
-                .order_by(AnalysisRecord.created_at.desc())  # type: ignore[arg-type]
-                .limit(limit)
-            )
+            stmt = select(AnalysisRecord).order_by(AnalysisRecord.created_at.desc()).limit(limit)
             if agent_type:
                 stmt = stmt.where(AnalysisRecord.agent_type == agent_type)
             if errors_only:
@@ -214,9 +205,7 @@ class AnalysisRepository(BaseRepository[AnalysisRecord]):
             avg = result.scalar_one_or_none()
             return float(avg) if avg is not None else None
         except Exception as exc:
-            raise DatabaseQueryError(
-                f"Failed to compute average latency: {exc}"
-            ) from exc
+            raise DatabaseQueryError(f"Failed to compute average latency: {exc}") from exc
 
     async def error_rate(
         self,

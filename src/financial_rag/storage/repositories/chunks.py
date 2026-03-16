@@ -47,9 +47,7 @@ class FinancialChunk(Base):
     __tablename__ = "financial_chunks"
 
     id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True)
-    filing_id: Mapped[UUID] = mapped_column(
-        PG_UUID(as_uuid=True), nullable=False, index=True
-    )
+    filing_id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), nullable=False, index=True)
 
     # Denormalised for hot-path queries — avoids joins
     ticker: Mapped[str] = mapped_column(String(10), nullable=False)
@@ -66,8 +64,8 @@ class FinancialChunk(Base):
     embedding: Mapped[list[float]] = mapped_column(Vector(3072), nullable=False)
 
     # Extracted data
-    metrics: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
-    entities: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
+    metrics: Mapped[dict[str, object]] = mapped_column(JSONB, default=dict, nullable=False)
+    entities: Mapped[dict[str, object]] = mapped_column(JSONB, default=dict, nullable=False)
     sentiment_score: Mapped[float | None] = mapped_column(Float)
 
     # Audit
@@ -130,20 +128,14 @@ class ChunksRepository(BaseRepository[FinancialChunk]):
         """
         try:
             # Set ef_search for this query — controls HNSW recall/speed tradeoff
-            await self._session.execute(
-                text(f"SET LOCAL hnsw.ef_search = {int(ef_search)}")
-            )
+            await self._session.execute(text(f"SET LOCAL hnsw.ef_search = {int(ef_search)}"))
 
             # Cosine distance operator: <=> returns distance (0=identical, 2=opposite)
             # Convert to similarity: 1 - distance
             distance_col = FinancialChunk.embedding.cosine_distance(query_embedding)
             similarity_col = (1 - distance_col).label("similarity")
 
-            stmt = (
-                select(FinancialChunk, similarity_col)
-                .order_by(distance_col)
-                .limit(limit)
-            )
+            stmt = select(FinancialChunk, similarity_col).order_by(distance_col).limit(limit)
 
             # Apply metadata filters
             if ticker:
@@ -214,9 +206,7 @@ class ChunksRepository(BaseRepository[FinancialChunk]):
                         self._cosine_similarity(chunk.embedding, sel_chunk.embedding)
                         for sel_chunk, _ in selected
                     )
-                    mmr_score = (
-                        lambda_mult * sim_score - (1 - lambda_mult) * max_redundancy
-                    )
+                    mmr_score = lambda_mult * sim_score - (1 - lambda_mult) * max_redundancy
 
                 if mmr_score > best_score:
                     best_score = mmr_score
@@ -282,12 +272,10 @@ class ChunksRepository(BaseRepository[FinancialChunk]):
             result = await self._session.execute(stmt)
             await self._session.flush()
             logger.info("Bulk upserted %d chunks", len(chunks))
-            return result.rowcount
+            return result.rowcount  # type: ignore[attr-defined]
 
         except Exception as exc:
-            raise DatabaseQueryError(
-                f"Bulk upsert of {len(chunks)} chunks failed: {exc}"
-            ) from exc
+            raise DatabaseQueryError(f"Bulk upsert of {len(chunks)} chunks failed: {exc}") from exc
 
     # ── Filtered retrieval ────────────────────────────────────────────────────
 
@@ -341,4 +329,4 @@ class ChunksRepository(BaseRepository[FinancialChunk]):
         norm_b = sum(x * x for x in b) ** 0.5
         if norm_a == 0 or norm_b == 0:
             return 0.0
-        return dot / (norm_a * norm_b)
+        return float(dot / (norm_a * norm_b))
