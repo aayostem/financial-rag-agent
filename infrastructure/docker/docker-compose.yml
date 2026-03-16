@@ -1,82 +1,179 @@
-version: '3.8'
+# =============================================================================
+# Financial RAG Agent — Infrastructure
+# =============================================================================
+# Usage:
+#   Core only:      docker compose up -d
+#   With tools:     docker compose --profile tools up -d
+#   Teardown:       docker compose down
+#   Full teardown:  docker compose down -v
+# =============================================================================
 
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+    labels: "service,env"
+
+x-restart: &default-restart
+  restart: unless-stopped
+
+x-postgres-healthcheck: &postgres-healthcheck
+  healthcheck:
+    test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+    interval: 10s
+    timeout: 5s
+    retries: 5
+    start_period: 30s
+
+x-redis-healthcheck: &redis-healthcheck
+  healthcheck:
+    test: ["CMD", "redis-cli", "--no-auth-warning", "-a", "$$REDIS_PASSWORD", "ping"]
+    interval: 10s
+    timeout: 5s
+    retries: 5
+    start_period: 10s
+
+# =============================================================================
 services:
+
+  # ---------------------------------------------------------------------------
+  # PostgreSQL + pgvector
+  # ---------------------------------------------------------------------------
   postgres:
     image: pgvector/pgvector:pg16
     container_name: ${POSTGRES_CONTAINER:-finrag-postgres}
+    <<: [*default-restart, *postgres-healthcheck]
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-financial_rag}
-      POSTGRES_USER: ${POSTGRES_USER:-user}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+      POSTGRES_DB:       ${POSTGRES_DB:-financial_rag}
+      POSTGRES_USER:     ${POSTGRES_USER:-finrag}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}
+      # Performance tuning — tune to your host's available memory
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C"
     ports:
-      - '${POSTGRES_PORT:-5432}:5432'
+      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ['CMD', 'pg_isready', '-U', '${POSTGRES_USER:-user}', '-d', '${POSTGRES_DB:-financial_rag}']
-      interval: 5s
-      timeout: 5s
-      retries: 5
-    restart: unless-stopped
+      - ./init:/docker-entrypoint-initdb.d:ro   # SQL init scripts (idempotent)
     networks:
       - finrag-network
+    logging: *default-logging
+    labels:
+      com.finrag.service: "postgres"
+      com.finrag.env:     "${APP_ENV:-development}"
+    deploy:
+      resources:
+        limits:
+          memory: ${POSTGRES_MEMORY_LIMIT:-2g}
+          cpus:   "${POSTGRES_CPU_LIMIT:-2.0}"
+        reservations:
+          memory: 512m
 
+  # ---------------------------------------------------------------------------
+  # Redis
+  # ---------------------------------------------------------------------------
   redis:
     image: redis:7-alpine
     container_name: ${REDIS_CONTAINER:-finrag-redis}
+    <<: [*default-restart, *redis-healthcheck]
+    command: >
+      redis-server
+        --appendonly yes
+        --requirepass ${REDIS_PASSWORD:?REDIS_PASSWORD must be set in .env}
+        --maxmemory ${REDIS_MAXMEMORY:-512mb}
+        --maxmemory-policy allkeys-lru
+        --tcp-keepalive 60
+        --loglevel notice
     ports:
-      - '${REDIS_PORT:-6379}:6379'
-    command: redis-server --appendonly yes
+      - "${REDIS_PORT:-6379}:6379"
     volumes:
       - redis_data:/data
-    healthcheck:
-      test: ['CMD', 'redis-cli', 'ping']
-      interval: 5s
-      timeout: 5s
-      retries: 5
-    restart: unless-stopped
     networks:
       - finrag-network
+    logging: *default-logging
+    labels:
+      com.finrag.service: "redis"
+      com.finrag.env:     "${APP_ENV:-development}"
+    deploy:
+      resources:
+        limits:
+          memory: ${REDIS_MEMORY_LIMIT:-768m}
+          cpus:   "${REDIS_CPU_LIMIT:-1.0}"
+        reservations:
+          memory: 128m
 
-  # Optional: Add pgAdmin for database management (development only)
+  # ---------------------------------------------------------------------------
+  # pgAdmin  [profile: tools]
+  # ---------------------------------------------------------------------------
   pgadmin:
-    image: dpage/pgadmin4
+    image: dpage/pgadmin4:latest
     container_name: finrag-pgadmin
+    profiles: [tools]
+    restart: unless-stopped
     environment:
-      PGADMIN_DEFAULT_EMAIL: admin@finrag.local
-      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_DEFAULT_EMAIL:              ${PGADMIN_EMAIL:-admin@finrag.local}
+      PGADMIN_DEFAULT_PASSWORD:           ${PGADMIN_PASSWORD:?PGADMIN_PASSWORD must be set in .env}
+      PGADMIN_CONFIG_SESSION_DB_PATH:     /var/lib/pgadmin/sessions
+      PGADMIN_CONFIG_ENHANCED_COOKIE_PROTECTION: "True"
+      PGADMIN_CONFIG_LOGIN_BANNER:        '"FinRAG Internal Tools — Authorised Access Only"'
     ports:
-      - '5050:80'
+      - "${PGADMIN_PORT:-5050}:80"
     volumes:
       - pgadmin_data:/var/lib/pgadmin
     depends_on:
       postgres:
         condition: service_healthy
-    profiles:
-      - tools
     networks:
       - finrag-network
+    logging: *default-logging
+    labels:
+      com.finrag.service: "pgadmin"
+      com.finrag.env:     "${APP_ENV:-development}"
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+          cpus:   "0.5"
 
-  # Optional: Redis Commander for Redis management
+  # ---------------------------------------------------------------------------
+  # Redis Commander  [profile: tools]
+  # ---------------------------------------------------------------------------
   redis-commander:
     image: rediscommander/redis-commander:latest
     container_name: finrag-redis-commander
+    profiles: [tools]
+    restart: unless-stopped
     environment:
-      REDIS_HOSTS: local:redis:6379
+      REDIS_HOSTS:     "local:redis:6379:0:${REDIS_PASSWORD}"
+      HTTP_USER:       ${REDIS_COMMANDER_USER:-admin}
+      HTTP_PASSWORD:   ${REDIS_COMMANDER_PASSWORD:?REDIS_COMMANDER_PASSWORD must be set in .env}
     ports:
-      - '8081:8081'
+      - "${REDIS_COMMANDER_PORT:-8081}:8081"
     depends_on:
       redis:
         condition: service_healthy
-    profiles:
-      - tools
     networks:
       - finrag-network
+    logging: *default-logging
+    labels:
+      com.finrag.service: "redis-commander"
+      com.finrag.env:     "${APP_ENV:-development}"
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+          cpus:   "0.25"
 
+# =============================================================================
 networks:
   finrag-network:
     driver: bridge
+    name: finrag-network
+    ipam:
+      config:
+        - subnet: ${NETWORK_SUBNET:-172.28.0.0/16}
 
+# =============================================================================
 volumes:
   postgres_data:
     name: finrag_postgres_data

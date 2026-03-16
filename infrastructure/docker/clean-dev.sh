@@ -6,6 +6,6 @@ echo
 if [[ $REPLY =~ ^[Yy]$ ]]
 then
     echo "🗑️  Removing containers and volumes..."
-    docker compose down -v
+    docker compose down -v 
     echo "✅ Cleanup complete"
 fi
