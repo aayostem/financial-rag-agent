@@ -1,24 +1,11 @@
-"""Configuration factory - exports the right config based on environment"""
+# =============================================================================
+# Financial RAG Agent — Config Package
+# src/financial_rag/config/__init__.py
+#
+# Single export surface. Everything outside this package imports from here.
+# The environments/ and features/ subdirectories are deleted — no longer needed.
+# =============================================================================
 
-import os
-from dotenv import load_dotenv
+from .settings import Settings, get_settings
 
-# Load environment variables
-load_dotenv()
-
-# Determine environment
-ENV = os.getenv("FINRAG_ENV", "development").lower()
-
-# Import the appropriate config
-if ENV == "production":
-    from .environments.production import ProductionConfig as Config
-elif ENV == "testing":
-    from .environments.testing import TestingConfig as Config
-else:  # development is default
-    from .environments.development import DevelopmentConfig as Config
-
-# Create config instance
-config = Config()
-
-# Export
-__all__ = ["config"]
+__all__ = ["Settings", "get_settings"]
