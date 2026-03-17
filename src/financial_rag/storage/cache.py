@@ -213,7 +213,9 @@ class CacheClient:
         """Reset the TTL on an existing key. Returns False if key not found."""
         self._assert_connected()
         try:
-            return bool(await self._redis.expire(key, ttl))  # type: ignore[union-attr]
+            return bool(
+                await self._redis.expire(key, ttl)  # type: ignore[union-attr]
+            )
         except RedisError as exc:
             raise CacheOperationError(f"EXPIRE {key} failed: {exc}") from exc
 
@@ -237,9 +239,7 @@ class CacheClient:
             logger.info("Cleared %d keys matching pattern '%s'", deleted, pattern)
             return deleted
         except RedisError as exc:
-            raise CacheOperationError(
-                f"clear_namespace '{namespace}' failed: {exc}"
-            ) from exc
+            raise CacheOperationError(f"clear_namespace '{namespace}' failed: {exc}") from exc
 
     # ── Health ────────────────────────────────────────────────────────────────
 
@@ -271,18 +271,20 @@ class CacheClient:
 
     def _assert_connected(self) -> None:
         if self._redis is None:
-            raise CacheConnectionError(
-                "CacheClient is not connected. Call connect() first."
-            )
+            raise CacheConnectionError("CacheClient is not connected. Call connect() first.")
 
     def _pool_stats(self) -> dict[str, Any]:
         """Extract connection pool statistics."""
         if self._pool is None:
             return {}
-        return {
+        stats: dict[str, Any] = {
             "pool_max_connections": self._pool.max_connections,
-            "pool_created_connections": self._pool._created_connections,  # type: ignore[attr-defined]
         }
+        # _created_connections is internal — not guaranteed across redis-py versions
+        created = getattr(self._pool, "_created_connections", None)
+        if created is not None:
+            stats["pool_created_connections"] = created
+        return stats
 
 
 # =============================================================================
