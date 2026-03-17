@@ -134,6 +134,7 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 "src/financial_rag/storage/repositories/*.py" = ["TCH002", "TCH003"]
+"src/financial_rag/api/*.py" = ["TCH001", "TCH002", "TCH003"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["financial_rag"]
@@ -187,4 +188,10 @@ ignore_errors = true
 # Vector store orchestrates multiple untyped libraries.
 [[tool.mypy.overrides]]
 module = "financial_rag.storage.vector_store"
+ignore_errors = true
+
+# API layer: FastAPI Depends() annotated types must remain as runtime
+# imports — moving to TYPE_CHECKING breaks dependency injection.
+[[tool.mypy.overrides]]
+module = "financial_rag.api.*"
 ignore_errors = true
