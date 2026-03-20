@@ -80,15 +80,15 @@ class FilingMetadata:
     """
 
     __slots__ = (
-        "accession_number",
-        "cik",
-        "filed_at",
+        "ticker",
         "filing_type",
-        "fiscal_quarter",
         "fiscal_year",
+        "fiscal_quarter",
+        "filed_at",
+        "accession_number",
         "primary_document",
         "source_url",
-        "ticker",
+        "cik",
     )
 
     def __init__(
@@ -149,7 +149,6 @@ class SECIngestor:
                 # and a contact email. Requests without this may be blocked.
                 "User-Agent": self._settings.EDGAR_USER_AGENT,
                 "Accept-Encoding": "gzip, deflate",
-                "Host": "data.sec.gov",
             },
             timeout=self._settings.EDGAR_REQUEST_TIMEOUT_SECONDS,
             follow_redirects=True,
@@ -292,7 +291,7 @@ class SECIngestor:
         Resolve a ticker symbol to its SEC CIK number.
         EDGAR's company_tickers.json maps ticker → CIK.
         """
-        url = f"{_EDGAR_BASE}/files/company_tickers.json"
+        url = "https://www.sec.gov/files/company_tickers.json"
         try:
             async with self._rate_limiter:
                 response = await self._client.get(url)  # type: ignore[union-attr]
@@ -327,9 +326,7 @@ class SECIngestor:
                 response.raise_for_status()
             return response.json()
         except httpx.HTTPError as exc:
-            raise SECFetchError(
-                f"Failed to fetch submissions for CIK {cik}: {exc}"
-            ) from exc
+            raise SECFetchError(f"Failed to fetch submissions for CIK {cik}: {exc}") from exc
 
     @retry(
         retry=retry_if_exception_type(SECFetchError),
@@ -385,16 +382,12 @@ class SECIngestor:
                 break
 
             try:
-                filed_at = (
-                    date.fromisoformat(filed_dates[i]) if filed_dates[i] else None
-                )
+                filed_at = date.fromisoformat(filed_dates[i]) if filed_dates[i] else None
                 fiscal_year = filed_at.year if filed_at else None
                 accession = accessions[i].replace("-", "")
                 primary_doc = documents[i] if i < len(documents) else ""
 
-                source_url = (
-                    f"{_EDGAR_ARCHIVES}/{int(cik)}" f"/{accession}/{primary_doc}"
-                )
+                source_url = f"{_EDGAR_ARCHIVES}/{int(cik)}" f"/{accession}/{primary_doc}"
 
                 if fiscal_year and fiscal_year in seen_years:
                     continue
@@ -415,9 +408,7 @@ class SECIngestor:
                     )
                 )
             except (IndexError, ValueError) as exc:
-                logger.warning(
-                    "Skipping malformed filing entry at index %d: %s", i, exc
-                )
+                logger.warning("Skipping malformed filing entry at index %d: %s", i, exc)
                 continue
 
         return results
@@ -428,9 +419,7 @@ class SECIngestor:
         safe_ticker = meta.ticker.replace("/", "_")
         return raw_dir / safe_ticker / meta.filing_type / f"FY{meta.fiscal_year}.html"
 
-    def _check_cache(
-        self, meta: FilingMetadata, raw_dir: Path
-    ) -> tuple[str, str] | None:
+    def _check_cache(self, meta: FilingMetadata, raw_dir: Path) -> tuple[str, str] | None:
         path = self._cache_path(meta, raw_dir)
         if path.exists():
             content = path.read_text(encoding="utf-8", errors="ignore")

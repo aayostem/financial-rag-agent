@@ -116,6 +116,16 @@ class TextParser:
         """
         metrics: dict[str, float] = {}
 
+        def _safe_float(raw: str) -> float | None:
+            """Convert a string to float, returning None on empty or invalid."""
+            cleaned = raw.replace(",", "").strip()
+            if not cleaned:
+                return None
+            try:
+                return float(cleaned)
+            except ValueError:
+                return None
+
         # Revenue patterns: "revenue of $X billion/million"
         revenue_match = re.search(
             r"(?:revenue|net\s+revenue|total\s+revenue)[^\d]*"
@@ -125,9 +135,10 @@ class TextParser:
             re.I,
         )
         if revenue_match:
-            value = float(revenue_match.group(1).replace(",", ""))
-            scale = revenue_match.group(2) or ""
-            metrics["revenue"] = _apply_scale(value, scale)
+            value = _safe_float(revenue_match.group(1))
+            if value is not None:
+                scale = revenue_match.group(2) or ""
+                metrics["revenue"] = _apply_scale(value, scale)
 
         # Net income
         income_match = re.search(
@@ -138,19 +149,21 @@ class TextParser:
             re.I,
         )
         if income_match:
-            value = float(income_match.group(1).replace(",", ""))
-            scale = income_match.group(2) or ""
-            metrics["net_income"] = _apply_scale(value, scale)
+            value = _safe_float(income_match.group(1))
+            if value is not None:
+                scale = income_match.group(2) or ""
+                metrics["net_income"] = _apply_scale(value, scale)
 
         # EPS: "earnings per share of $X.XX" or "EPS of $X.XX"
         eps_match = re.search(
-            r"(?:earnings\s+per\s+(?:diluted\s+)?share|eps)[^\d]*"
-            r"\$?([\d]+(?:\.\d+)?)",
+            r"(?:earnings\s+per\s+(?:diluted\s+)?share|eps)[^\d]*" r"\$?([\d]+(?:\.\d+)?)",
             text,
             re.I,
         )
         if eps_match:
-            metrics["eps"] = float(eps_match.group(1))
+            value = _safe_float(eps_match.group(1))
+            if value is not None:
+                metrics["eps"] = value
 
         # Operating margin: "operating margin of X%"
         margin_match = re.search(
@@ -159,7 +172,9 @@ class TextParser:
             re.I,
         )
         if margin_match:
-            metrics["margin_pct"] = float(margin_match.group(1))
+            value = _safe_float(margin_match.group(1))
+            if value is not None:
+                metrics["margin_pct"] = value
 
         return metrics
 
