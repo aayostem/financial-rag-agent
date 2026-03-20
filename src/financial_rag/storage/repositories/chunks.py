@@ -61,7 +61,7 @@ class FinancialChunk(Base):
     token_count: Mapped[int | None] = mapped_column(Integer)
 
     # Vector embedding — dimensions set from settings at insert time
-    embedding: Mapped[list[float]] = mapped_column(Vector(3072), nullable=False)
+    embedding: Mapped[list[float]] = mapped_column(Vector(384), nullable=False)
 
     # Extracted data
     metrics: Mapped[dict[str, object]] = mapped_column(JSONB, default=dict, nullable=False)
