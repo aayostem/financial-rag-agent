@@ -15,6 +15,7 @@ from __future__ import annotations
 import logging
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException, status
+from fastapi.responses import Response
 
 from financial_rag.api.dependencies import Engine, Store
 from financial_rag.api.models import (
@@ -139,7 +140,10 @@ async def query(
     )
     # ── Write to analysis_history (non-fatal) ─────────────────────────────────
     try:
+        import time as _time
         from uuid import UUID
+
+        _t0 = _time.monotonic()
 
         from financial_rag.storage.repositories.analysis import AnalysisRepository
 
@@ -159,6 +163,21 @@ async def query(
             )
     except Exception as _exc:
         logger.warning("Failed to write analysis_history (non-fatal): %s", _exc)
+
+    # Record Prometheus metrics
+    try:
+        from financial_rag.monitoring.metrics import record_query
+
+        record_query(
+            analysis_style=request.analysis_style.value,
+            search_type=request.search_type.value,
+            agent_type=result.agent_type,
+            latency_seconds=_time.monotonic() - _t0,
+            success=result.error is None,
+            error_type=type(result.error).__name__ if result.error else None,
+        )
+    except Exception:
+        pass
 
     if result.error and not result.answer:
         raise HTTPException(
@@ -393,3 +412,21 @@ async def ticker_stats(ticker: str, store: Store) -> StatsResponse:
     """Return statistics for a specific ticker."""
     stats = await store.stats(ticker=ticker.upper())
     return StatsResponse(**stats)
+
+
+# ── Metrics ───────────────────────────────────────────────────────────────────
+
+
+@router.get(
+    "/metrics",
+    include_in_schema=False,
+    tags=["ops"],
+)
+async def metrics() -> Response:
+    """Prometheus metrics endpoint."""
+    from fastapi.responses import Response as FastAPIResponse
+
+    from financial_rag.monitoring.metrics import get_metrics_output
+
+    data, content_type = get_metrics_output()
+    return FastAPIResponse(content=data, media_type=content_type)

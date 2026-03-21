@@ -1,0 +1,24 @@
+# =============================================================================
+# Prometheus Configuration
+# infrastructure/docker/prometheus/prometheus.yml
+# =============================================================================
+
+global:
+  scrape_interval:     15s
+  evaluation_interval: 15s
+  external_labels:
+    service: financial-rag-agent
+    environment: production
+
+scrape_configs:
+  # Financial RAG API metrics
+  - job_name: finrag_api
+    static_configs:
+      - targets: ["app:8000"]
+    metrics_path: /metrics
+    scrape_interval: 15s
+
+  # Prometheus self-monitoring
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]
