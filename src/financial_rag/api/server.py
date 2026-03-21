@@ -31,7 +31,9 @@ from financial_rag.api.dependencies import (
     shutdown_dependencies,
 )
 from financial_rag.api.middleware import (
+    APIKeyMiddleware,
     RequestLoggingMiddleware,
+    configure_limiter,
     register_exception_handlers,
 )
 from financial_rag.api.routes import router
@@ -116,6 +118,12 @@ def create_app() -> FastAPI:
 
     # ── Exception handlers ────────────────────────────────────────────────────
     register_exception_handlers(app)
+
+    # ── Rate limiting ─────────────────────────────────────────────────────────
+    configure_limiter(app)
+
+    # ── API key auth ──────────────────────────────────────────────────────────
+    app.add_middleware(APIKeyMiddleware)
 
     # ── Routes ────────────────────────────────────────────────────────────────
     app.include_router(router)
