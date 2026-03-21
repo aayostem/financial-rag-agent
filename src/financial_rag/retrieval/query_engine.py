@@ -136,6 +136,7 @@ class QueryEngine:
 
         return AsyncOpenAI(
             api_key=self._settings.OPENAI_API_KEY.get_secret_value(),
+            base_url=self._settings.LLM_BASE_URL or None,
             timeout=self._settings.LLM_REQUEST_TIMEOUT,
         )
 
@@ -148,6 +149,7 @@ class QueryEngine:
         ticker: str | None = None,
         filing_type: str | None = None,
         fiscal_year: int | None = None,
+        section: str | None = None,
         analysis_style: str = _DEFAULT_STYLE,
         search_type: Literal["similarity", "mmr", "hybrid"] = "similarity",
         limit: int | None = None,
@@ -179,6 +181,7 @@ class QueryEngine:
                 ticker=ticker,
                 filing_type=filing_type,
                 fiscal_year=fiscal_year,
+                section=section,
                 search_type=search_type,
                 limit=limit,
             )
@@ -270,6 +273,7 @@ class QueryEngine:
         ticker: str | None,
         filing_type: str | None,
         fiscal_year: int | None,
+        section: str | None = None,
         search_type: str,
         limit: int | None,
     ) -> list[RetrievalResult]:
@@ -288,6 +292,7 @@ class QueryEngine:
             ticker=ticker,
             filing_type=filing_type,
             fiscal_year=fiscal_year,
+            section=section,
             limit=limit,
             search_type=search_type,
         )
