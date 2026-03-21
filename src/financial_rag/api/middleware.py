@@ -1,12 +1,6 @@
 # =============================================================================
 # Financial RAG Agent — API Middleware
 # src/financial_rag/api/middleware.py
-#
-# Request-level middleware applied to every HTTP request:
-#   - Structured JSON request/response logging
-#   - Request timing (X-Process-Time header)
-#   - Global exception handler (returns RFC 7807 problem detail)
-#   - Correlation ID injection (X-Request-ID header)
 # =============================================================================
 
 from __future__ import annotations
@@ -17,32 +11,53 @@ import uuid
 
 from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.util import get_remote_address
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.responses import Response
 
+from financial_rag.config import get_settings
+
 logger = logging.getLogger(__name__)
+
+# =============================================================================
+# Rate limiter singleton — imported by routes that need per-route limits
+# =============================================================================
+
+limiter = Limiter(key_func=get_remote_address, default_limits=["100/minute"])
+
+
+def configure_limiter(app: FastAPI) -> None:
+    """Attach rate limiter to app. Uses Redis in prod, memory in dev."""
+    settings = get_settings()
+    storage_uri: str | None = None
+
+    if settings.APP_ENV == "production" and settings.REDIS_URL:
+        storage_uri = settings.REDIS_URL
+        logger.info("Rate limiter: Redis backend at %s", settings.REDIS_HOST)
+    else:
+        logger.info("Rate limiter: in-memory backend (dev/test)")
+
+    global limiter
+    limiter = Limiter(
+        key_func=get_remote_address,
+        default_limits=["100/minute"],
+        storage_uri=storage_uri,
+    )
+    app.state.limiter = limiter
+    app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 
 # =============================================================================
-# Request logging + timing middleware
+# Request logging middleware
 # =============================================================================
 
 
 class RequestLoggingMiddleware(BaseHTTPMiddleware):
-    """
-    Logs every request and response with structured fields.
-    Adds X-Request-ID and X-Process-Time headers to every response.
-
-    Log format:
-        request:  method, path, query, request_id
-        response: status_code, process_time_ms, request_id
-    """
-
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         request_id = str(uuid.uuid4())
         t0 = time.monotonic()
-
-        # Attach request_id to request state for use in route handlers
         request.state.request_id = request_id
 
         logger.info(
@@ -51,7 +66,6 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
                 "request_id": request_id,
                 "method": request.method,
                 "path": request.url.path,
-                "query": str(request.url.query),
                 "client_ip": request.client.host if request.client else "unknown",
             },
         )
@@ -59,19 +73,10 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
         try:
             response = await call_next(request)
         except Exception as exc:
-            process_ms = int((time.monotonic() - t0) * 1000)
-            logger.error(
-                "request_unhandled_error",
-                extra={
-                    "request_id": request_id,
-                    "process_ms": process_ms,
-                    "error": str(exc),
-                },
-            )
+            logger.error("request_error", extra={"request_id": request_id, "error": str(exc)})
             raise
 
         process_ms = int((time.monotonic() - t0) * 1000)
-
         response.headers["X-Request-ID"] = request_id
         response.headers["X-Process-Time"] = f"{process_ms}ms"
 
@@ -83,42 +88,72 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
                 "process_ms": process_ms,
             },
         )
-
         return response
 
 
 # =============================================================================
-# Global exception handlers
+# API key authentication middleware
+# =============================================================================
+
+
+class APIKeyMiddleware(BaseHTTPMiddleware):
+    """
+    Optional API key auth. Only active when API_KEY_ENABLED=True.
+    Pass key in X-API-Key header. Exempt: /health, /docs, /redoc, /.
+    """
+
+    EXEMPT_PATHS = frozenset({"/health", "/docs", "/redoc", "/openapi.json", "/"})
+
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
+        settings = get_settings()
+
+        if not settings.API_KEY_ENABLED or request.url.path in self.EXEMPT_PATHS:
+            return await call_next(request)
+
+        api_key = request.headers.get("X-API-Key")
+        expected = settings.API_KEY.get_secret_value() if settings.API_KEY else None
+
+        if not expected:
+            return await call_next(request)
+
+        if api_key != expected:
+            return JSONResponse(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                content={
+                    "type": "about:blank",
+                    "title": "Unauthorized",
+                    "status": 401,
+                    "detail": "Invalid or missing API key. Pass X-API-Key header.",
+                    "instance": request.url.path,
+                },
+            )
+
+        return await call_next(request)
+
+
+# =============================================================================
+# Exception handlers
 # =============================================================================
 
 
 def register_exception_handlers(app: FastAPI) -> None:
-    """
-    Register application-wide exception handlers on the FastAPI app.
-    Returns RFC 7807 Problem Detail JSON for all unhandled errors.
-    Call this in server.py after creating the FastAPI instance.
-    """
+    """Register RFC 7807 exception handlers."""
 
     @app.exception_handler(Exception)
     async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
         request_id = getattr(request.state, "request_id", "unknown")
         logger.error(
             "unhandled_exception",
-            extra={
-                "request_id": request_id,
-                "path": request.url.path,
-                "error": str(exc),
-                "error_type": type(exc).__name__,
-            },
+            extra={"request_id": request_id, "error": str(exc)},
             exc_info=True,
         )
         return JSONResponse(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=500,
             content={
                 "type": "about:blank",
                 "title": "Internal Server Error",
                 "status": 500,
-                "detail": "An unexpected error occurred. Check server logs.",
+                "detail": "An unexpected error occurred.",
                 "instance": request.url.path,
                 "request_id": request_id,
             },
@@ -127,16 +162,8 @@ def register_exception_handlers(app: FastAPI) -> None:
     @app.exception_handler(ValueError)
     async def value_error_handler(request: Request, exc: ValueError) -> JSONResponse:
         request_id = getattr(request.state, "request_id", "unknown")
-        logger.warning(
-            "validation_error",
-            extra={
-                "request_id": request_id,
-                "path": request.url.path,
-                "error": str(exc),
-            },
-        )
         return JSONResponse(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=422,
             content={
                 "type": "about:blank",
                 "title": "Validation Error",

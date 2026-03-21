@@ -350,6 +350,15 @@ class Settings(BaseSettings):
         description="Max requests per RATE_LIMIT_PERIOD. Lower in production via .env.",
     )
     RATE_LIMIT_PERIOD_SECONDS: int = Field(default=60, ge=1)
+    # API key authentication
+    API_KEY_ENABLED: bool = Field(
+        default=False,
+        description="Enable API key authentication via X-API-Key header.",
+    )
+    API_KEY: SecretStr | None = Field(
+        default=None,
+        description="API key required when API_KEY_ENABLED=True.",
+    )
 
     # =========================================================================
     # SEC EDGAR Ingestion
