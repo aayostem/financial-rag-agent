@@ -136,6 +136,7 @@ ignore = [
 "src/financial_rag/storage/repositories/*.py" = ["TCH002", "TCH003"]
 "src/financial_rag/api/*.py" = ["TCH001", "TCH002", "TCH003"]
 "src/financial_rag/agents/*.py" = ["SIM108", "TCH001", "TCH002", "TCH003"]
+"tests/**/*.py" = ["F841"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["financial_rag"]
@@ -147,7 +148,7 @@ known-first-party = ["financial_rag"]
 python_version         = "3.11"
 strict                 = true
 ignore_missing_imports = true
-exclude                = ["tests/", "migrations/"]
+exclude                = ["^tests/", "^tests\\\\", "migrations/"]
 
 [[tool.mypy.overrides]]
 module = "financial_rag.agents.*"
@@ -164,6 +165,10 @@ ignore_errors = true
 # Suppress import-untyped and the unused-ignore that results from it.
 [[tool.mypy.overrides]]
 module = "financial_rag.storage.cache"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "financial_rag.api.*"
 ignore_errors = true
 
 # SQLAlchemy pool.size(), checkedout(), overflow() exist at runtime
@@ -200,3 +205,8 @@ ignore_errors = true
 [[tool.mypy.overrides]]
 module = "financial_rag.api.*"
 ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+ignore_errors = true
+
