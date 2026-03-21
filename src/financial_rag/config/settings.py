@@ -132,9 +132,7 @@ class Settings(BaseSettings):
     # =========================================================================
     API_HOST: str = Field(default="0.0.0.0")
     API_PORT: int = Field(default=8000, ge=1, le=65535)
-    API_WORKERS: int = Field(
-        default=1, ge=1, description="Increase to 4+ in production"
-    )
+    API_WORKERS: int = Field(default=1, ge=1, description="Increase to 4+ in production")
     # Stored as raw str — prevents pydantic-settings from calling json.loads()
     # on comma-separated values like "https://a.com,https://b.com".
     # Use CORS_ORIGINS_LIST computed property in application code.
@@ -200,6 +198,7 @@ class Settings(BaseSettings):
     LLM_TEMPERATURE: float = Field(default=0.0, ge=0.0, le=2.0)
     LLM_MAX_TOKENS: int = Field(default=2048, ge=1)
     LLM_REQUEST_TIMEOUT: int = Field(default=60, ge=5, description="Seconds")
+    LLM_BASE_URL: str = Field(default="https://api.groq.com/openai/v1")
 
     # =========================================================================
     # PostgreSQL + pgvector
@@ -405,8 +404,7 @@ class Settings(BaseSettings):
                 )
             if self.LLM_PROVIDER == "openai" and not self.OPENAI_API_KEY:
                 issues.append(
-                    "OPENAI_API_KEY is required when LLM_PROVIDER='openai'. "
-                    "Set it in .env."
+                    "OPENAI_API_KEY is required when LLM_PROVIDER='openai'. " "Set it in .env."
                 )
             if self.LLM_PROVIDER == "anthropic" and not self.ANTHROPIC_API_KEY:
                 issues.append(
@@ -423,14 +421,11 @@ class Settings(BaseSettings):
             if self.DEBUG:
                 issues.append("DEBUG=True in production.")
             if not self.POSTGRES_HOST or self.POSTGRES_HOST == "localhost":
-                issues.append(
-                    "POSTGRES_HOST is 'localhost' — use a real host in production."
-                )
+                issues.append("POSTGRES_HOST is 'localhost' — use a real host in production.")
 
         if issues:
             raise ValueError(
-                "Configuration errors detected:\n"
-                + "\n".join(f"  • {issue}" for issue in issues)
+                "Configuration errors detected:\n" + "\n".join(f"  • {issue}" for issue in issues)
             )
 
         return self

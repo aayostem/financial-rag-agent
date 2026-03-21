@@ -219,6 +219,7 @@ class FinancialAgent:
             return None
         return AsyncOpenAI(
             api_key=self._settings.OPENAI_API_KEY.get_secret_value(),
+            base_url=self._settings.LLM_BASE_URL or None,
             timeout=self._settings.LLM_REQUEST_TIMEOUT,
         )
 
