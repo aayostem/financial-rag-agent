@@ -137,12 +137,54 @@ async def query(
         search_type=request.search_type.value,
         limit=request.limit,
     )
+    # ── Write to analysis_history (non-fatal) ─────────────────────────────────
+    try:
+        from uuid import UUID
+
+        from financial_rag.storage.repositories.analysis import AnalysisRepository
+
+        _db = await get_db_client()
+        async with _db.session() as _session:
+            _repo = AnalysisRepository(_session)
+            await _repo.record(
+                question=request.question,
+                answer=result.answer,
+                agent_type=result.agent_type,
+                latency_ms=result.latency_ms,
+                ticker=request.ticker,
+                analysis_style=result.analysis_style,
+                search_type=result.search_type,
+                source_chunk_ids=[UUID(r.chunk_id) for r in result.source_documents],
+                error=result.error,
+            )
+    except Exception as _exc:
+        logger.warning("Failed to write analysis_history (non-fatal): %s", _exc)
 
     if result.error and not result.answer:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=result.error,
         )
+    # Write to analysis_history (fire and forget — non-fatal)
+    try:
+        from financial_rag.storage.repositories.analysis import AnalysisRepository
+
+        db = await get_db_client()
+        async with db.session() as session:
+            repo = AnalysisRepository(session)
+            await repo.create(
+                ticker=request.ticker,
+                question=request.question,
+                answer=result.answer,
+                analysis_style=result.analysis_style,
+                agent_type=result.agent_type,
+                search_type=result.search_type,
+                latency_ms=result.latency_ms,
+                source_chunk_ids=[r.chunk_id for r in result.source_documents],
+                error=result.error,
+            )
+    except Exception as exc:
+        logger.warning("Failed to write analysis_history (non-fatal): %s", exc)
 
     source_docs = [
         DocumentResponse(
