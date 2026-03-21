@@ -1,0 +1,22 @@
+apiVersion: v2
+name: financial-rag-agent
+description: |
+  Production Helm chart for the Financial RAG Agent — a multi-agent system
+  for SEC EDGAR ingestion, hybrid vector retrieval, and LLM-powered financial Q&A.
+  Includes API, agent pool, ingestion CronJob, pgvector, and Redis.
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+
+keywords:
+  - rag
+  - fintech
+  - llm
+  - pgvector
+  - fastapi
+
+maintainers:
+  - name: Cloudfrugal
+    email: ayo@cloudfrugal.com
+
+dependencies: []

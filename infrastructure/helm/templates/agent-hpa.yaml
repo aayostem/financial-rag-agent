@@ -1,0 +1,49 @@
+{{- if and .Values.agentPool.enabled .Values.agentPool.hpa.enabled }}
+---
+# =============================================================================
+# Agent Pool — HorizontalPodAutoscaler
+# Lower thresholds than the API (55%/65%) because agent loops are CPU-spiky
+# during embedding + LLM inference. Scale up fast, cool down slowly.
+# =============================================================================
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "financial-rag-agent.fullname" . }}-agent
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "financial-rag-agent.labels" . | nindent 4 }}
+    app.kubernetes.io/component: agent
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "financial-rag-agent.fullname" . }}-agent
+  minReplicas: {{ .Values.agentPool.hpa.minReplicas }}
+  maxReplicas: {{ .Values.agentPool.hpa.maxReplicas }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.agentPool.hpa.targetCPUUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.agentPool.hpa.targetMemoryUtilizationPercentage }}
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 600   # 10 min — agent jobs must fully drain
+      policies:
+        - type: Pods
+          value: 1
+          periodSeconds: 180
+    scaleUp:
+      stabilizationWindowSeconds: 30
+      policies:
+        - type: Pods
+          value: 5
+          periodSeconds: 60             # burst up quickly under query storm
+{{- end }}

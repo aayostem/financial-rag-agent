@@ -1,0 +1,31 @@
+{{- if .Values.serviceMonitor.enabled }}
+---
+# =============================================================================
+# Prometheus — ServiceMonitor
+# Scraped by kube-prometheus-stack. Targets the API /metrics endpoint
+# where Prometheus counters for query latency, ingestion rate, and
+# LLM token usage are exposed.
+# =============================================================================
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "financial-rag-agent.fullname" . }}-api
+  namespace: {{ .Values.serviceMonitor.namespace }}
+  labels:
+    {{- include "financial-rag-agent.labels" . | nindent 4 }}
+    release: kube-prometheus-stack     # must match Prometheus operator selector
+spec:
+  namespaceSelector:
+    matchNames:
+      - {{ .Values.namespace }}
+  selector:
+    matchLabels:
+      {{- include "financial-rag-agent.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: api
+  endpoints:
+    - port: http
+      path: {{ .Values.serviceMonitor.path }}
+      interval: {{ .Values.serviceMonitor.interval }}
+      scheme: http
+      honorLabels: true
+{{- end }}

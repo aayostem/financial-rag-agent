@@ -1,0 +1,126 @@
+{{- if .Values.pgvector.enabled }}
+---
+# =============================================================================
+# pgvector — StatefulSet
+# PostgreSQL 16 + pgvector extension. Single primary (replication handled
+# externally via RDS or Patroni in a future commit). HNSW index lives on
+# the vector column — PVC must survive pod restarts, hence StatefulSet.
+# =============================================================================
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "financial-rag-agent.fullname" . }}-pgvector
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "financial-rag-agent.labels" . | nindent 4 }}
+    app.kubernetes.io/component: pgvector
+spec:
+  serviceName: {{ include "financial-rag-agent.fullname" . }}-pgvector-headless
+  replicas: {{ .Values.pgvector.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "financial-rag-agent.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: pgvector
+  template:
+    metadata:
+      labels:
+        {{- include "financial-rag-agent.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: pgvector
+    spec:
+      securityContext:
+        runAsUser: 999                  # postgres user
+        fsGroup: 999
+      {{- with .Values.global.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.global.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: pgvector
+          image: {{ include "financial-rag-agent.image" (dict "global" .Values.global "image" .Values.pgvector.image) }}
+          imagePullPolicy: {{ .Values.global.image.pullPolicy }}
+          ports:
+            - name: postgres
+              containerPort: 5432
+              protocol: TCP
+          env:
+            {{- range $k, $v := .Values.pgvector.env }}
+            - name: {{ $k }}
+              value: {{ $v | quote }}
+            {{- end }}
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          {{- with .Values.pgvector.envFrom }}
+          envFrom:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          resources:
+            {{- toYaml .Values.pgvector.resources | nindent 12 }}
+          livenessProbe:
+            {{- toYaml .Values.pgvector.livenessProbe | nindent 12 }}
+          readinessProbe:
+            {{- toYaml .Values.pgvector.readinessProbe | nindent 12 }}
+          volumeMounts:
+            - name: pgdata
+              mountPath: /var/lib/postgresql/data
+  {{- if .Values.pgvector.persistence.enabled }}
+  volumeClaimTemplates:
+    - metadata:
+        name: pgdata
+        labels:
+          {{- include "financial-rag-agent.labels" . | nindent 10 }}
+          app.kubernetes.io/component: pgvector
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: {{ .Values.pgvector.storage.storageClassName }}
+        resources:
+          requests:
+            storage: {{ .Values.pgvector.storage.size }}
+  {{- end }}
+---
+# =============================================================================
+# pgvector — Headless Service (stable DNS for StatefulSet peers)
+# =============================================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "financial-rag-agent.fullname" . }}-pgvector-headless
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "financial-rag-agent.labels" . | nindent 4 }}
+    app.kubernetes.io/component: pgvector
+spec:
+  type: ClusterIP
+  clusterIP: None
+  selector:
+    {{- include "financial-rag-agent.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: pgvector
+  ports:
+    - name: postgres
+      port: {{ .Values.pgvector.service.port }}
+      targetPort: postgres
+---
+# =============================================================================
+# pgvector — ClusterIP Service (used by API + Agent pods)
+# =============================================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "financial-rag-agent.fullname" . }}-pgvector
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "financial-rag-agent.labels" . | nindent 4 }}
+    app.kubernetes.io/component: pgvector
+spec:
+  type: ClusterIP
+  selector:
+    {{- include "financial-rag-agent.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: pgvector
+  ports:
+    - name: postgres
+      port: {{ .Values.pgvector.service.port }}
+      targetPort: postgres
+{{- end }}

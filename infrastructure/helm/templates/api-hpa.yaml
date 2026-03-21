@@ -1,0 +1,48 @@
+{{- if and .Values.api.enabled .Values.api.hpa.enabled }}
+---
+# =============================================================================
+# API — HorizontalPodAutoscaler
+# Scales on CPU + memory. In prod: 5–20 replicas at 60%/70% thresholds.
+# =============================================================================
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "financial-rag-agent.fullname" . }}-api
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "financial-rag-agent.labels" . | nindent 4 }}
+    app.kubernetes.io/component: api
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "financial-rag-agent.fullname" . }}-api
+  minReplicas: {{ .Values.api.hpa.minReplicas }}
+  maxReplicas: {{ .Values.api.hpa.maxReplicas }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.api.hpa.targetCPUUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.api.hpa.targetMemoryUtilizationPercentage }}
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300   # 5 min cool-down — avoid thrashing
+      policies:
+        - type: Pods
+          value: 2
+          periodSeconds: 120
+    scaleUp:
+      stabilizationWindowSeconds: 60
+      policies:
+        - type: Pods
+          value: 4
+          periodSeconds: 60
+{{- end }}
