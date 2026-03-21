@@ -1,0 +1,13 @@
+---
+# =============================================================================
+# Namespace — financial-rag
+# Isolated namespace for all components. NetworkPolicies (Commit 25) will
+# restrict cross-namespace traffic to monitoring only.
+# =============================================================================
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ .Values.namespace }}
+  labels:
+    {{- include "financial-rag-agent.labels" . | nindent 4 }}
+    app.kubernetes.io/component: namespace

@@ -1,0 +1,130 @@
+{{- if .Values.agentPool.enabled }}
+---
+# =============================================================================
+# Agent Pool — Deployment
+# Workers execute function-calling loops, tool use, and audit trail writes.
+# Memory-heavy: 4–8 Gi in prod to hold embedding model + LLM context in RAM.
+# =============================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "financial-rag-agent.fullname" . }}-agent
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "financial-rag-agent.labels" . | nindent 4 }}
+    app.kubernetes.io/component: agent
+spec:
+  replicas: {{ .Values.agentPool.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "financial-rag-agent.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: agent
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 2
+  template:
+    metadata:
+      labels:
+        {{- include "financial-rag-agent.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: agent
+        {{- with .Values.global.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      annotations:
+        {{- include "financial-rag-agent.podAnnotations" (dict "Values" .Values "componentAnnotations" .Values.agentPool.podAnnotations) | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "financial-rag-agent.fullname" . }}-agent
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+      {{- with .Values.global.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.global.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.global.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: agent
+          image: {{ include "financial-rag-agent.image" (dict "global" .Values.global "image" .Values.agentPool.image) }}
+          imagePullPolicy: {{ .Values.global.image.pullPolicy }}
+          ports:
+            - name: health
+              containerPort: 8001
+              protocol: TCP
+          env:
+            {{- range $k, $v := .Values.agentPool.env }}
+            - name: {{ $k }}
+              value: {{ $v | quote }}
+            {{- end }}
+          {{- with .Values.agentPool.envFrom }}
+          envFrom:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          resources:
+            {{- toYaml .Values.agentPool.resources | nindent 12 }}
+          livenessProbe:
+            {{- toYaml .Values.agentPool.livenessProbe | nindent 12 }}
+          readinessProbe:
+            {{- toYaml .Values.agentPool.readinessProbe | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            - name: model-cache
+              mountPath: /app/.cache          # all-MiniLM-L6-v2 local embedding cache
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        - name: model-cache
+          emptyDir:
+            medium: Memory                    # pin embedding model in tmpfs
+            sizeLimit: 500Mi
+---
+# =============================================================================
+# Agent Pool — internal Service (health checks only; no external traffic)
+# =============================================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "financial-rag-agent.fullname" . }}-agent
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "financial-rag-agent.labels" . | nindent 4 }}
+    app.kubernetes.io/component: agent
+spec:
+  type: ClusterIP
+  selector:
+    {{- include "financial-rag-agent.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: agent
+  ports:
+    - name: health
+      port: 8001
+      targetPort: health
+      protocol: TCP
+---
+# =============================================================================
+# Agent Pool — ServiceAccount (IRSA-ready for Bedrock / Secrets Manager)
+# =============================================================================
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "financial-rag-agent.fullname" . }}-agent
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "financial-rag-agent.labels" . | nindent 4 }}
+  annotations:
+    # eks.amazonaws.com/role-arn: arn:aws:iam::ACCOUNT_ID:role/financial-rag-agent
+{{- end }}

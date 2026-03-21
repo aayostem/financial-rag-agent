@@ -1,0 +1,144 @@
+# =============================================================================
+# financial-rag-agent — PRODUCTION overrides (EKS, large-scale)
+# Apply with: helm upgrade --install fra . -f values.yaml -f values.prod.yaml
+# =============================================================================
+
+global:
+  image:
+    registry: "123456789.dkr.ecr.us-east-1.amazonaws.com"
+    pullPolicy: Always
+  nodeSelector:
+    role: application
+  tolerations:
+    - key: "dedicated"
+      operator: "Equal"
+      value: "application"
+      effect: "NoSchedule"
+  podAnnotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "8000"
+
+# ---------------------------------------------------------------------------
+# API — scale out, stricter resources, ALB ingress
+# ---------------------------------------------------------------------------
+api:
+  replicaCount: 5
+  image:
+    tag: "1.0.0"                      # pin to release tag in prod
+  resources:
+    requests:
+      cpu: "1000m"
+      memory: "1Gi"
+    limits:
+      cpu: "2000m"
+      memory: "2Gi"
+  env:
+    LOG_LEVEL: "warning"
+    WORKERS: "4"
+  ingress:
+    enabled: true
+    className: alb
+    annotations:
+      kubernetes.io/ingress.class: alb
+      alb.ingress.kubernetes.io/scheme: internet-facing
+      alb.ingress.kubernetes.io/target-type: ip
+      alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS":443}]'
+      alb.ingress.kubernetes.io/ssl-redirect: "443"
+      alb.ingress.kubernetes.io/certificate-arn: "arn:aws:acm:us-east-1:123456789:certificate/REPLACE-ME"
+      alb.ingress.kubernetes.io/healthcheck-path: /health
+      alb.ingress.kubernetes.io/group.name: financial-rag-prod
+    host: api.financial-rag.cloudfrugal.com
+    tls:
+      - secretName: financial-rag-tls
+        hosts:
+          - api.financial-rag.cloudfrugal.com
+  hpa:
+    minReplicas: 5
+    maxReplicas: 20
+    targetCPUUtilizationPercentage: 60
+    targetMemoryUtilizationPercentage: 70
+
+# ---------------------------------------------------------------------------
+# Agent Pool — memory-heavy, GPU-tolerant node group
+# ---------------------------------------------------------------------------
+agentPool:
+  replicaCount: 5
+  image:
+    tag: "1.0.0"
+  resources:
+    requests:
+      cpu: "2000m"
+      memory: "4Gi"
+    limits:
+      cpu: "4000m"
+      memory: "8Gi"
+  env:
+    AGENT_CONCURRENCY: "8"
+    LOG_LEVEL: "warning"
+  hpa:
+    minReplicas: 5
+    maxReplicas: 25
+    targetCPUUtilizationPercentage: 55
+    targetMemoryUtilizationPercentage: 65
+
+# ---------------------------------------------------------------------------
+# Ingestion — run nightly, larger batch, dedicated node group
+# ---------------------------------------------------------------------------
+ingestion:
+  image:
+    tag: "1.0.0"
+  schedule: "0 1 * * *"              # 01:00 UTC — ahead of market open prep
+  resources:
+    requests:
+      cpu: "1000m"
+      memory: "2Gi"
+    limits:
+      cpu: "2000m"
+      memory: "4Gi"
+  env:
+    INGESTION_BATCH_SIZE: "200"
+    LOG_LEVEL: "warning"
+
+# ---------------------------------------------------------------------------
+# pgvector — production storage, gp3 with IOPS provisioned
+# ---------------------------------------------------------------------------
+pgvector:
+  resources:
+    requests:
+      cpu: "2000m"
+      memory: "8Gi"
+    limits:
+      cpu: "4000m"
+      memory: "16Gi"
+  storage:
+    storageClassName: gp3-iops         # custom StorageClass with iops/throughput
+    size: 500Gi
+
+# ---------------------------------------------------------------------------
+# Redis — bump memory ceiling for hot embedding cache
+# ---------------------------------------------------------------------------
+redis:
+  resources:
+    requests:
+      cpu: "500m"
+      memory: "2Gi"
+    limits:
+      cpu: "1000m"
+      memory: "4Gi"
+  storage:
+    size: 50Gi
+  args:
+    - "--appendonly"
+    - "yes"
+    - "--maxmemory"
+    - "3500mb"
+    - "--maxmemory-policy"
+    - "allkeys-lru"
+
+# ---------------------------------------------------------------------------
+# Prometheus ServiceMonitor — scraped by kube-prometheus-stack
+# ---------------------------------------------------------------------------
+serviceMonitor:
+  enabled: true
+  namespace: monitoring
+  interval: 15s

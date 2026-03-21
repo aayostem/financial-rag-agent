@@ -1,0 +1,87 @@
+{{- if .Values.ingestion.enabled }}
+---
+# =============================================================================
+# Ingestion — CronJob
+# Runs the EDGAR filing ingestor on a schedule. concurrencyPolicy: Forbid
+# prevents overlapping runs if a previous batch is still processing.
+# Writes are SHA-256 deduplicated at the application layer.
+# =============================================================================
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ include "financial-rag-agent.fullname" . }}-ingestion
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "financial-rag-agent.labels" . | nindent 4 }}
+    app.kubernetes.io/component: ingestion
+spec:
+  schedule: {{ .Values.ingestion.schedule | quote }}
+  concurrencyPolicy: {{ .Values.ingestion.concurrencyPolicy }}
+  successfulJobsHistoryLimit: {{ .Values.ingestion.successfulJobsHistoryLimit }}
+  failedJobsHistoryLimit: {{ .Values.ingestion.failedJobsHistoryLimit }}
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      activeDeadlineSeconds: 10800     # 3 hour hard cap
+      template:
+        metadata:
+          labels:
+            {{- include "financial-rag-agent.selectorLabels" . | nindent 12 }}
+            app.kubernetes.io/component: ingestion
+          annotations:
+            {{- include "financial-rag-agent.podAnnotations" (dict "Values" .Values "componentAnnotations" dict) | nindent 12 }}
+        spec:
+          restartPolicy: {{ .Values.ingestion.restartPolicy }}
+          serviceAccountName: {{ include "financial-rag-agent.fullname" . }}-ingestion
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            fsGroup: 1000
+          {{- with .Values.global.nodeSelector }}
+          nodeSelector:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.global.tolerations }}
+          tolerations:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          containers:
+            - name: ingestion
+              image: {{ include "financial-rag-agent.image" (dict "global" .Values.global "image" .Values.ingestion.image) }}
+              imagePullPolicy: {{ .Values.global.image.pullPolicy }}
+              env:
+                {{- range $k, $v := .Values.ingestion.env }}
+                - name: {{ $k }}
+                  value: {{ $v | quote }}
+                {{- end }}
+              {{- with .Values.ingestion.envFrom }}
+              envFrom:
+                {{- toYaml . | nindent 16 }}
+              {{- end }}
+              resources:
+                {{- toYaml .Values.ingestion.resources | nindent 16 }}
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
+              volumeMounts:
+                - name: tmp
+                  mountPath: /tmp
+          volumes:
+            - name: tmp
+              emptyDir: {}
+---
+# =============================================================================
+# Ingestion — ServiceAccount
+# =============================================================================
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "financial-rag-agent.fullname" . }}-ingestion
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "financial-rag-agent.labels" . | nindent 4 }}
+  annotations:
+    # eks.amazonaws.com/role-arn: arn:aws:iam::ACCOUNT_ID:role/financial-rag-ingestion
+{{- end }}
