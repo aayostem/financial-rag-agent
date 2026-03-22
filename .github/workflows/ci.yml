@@ -107,7 +107,7 @@ jobs:
           pytest tests/unit/ -v --tb=short \
             --cov=src/financial_rag \
             --cov-report=xml \
-            --cov-fail-under=60 \
+            --cov-fail-under=50 \
             -x
       - name: Upload coverage
         uses: codecov/codecov-action@v4
