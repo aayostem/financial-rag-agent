@@ -133,7 +133,6 @@ class TestRequiredFields:
 
 
 class TestNumericConstraints:
-
     def test_port_ranges_are_valid(self, test_settings):
         assert 1 <= test_settings.API_PORT <= 65535
         assert 1 <= test_settings.POSTGRES_PORT <= 65535
@@ -176,7 +175,6 @@ class TestNumericConstraints:
 
 
 class TestComputedProperties:
-
     def test_database_url_scheme(self, test_settings):
         url = test_settings.DATABASE_URL
         assert url.startswith("postgresql+asyncpg://")
@@ -225,7 +223,6 @@ class TestComputedProperties:
 
 
 class TestSecretSafety:
-
     def test_postgres_password_not_in_repr(self, test_settings):
         """SecretStr must never expose the value in repr()."""
         raw = test_settings.POSTGRES_PASSWORD.get_secret_value()
@@ -249,11 +246,10 @@ class TestSecretSafety:
 
 
 class TestEnvironmentDefaults:
-
     def test_development_sets_debug_true(self):
         with patch.dict(
             os.environ,
-            {**VALID_SECRETS, "APP_ENV": "development"},
+            {**VALID_SECRETS, "APP_ENV": "development", "MOCK_EXTERNAL_APIS": "true"},
             clear=False,
         ):
             s = Settings()
@@ -303,7 +299,7 @@ class TestEnvironmentDefaults:
     def test_development_sets_log_level_debug(self):
         with patch.dict(
             os.environ,
-            {**VALID_SECRETS, "APP_ENV": "development"},
+            {**VALID_SECRETS, "APP_ENV": "development", "MOCK_EXTERNAL_APIS": "true"},
             clear=False,
         ):
             s = Settings()
@@ -329,7 +325,6 @@ class TestEnvironmentDefaults:
 
 
 class TestEnvironmentOverrides:
-
     def test_postgres_host_override(self):
         with patch.dict(
             os.environ,
@@ -380,7 +375,6 @@ class TestEnvironmentOverrides:
 
 
 class TestProviderValidation:
-
     def test_openai_key_required_for_openai_embedding(self):
         """Settings must raise if EMBEDDING_PROVIDER=openai and no key."""
         minimal_env = {
@@ -427,7 +421,6 @@ class TestProviderValidation:
 
 
 class TestProductionHardening:
-
     def test_cors_wildcard_blocked_in_production(self):
         with (
             patch.dict(
