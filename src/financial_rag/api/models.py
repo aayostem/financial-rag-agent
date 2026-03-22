@@ -9,7 +9,7 @@
 
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 from pydantic import BaseModel, Field
@@ -19,13 +19,13 @@ from pydantic import BaseModel, Field
 # =============================================================================
 
 
-class AnalysisStyle(str, Enum):
+class AnalysisStyle(StrEnum):
     ANALYST = "analyst"
     EXECUTIVE = "executive"
     RISK = "risk"
 
 
-class SearchType(str, Enum):
+class SearchType(StrEnum):
     SIMILARITY = "similarity"
     MMR = "mmr"
     HYBRID = "hybrid"
