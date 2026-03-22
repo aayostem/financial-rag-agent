@@ -309,7 +309,12 @@ class TestEnvironmentDefaults:
         """An explicit .env value must win over the auto-derived default."""
         with patch.dict(
             os.environ,
-            {**VALID_SECRETS, "APP_ENV": "development", "LOG_LEVEL": "ERROR"},
+            {
+                **VALID_SECRETS,
+                "APP_ENV": "development",
+                "MOCK_EXTERNAL_APIS": "true",
+                "LOG_LEVEL": "ERROR",
+            },
             clear=False,
         ):
             s = Settings()
