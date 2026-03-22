@@ -132,9 +132,7 @@ class DatabaseClient:
         Call once at application startup.
         """
         if self._engine is not None:
-            logger.warning(
-                "DatabaseClient.connect() called on already-connected client"
-            )
+            logger.warning("DatabaseClient.connect() called on already-connected client")
             return
 
         try:
@@ -184,9 +182,7 @@ class DatabaseClient:
                 # commit happens automatically on exit
         """
         if self._session_factory is None:
-            raise DatabaseConnectionError(
-                "DatabaseClient is not connected. Call connect() first."
-            )
+            raise DatabaseConnectionError("DatabaseClient is not connected. Call connect() first.")
 
         async with self._session_factory() as session:
             try:
@@ -208,9 +204,7 @@ class DatabaseClient:
         Not for use in request handlers — use session() instead.
         """
         if self._engine is None:
-            raise DatabaseConnectionError(
-                "DatabaseClient is not connected. Call connect() first."
-            )
+            raise DatabaseConnectionError("DatabaseClient is not connected. Call connect() first.")
         async with self._engine.begin() as conn:
             yield conn
 
@@ -228,9 +222,7 @@ class DatabaseClient:
 
         try:
             async with self._engine.connect() as conn:
-                row = await conn.execute(
-                    text("SELECT version(), pg_postmaster_start_time()")
-                )
+                row = await conn.execute(text("SELECT version(), pg_postmaster_start_time()"))
                 version, start_time = row.one()
 
                 pool = self._engine.pool
@@ -261,8 +253,7 @@ class DatabaseClient:
                     logger.info("pgvector extension verified")
                 else:
                     logger.error(
-                        "pgvector extension NOT found. "
-                        "Run: CREATE EXTENSION IF NOT EXISTS vector;"
+                        "pgvector extension NOT found. Run: CREATE EXTENSION IF NOT EXISTS vector;"
                     )
                 return installed
         except Exception as exc:
@@ -278,9 +269,7 @@ class DatabaseClient:
             async with self._engine.connect() as conn:
                 await conn.execute(text("SELECT 1"))
         except Exception as exc:
-            raise DatabaseConnectionError(
-                f"Database connectivity check failed: {exc}"
-            ) from exc
+            raise DatabaseConnectionError(f"Database connectivity check failed: {exc}") from exc
 
     @property
     def engine(self) -> AsyncEngine:

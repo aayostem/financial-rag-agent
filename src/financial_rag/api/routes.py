@@ -369,7 +369,7 @@ async def _ingest_background(
                     )
 
         logger.info(
-            "Background ingestion complete — ticker=%s filings=%d " "chunks=%d skipped=%d",
+            "Background ingestion complete — ticker=%s filings=%d chunks=%d skipped=%d",
             ticker,
             total_filings,
             total_chunks,

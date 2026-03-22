@@ -332,7 +332,7 @@ class EmbeddingClient:
                     return LocalEmbeddingProvider()
                 else:
                     raise EmbeddingError(
-                        "OPENAI_API_KEY is required in production. " "Set it in .env."
+                        "OPENAI_API_KEY is required in production. Set it in .env."
                     )
             return OpenAIEmbeddingProvider()
 

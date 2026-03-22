@@ -110,8 +110,7 @@ class CacheClient:
         except RedisError as exc:
             logger.error("Failed to connect to Redis: %s", exc)
             raise CacheConnectionError(
-                f"Cannot connect to Redis at "
-                f"{settings.REDIS_HOST}:{settings.REDIS_PORT} — {exc}"
+                f"Cannot connect to Redis at {settings.REDIS_HOST}:{settings.REDIS_PORT} — {exc}"
             ) from exc
 
     async def disconnect(self) -> None:
