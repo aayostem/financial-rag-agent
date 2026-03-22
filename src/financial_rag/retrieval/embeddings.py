@@ -221,7 +221,13 @@ class LocalEmbeddingProvider(EmbeddingProvider):
     """
 
     def __init__(self) -> None:
-        from sentence_transformers import SentenceTransformer
+        try:
+            from sentence_transformers import SentenceTransformer
+        except ImportError as e:
+            raise ImportError(
+                "sentence-transformers is required for local embeddings. "
+                "Install it with: pip install sentence-transformers"
+            ) from e
 
         settings = get_settings()
         self._model_name = settings.EMBEDDING_MODEL

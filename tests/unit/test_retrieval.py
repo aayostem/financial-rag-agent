@@ -306,33 +306,41 @@ class TestEmbeddingClient:
     """EmbeddingClient selects correct provider."""
 
     def test_client_initialises_in_testing(self):
+        from unittest.mock import MagicMock, patch
+
         from financial_rag.retrieval.embeddings import EmbeddingClient
 
-        client = EmbeddingClient()
+        with patch.object(EmbeddingClient, "_build_provider", return_value=MagicMock()):
+            client = EmbeddingClient()
         assert client is not None
 
     def test_client_has_embed_query_method(self):
+        from unittest.mock import MagicMock, patch
+
         from financial_rag.retrieval.embeddings import EmbeddingClient
 
-        client = EmbeddingClient()
+        with patch.object(EmbeddingClient, "_build_provider", return_value=MagicMock()):
+            client = EmbeddingClient()
         assert callable(getattr(client, "embed_query", None))
 
     def test_client_has_embed_texts_method(self):
+        from unittest.mock import MagicMock, patch
+
         from financial_rag.retrieval.embeddings import EmbeddingClient
 
-        client = EmbeddingClient()
+        with patch.object(EmbeddingClient, "_build_provider", return_value=MagicMock()):
+            client = EmbeddingClient()
         assert callable(getattr(client, "embed_texts", None))
 
     @pytest.mark.asyncio
     async def test_embed_query_returns_list_of_floats(self):
+        from unittest.mock import MagicMock, patch
+
         from financial_rag.retrieval.embeddings import EmbeddingClient
 
-        client = EmbeddingClient()
-        with patch.object(
-            client,
-            "embed_query",
-            AsyncMock(return_value=[0.1] * 384),
-        ):
+        with patch.object(EmbeddingClient, "_build_provider", return_value=MagicMock()):
+            client = EmbeddingClient()
+        with patch.object(client, "embed_query", AsyncMock(return_value=[0.1] * 384)):
             result = await client.embed_query("What is Apple's revenue?")
         assert isinstance(result, list)
         assert all(isinstance(x, float) for x in result)
@@ -340,15 +348,14 @@ class TestEmbeddingClient:
 
     @pytest.mark.asyncio
     async def test_embed_texts_returns_list_of_embeddings(self):
+        from unittest.mock import MagicMock, patch
+
         from financial_rag.retrieval.embeddings import EmbeddingClient
 
-        client = EmbeddingClient()
+        with patch.object(EmbeddingClient, "_build_provider", return_value=MagicMock()):
+            client = EmbeddingClient()
         docs = ["Text one.", "Text two.", "Text three."]
-        with patch.object(
-            client,
-            "embed_texts",  # ← was embed_documents
-            AsyncMock(return_value=[[0.1] * 384] * 3),
-        ):
-            results = await client.embed_texts(docs)  # ← was embed_documents
+        with patch.object(client, "embed_texts", AsyncMock(return_value=[[0.1] * 384] * 3)):
+            results = await client.embed_texts(docs)
         assert len(results) == 3
         assert all(len(r) == 384 for r in results)
