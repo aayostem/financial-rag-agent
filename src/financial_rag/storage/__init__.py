@@ -15,20 +15,20 @@ from .cache import (
 )
 from .database import Base, DatabaseClient, get_db_client, get_session
 
+# AFTER — isort sorts alphabetically, ignoring comments
 __all__ = [
-    # Database
-    "Base",
-    "DatabaseClient",
-    "get_db_client",
-    "get_session",
-    # Cache
-    "CacheClient",
-    "get_cache_client",
-    "build_key",
-    # Cache namespaces
+    "NS_ANALYSIS",
+    "NS_ANALYSIS",
     "NS_CHUNKS",
     "NS_EMBEDDINGS",
-    "NS_QUERY",
-    "NS_ANALYSIS",
     "NS_MARKET",
+    "NS_QUERY",
+    "Base",
+    "BaseRepository",  # if present, else skip
+    "CacheClient",
+    "DatabaseClient",
+    "build_key",
+    "get_cache_client",
+    "get_db_client",
+    "get_session",
 ]

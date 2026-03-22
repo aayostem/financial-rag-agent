@@ -80,15 +80,15 @@ class FilingMetadata:
     """
 
     __slots__ = (
-        "ticker",
-        "filing_type",
-        "fiscal_year",
-        "fiscal_quarter",
-        "filed_at",
         "accession_number",
+        "cik",
+        "filed_at",
+        "filing_type",
+        "fiscal_quarter",
+        "fiscal_year",
         "primary_document",
         "source_url",
-        "cik",
+        "ticker",
     )
 
     def __init__(
