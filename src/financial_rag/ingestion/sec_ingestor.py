@@ -387,7 +387,7 @@ class SECIngestor:
                 accession = accessions[i].replace("-", "")
                 primary_doc = documents[i] if i < len(documents) else ""
 
-                source_url = f"{_EDGAR_ARCHIVES}/{int(cik)}" f"/{accession}/{primary_doc}"
+                source_url = f"{_EDGAR_ARCHIVES}/{int(cik)}/{accession}/{primary_doc}"
 
                 if fiscal_year and fiscal_year in seen_years:
                     continue

@@ -129,8 +129,7 @@ class QueryEngine:
 
         if not self._settings.OPENAI_API_KEY:
             logger.warning(
-                "QueryEngine: OPENAI_API_KEY not set — LLM calls disabled. "
-                "Returning context only."
+                "QueryEngine: OPENAI_API_KEY not set — LLM calls disabled. Returning context only."
             )
             return None
 

@@ -208,7 +208,7 @@ class HybridSearcher:
                 rows = result.fetchall()
             except Exception as exc:
                 logger.warning(
-                    "Full-text search failed (non-fatal, falling back " "to vector-only): %s", exc
+                    "Full-text search failed (non-fatal, falling back to vector-only): %s", exc
                 )
                 return []
 

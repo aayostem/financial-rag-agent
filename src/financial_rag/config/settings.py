@@ -408,17 +408,15 @@ class Settings(BaseSettings):
         if not is_testing:
             if self.EMBEDDING_PROVIDER == "openai" and not self.OPENAI_API_KEY:
                 issues.append(
-                    "OPENAI_API_KEY is required when EMBEDDING_PROVIDER='openai'. "
-                    "Set it in .env."
+                    "OPENAI_API_KEY is required when EMBEDDING_PROVIDER='openai'. Set it in .env."
                 )
             if self.LLM_PROVIDER == "openai" and not self.OPENAI_API_KEY:
                 issues.append(
-                    "OPENAI_API_KEY is required when LLM_PROVIDER='openai'. " "Set it in .env."
+                    "OPENAI_API_KEY is required when LLM_PROVIDER='openai'. Set it in .env."
                 )
             if self.LLM_PROVIDER == "anthropic" and not self.ANTHROPIC_API_KEY:
                 issues.append(
-                    "ANTHROPIC_API_KEY is required when LLM_PROVIDER='anthropic'. "
-                    "Set it in .env."
+                    "ANTHROPIC_API_KEY is required when LLM_PROVIDER='anthropic'. Set it in .env."
                 )
 
         # ── Production hardening (production environment only) ────────────────
