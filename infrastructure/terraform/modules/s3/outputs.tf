@@ -1,0 +1,9 @@
+output "tfstate_bucket"        { value = aws_s3_bucket.tfstate.bucket }
+output "tfstate_bucket_arn"    { value = aws_s3_bucket.tfstate.arn }
+output "tflock_table"          { value = aws_dynamodb_table.tflock.name }
+output "tflock_table_arn"      { value = aws_dynamodb_table.tflock.arn }
+output "filings_bucket"        { value = aws_s3_bucket.filings.bucket }
+output "filings_bucket_arn"    { value = aws_s3_bucket.filings.arn }
+output "documents_bucket"      { value = aws_s3_bucket.documents.bucket }
+output "documents_bucket_arn"  { value = aws_s3_bucket.documents.arn }
+output "access_logs_bucket"    { value = aws_s3_bucket.access_logs.bucket }
