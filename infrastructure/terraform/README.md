@@ -1,0 +1,170 @@
+# Terraform — Financial RAG Agent
+
+Terragrunt-wrapped Terraform for the Financial RAG Agent EKS stack.
+Three environments (dev / staging / prod), six reusable modules, full remote state.
+
+---
+
+## Directory Structure
+
+```
+terraform/
+├── terragrunt.hcl                  # Root config — remote state, provider, common inputs
+├── modules/
+│   ├── vpc/                        # VPC, subnets, NAT GW, flow logs
+│   ├── eks/                        # EKS cluster, node groups, OIDC provider
+│   ├── rds/                        # RDS PostgreSQL 15 + pgvector, Secrets Manager
+│   ├── elasticache/                # ElastiCache Redis 7, AUTH token, Secrets Manager
+│   ├── ecr/                        # ECR repositories, lifecycle policies
+│   ├── iam/                        # IRSA roles (api, agent, ingestion)
+│   └── s3/                         # tfstate bucket, DynamoDB lock, app buckets
+└── environments/
+    ├── dev/
+    │   ├── env.hcl                 # Dev-specific locals (t3 instances, 1 AZ, no Multi-AZ)
+    │   └── {vpc,eks,rds,...}/terragrunt.hcl
+    ├── staging/
+    │   ├── env.hcl                 # Staging locals (m5 medium, 2 AZ)
+    │   └── {vpc,eks,rds,...}/terragrunt.hcl
+    └── prod/
+        ├── env.hcl                 # Prod locals (r6g/m5 large, 3 AZ, Multi-AZ RDS)
+        └── {vpc,eks,rds,...}/terragrunt.hcl
+```
+
+---
+
+## Environment Comparison
+
+| Resource | dev | staging | prod |
+|---|---|---|---|
+| EKS nodes | t3.large × 2 | m5.xlarge × 3 | m5.2xlarge × 5–20 |
+| RDS | db.t3.medium, 20 Gi | db.r6g.large, 100 Gi | db.r6g.2xlarge, 500 Gi, Multi-AZ |
+| ElastiCache | cache.t3.micro × 1 | cache.r6g.large × 1 | cache.r6g.xlarge × 2, Multi-AZ |
+| NAT Gateways | 1 (shared) | 1 (shared) | 3 (one per AZ) |
+| RDS backup retention | 1 day | 7 days | 14 days |
+| VPC Flow Logs retention | 14 days | 14 days | 90 days |
+| ECR image retention | 5 | 15 | 30 |
+
+---
+
+## Prerequisites
+
+```bash
+# Terraform >= 1.7, Terragrunt >= 0.55
+brew install terraform terragrunt
+
+# AWS credentials with AdministratorAccess (scope down post-bootstrap)
+aws configure --profile financial-rag-prod
+
+# Verify
+terraform version && terragrunt --version
+```
+
+---
+
+## First-Time Bootstrap (per environment)
+
+The S3 state bucket must exist before Terragrunt can write remote state.
+Bootstrap it with a local backend first:
+
+```bash
+cd environments/prod/s3
+
+# Temporarily use local backend for the bootstrap apply
+terragrunt apply --terragrunt-source-update
+
+# After apply, the bucket exists — all subsequent runs use it as remote state
+```
+
+Then apply remaining modules in dependency order:
+
+```bash
+# Option A: apply everything in the correct order automatically
+cd environments/prod
+terragrunt run-all apply
+
+# Option B: apply modules individually (safer for first deploy)
+cd environments/prod/vpc        && terragrunt apply
+cd environments/prod/eks        && terragrunt apply
+cd environments/prod/rds        && terragrunt apply
+cd environments/prod/elasticache && terragrunt apply
+cd environments/prod/ecr        && terragrunt apply
+cd environments/prod/iam        && terragrunt apply
+```
+
+---
+
+## Day-to-Day Commands
+
+```bash
+# Plan all modules in an environment
+cd environments/prod && terragrunt run-all plan
+
+# Apply a single module
+cd environments/prod/eks && terragrunt apply
+
+# Validate all modules (uses mock_outputs, no AWS calls)
+cd environments/prod && terragrunt run-all validate
+
+# Destroy (never run on prod without explicit approval)
+cd environments/dev && terragrunt run-all destroy
+```
+
+---
+
+## Dependency Graph
+
+```
+s3 (no deps — bootstrap first)
+
+vpc (no deps)
+ └── eks
+      ├── rds
+      ├── elasticache
+      └── iam ← rds (for secret_arn)
+
+ecr (no deps — account-level resource)
+```
+
+`terragrunt run-all apply` resolves this graph automatically using the
+`dependency {}` blocks in each module's `terragrunt.hcl`.
+
+---
+
+## Wiring IRSA Role ARNs into the Helm Chart
+
+After `terraform apply` in the `iam` module, retrieve the role ARNs:
+
+```bash
+cd environments/prod/iam && terragrunt output
+# api_role_arn       = "arn:aws:iam::123456789012:role/financial-rag-prod-api-irsa"
+# agent_role_arn     = "arn:aws:iam::123456789012:role/financial-rag-prod-agent-irsa"
+# ingestion_role_arn = "arn:aws:iam::123456789012:role/financial-rag-prod-ingestion-irsa"
+```
+
+Patch these into `helm/financial-rag-agent/values.prod.yaml` under each
+ServiceAccount annotation, then run `helm upgrade`.
+
+---
+
+## Replacing Helm StatefulSets with Managed Services
+
+This Terraform provisions **managed RDS and ElastiCache**, replacing the
+pgvector and Redis StatefulSets in the Helm chart. Before deploying to prod:
+
+1. Set `pgvector.enabled: false` in `values.prod.yaml`
+2. Set `redis.enabled: false` in `values.prod.yaml`
+3. Inject the managed endpoints via `envFrom.secretRef` using the Secrets Manager ARNs
+   output by the `rds` and `elasticache` modules
+
+Dev and staging can still run the in-cluster StatefulSets to save cost.
+
+---
+
+## Security Notes
+
+- RDS and Redis passwords are generated by Terraform and stored **only** in Secrets Manager — never in `.tfvars` or tfstate plaintext
+- EKS endpoint is private-only in prod (`endpoint_public_access = false`)
+- VPC Flow Logs are enabled in all environments (SOC2 requirement)
+- ECR scan-on-push is enabled — images are scanned by both Trivy (CI) and ECR basic scanning
+- IRSA roles are scoped to specific ServiceAccounts via OIDC condition keys — no node-level ambient AWS credentials
+- S3 state bucket has `prevent_destroy = true` and versioning enabled

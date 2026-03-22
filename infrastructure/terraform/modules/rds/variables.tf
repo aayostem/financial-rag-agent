@@ -1,0 +1,10 @@
+variable "project"                 { type = string }
+variable "environment"             { type = string }
+variable "aws_region"              { type = string }
+variable "vpc_id"                  { type = string }
+variable "private_subnet_ids"      { type = list(string) }
+variable "eks_node_security_group" { type = string }
+variable "instance_class"          { type = string }
+variable "allocated_storage"       { type = number }
+variable "backup_retention_days"   { type = number }
+variable "multi_az"                { type = bool }
