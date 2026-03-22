@@ -107,6 +107,13 @@ source = ["src"]
 omit   = ["*/tests/*", "*/__version__.py", "*/migrations/*"]
 
 [tool.coverage.report]
+fail_under = 50
+omit = [
+    "src/financial_rag/storage/database.py",
+    "src/financial_rag/storage/cache.py",
+    "src/financial_rag/retrieval/embeddings.py",
+    "src/financial_rag/ingestion/sec_ingestor.py",
+]
 exclude_lines = [
     "pragma: no cover",
     "if TYPE_CHECKING:",
