@@ -43,7 +43,7 @@ resource "aws_secretsmanager_secret_version" "rds" {
 # ---------------------------------------------------------------------------
 resource "aws_security_group" "rds" {
   name        = "${local.identifier}-sg"
-  description = "RDS pgvector — allow EKS nodes only"
+  description = "RDS pgvector - allow EKS nodes only"
   vpc_id      = var.vpc_id
 
   ingress {
@@ -70,7 +70,7 @@ resource "aws_security_group" "rds" {
 resource "aws_db_subnet_group" "main" {
   name        = local.identifier
   subnet_ids  = var.private_subnet_ids
-  description = "pgvector subnet group — ${var.environment}"
+  description = "pgvector subnet group - ${var.environment}"
 }
 
 # ---------------------------------------------------------------------------
@@ -83,6 +83,7 @@ resource "aws_db_parameter_group" "main" {
 
   # pgvector HNSW is memory-hungry — raise work_mem for vector ops
   parameter {
+    apply_method = "pending-reboot"
     name  = "shared_preload_libraries"
     value = "pg_stat_statements,auto_explain"
   }
@@ -111,7 +112,7 @@ resource "aws_db_parameter_group" "main" {
 resource "aws_db_instance" "main" {
   identifier        = local.identifier
   engine            = "postgres"
-  engine_version    = "15.5"
+  engine_version    = "15.12"
   instance_class    = var.instance_class
   allocated_storage = var.allocated_storage
   storage_type      = "gp3"
