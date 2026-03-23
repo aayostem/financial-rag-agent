@@ -39,7 +39,7 @@ resource "aws_secretsmanager_secret_version" "redis" {
 # ---------------------------------------------------------------------------
 resource "aws_security_group" "redis" {
   name        = "${local.name}-sg"
-  description = "ElastiCache Redis — allow EKS nodes only"
+  description = "ElastiCache Redis - allow EKS nodes only"
   vpc_id      = var.vpc_id
 
   ingress {
@@ -66,7 +66,7 @@ resource "aws_security_group" "redis" {
 resource "aws_elasticache_subnet_group" "main" {
   name        = local.name
   subnet_ids  = var.private_subnet_ids
-  description = "Redis subnet group — ${var.environment}"
+  description = "Redis subnet group - ${var.environment}"
 }
 
 # ---------------------------------------------------------------------------
@@ -82,10 +82,6 @@ resource "aws_elasticache_parameter_group" "main" {
     value = "allkeys-lru"   # evict LRU keys — keeps hottest embeddings in memory
   }
   parameter {
-    name  = "activerehashing"
-    value = "yes"
-  }
-  parameter {
     name  = "lazyfree-lazy-eviction"
     value = "yes"           # async eviction — avoids blocking on large key deletes
   }
@@ -96,7 +92,7 @@ resource "aws_elasticache_parameter_group" "main" {
 # ---------------------------------------------------------------------------
 resource "aws_elasticache_replication_group" "main" {
   replication_group_id = local.name
-  description          = "Financial RAG embedding cache — ${var.environment}"
+  description          = "Financial RAG embedding cache - ${var.environment}"
 
   engine               = "redis"
   engine_version       = "7.1"

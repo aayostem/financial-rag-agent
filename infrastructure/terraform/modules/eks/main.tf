@@ -61,7 +61,7 @@ resource "aws_iam_role_policy_attachment" "cluster_vpc_resource_controller" {
 # ---------------------------------------------------------------------------
 resource "aws_security_group" "cluster" {
   name        = "${local.cluster_name}-control-plane-sg"
-  description = "EKS control plane — cluster to nodes communication"
+  description = "EKS control plane - cluster to nodes communication"
   vpc_id      = var.vpc_id
 
   egress {
