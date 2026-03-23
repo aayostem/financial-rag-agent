@@ -1,6 +1,6 @@
 locals {
   aws_region = "us-east-1"
-  account_id = "123456789012"
+  account_id = "637423656824"
 
   vpc_cidr            = "10.1.0.0/16"
   private_subnets     = ["10.1.1.0/24", "10.1.2.0/24"]
