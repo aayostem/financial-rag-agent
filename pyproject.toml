@@ -17,6 +17,7 @@ authors = [
 ]
 
 dependencies = [
+    "slowapi>=0.1.9",
     # API
     "fastapi>=0.111.0",
     "uvicorn[standard]>=0.30.0",
