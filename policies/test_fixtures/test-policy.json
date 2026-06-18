@@ -1,0 +1,46 @@
+{
+  "policies": [
+    {
+      "name": "bad-policy-wildcard",
+      "rules": [
+        {
+          "path": "secret/*",
+          "capabilities": ["write", "delete"]
+        }
+      ]
+    },
+    {
+      "name": "bad-policy-sudo",
+      "rules": [
+        {
+          "path": "secret/data/prod/config",
+          "capabilities": ["read", "sudo"]
+        }
+      ]
+    },
+    {
+      "name": "bad-policy-sys",
+      "rules": [
+        {
+          "path": "sys/seal",
+          "capabilities": ["read"]
+        }
+      ]
+    },
+    {
+      "name": "good-policy",
+      "token_ttl": "1h",
+      "token_max_ttl": "24h",
+      "rules": [
+        {
+          "path": "secret/data/prod/llm",
+          "capabilities": ["read"]
+        },
+        {
+          "path": "database/creds/api-role",
+          "capabilities": ["read"]
+        }
+      ]
+    }
+  ]
+}
