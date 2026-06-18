@@ -1,0 +1,727 @@
+# PHASE 10 — FINOPS INTEGRATION INTO THE IDP
+
+## COMPLETE SRT — SERIES 10
+
+```srt
+1
+00:00:00,000 --> 00:00:06,000
+Welcome back to the course.
+
+2
+00:00:06,000 --> 00:00:12,000
+You have spent nine series building two things in parallel.
+
+3
+00:00:12,000 --> 00:00:18,000
+The first track. Series two through six found, eliminated,
+and automated cost controls at the infrastructure level.
+
+4
+00:00:18,000 --> 00:00:24,000
+You cut the bill from forty-seven thousand dollars to nineteen thousand
+four hundred four dollars.
+
+5
+00:00:24,000 --> 00:00:30,000
+The second track. Series seven through nine built a platform
+that encodes those controls into every new service automatically.
+
+6
+00:00:30,000 --> 00:00:36,000
+New services are cost-optimized by default.
+Developers never think about it.
+
+7
+00:00:36,000 --> 00:00:42,000
+But there is still a gap.
+
+8
+00:00:42,000 --> 00:00:48,000
+The controls are applied. The costs are tracked in Kubecost.
+The budget annotations are in catalog-info.yaml.
+
+9
+00:00:48,000 --> 00:00:54,000
+But none of this is visible to the people who create the spend.
+The developers and engineering managers using the platform every day.
+
+10
+00:00:54,000 --> 01:00:00,000
+
+11
+01:00:00,000 --> 01:06:00,000
+Developers open the catalog and see deployment status, logs,
+CI slash CD history. They do not see cost.
+
+12
+01:06:00,000 --> 01:12:00,000
+They do not see budget usage. They do not see whether their service
+is running at forty-eight percent efficiency, wasting half its compute.
+
+13
+01:12:00,000 --> 01:18:00,000
+They do not see that they are approaching their team's monthly budget.
+They only find out when the bill arrives. And by then it is too late to act.
+
+14
+01:18:00,000 --> 01:24:00,000
+
+15
+01:24:00,000 --> 01:30:00,000
+Series ten changes that.
+By the end, every developer who opens the catalog sees.
+
+16
+01:30:00,000 --> 01:36:00,000
+Their service's current monthly cost and trend versus last month.
+Their team's budget progress with a red bar when approaching the limit.
+
+17
+01:36:00,000 --> 01:42:00,000
+Efficiency score and rightsizing recommendations.
+Live cost anomaly alerts routed directly to service owners.
+
+18
+01:42:00,000 --> 01:48:00,000
+A FinOps homepage dashboard showing the full picture.
+
+19
+01:48:00,000 --> 01:54:00,000
+
+20
+01:54:00,000 --> 02:00:00,000
+FinOps stops being something the platform team thinks about.
+It becomes something every developer sees, every day,
+as a natural part of their workflow.
+
+21
+02:00:00,000 --> 02:06:00,000
+
+22
+02:06:00,000 --> 02:12:00,000
+Let me explain the architecture.
+
+23
+02:12:00,000 --> 02:18:00,000
+AWS Cost Explorer API feeds into Kubecost in the cluster.
+Kubecost combines cost data with pod metrics like CPU, memory, and network.
+
+24
+02:18:00,000 --> 02:24:00,000
+The FinOps backend plugin in Backstage queries Kubecost.
+It serves cost data to the frontend.
+
+25
+02:24:00,000 --> 02:30:00,000
+A budget scheduler runs daily at 9 AM.
+It checks every service's budget and sends Slack alerts.
+
+26
+02:30:00,000 --> 02:36:00,000
+An anomaly detection webhook routes AWS cost anomalies to service owners.
+A FinOps homepage dashboard shows total spend, team budgets, and top cost drivers.
+
+27
+02:36:00,000 --> 02:42:00,000
+Monthly chargeback reports go to the finance team.
+
+28
+02:42:00,000 --> 02:48:00,000
+
+29
+02:48:00,000 --> 02:54:00,000
+First, let's create the FinOps backend plugin.
+
+30
+02:54:00,000 --> 03:00:00,000
+cd finops-idp.
+
+31
+03:00:00,000 --> 03:06:00,000
+npx at backstage slash cli new dash dash select backend-plugin
+dash dash option id equals finops.
+
+32
+03:06:00,000 --> 03:12:00,000
+
+33
+03:12:00,000 --> 03:18:00,000
+Install dependencies.
+yarn at cwd plugins slash finops-backend add node-fetch,
+at backstage slash catalog-client,
+at slack slash web-api, and aws-sdk.
+
+34
+03:18:00,000 --> 03:24:00,000
+
+35
+03:24:00,000 --> 03:30:00,000
+Now create the main plugin router.
+
+36
+03:30:00,000 --> 03:36:00,000
+Open plugins slash finops-backend slash src slash router.ts.
+
+37
+03:36:00,000 --> 03:42:00,000
+
+38
+03:42:00,000 --> 03:48:00,000
+First endpoint. GET slash cost with namespace parameter.
+
+39
+03:48:00,000 --> 03:54:00,000
+Call the Kubecost allocation API for the last thirty days.
+Call it again for the previous month.
+Call the rightsizing API for the last seven days.
+
+40
+03:54:00,000 --> 04:00:00,000
+Extract current month cost, previous month cost, and forecast.
+Forecast is a linear extrapolation. Current cost divided by day of month,
+times days in month.
+
+41
+04:00:00,000 --> 04:06:00,000
+Extract efficiency, CPU cost, memory cost, storage cost,
+network cost, and idle cost.
+
+42
+04:06:00,000 --> 04:12:00,000
+Return the cost data as JSON.
+
+43
+04:12:00,000 --> 04:18:00,000
+
+44
+04:18:00,000 --> 04:24:00,000
+Second endpoint. GET slash rightsizing with optional namespace.
+
+45
+04:24:00,000 --> 04:30:00,000
+Call the Kubecost rightsizing API.
+Return the recommendations sorted by monthly savings.
+Include total monthly savings.
+
+46
+04:30:00,000 --> 04:36:00,000
+
+47
+04:36:00,000 --> 04:42:00,000
+Third endpoint. GET slash dashboard.
+
+48
+04:42:00,000 --> 04:48:00,000
+Get all component entities from the catalog.
+Get cluster-wide allocation from Kubecost.
+
+49
+04:48:00,000 --> 04:54:00,000
+Build per-team cost summary.
+For each component, extract the owner and budget from annotations.
+
+50
+04:54:00,000 --> 05:00:00,000
+Add the cost to the team's total.
+Calculate average efficiency.
+
+51
+05:00:00,000 --> 05:06:00,000
+Build top ten services by cost.
+Sort by total cost descending.
+
+52
+05:06:00,000 --> 05:12:00,000
+Return total spend, team count, team summaries, and top services.
+
+53
+05:12:00,000 --> 05:18:00,000
+
+54
+05:18:00,000 --> 05:24:00,000
+Fourth endpoint. POST slash anomaly-webhook.
+
+55
+05:24:00,000 --> 05:30:00,000
+Receive an anomaly payload from Kubecost.
+Extract the namespace, impact amount, and root cause.
+
+56
+05:30:00,000 --> 05:36:00,000
+Find the service in the catalog by namespace.
+Get the webhook URL from annotations.
+
+57
+05:36:00,000 --> 05:42:00,000
+Determine severity. Critical if impact over one thousand dollars.
+High if over five hundred. Medium if over one hundred. Otherwise low.
+
+58
+05:42:00,000 --> 05:48:00,000
+Build a Slack message with the details.
+Send it to the service's webhook.
+
+59
+05:48:00,000 --> 05:54:00,000
+
+60
+05:54:00,000 --> 06:00:00,000
+Fifth endpoint. GET slash chargeback with format JSON or CSV.
+
+61
+06:00:00,000 --> 06:06:00,000
+Get allocation data from Kubecost for the requested month.
+Get all components from the catalog.
+
+62
+06:06:00,000 --> 06:12:00,000
+Group costs by team. For each team, sum cost, sum budget,
+calculate average efficiency.
+
+63
+06:12:00,000 --> 06:18:00,000
+If format is CSV, generate a CSV file for the finance team.
+If format is JSON, return JSON.
+
+64
+06:18:00,000 --> 06:24:00,000
+
+65
+06:24:00,000 --> 06:30:00,000
+Now create the budget alert scheduler.
+
+66
+06:30:00,000 --> 06:36:00,000
+Create a file called scheduler.ts in the finops-backend plugin.
+
+67
+06:36:00,000 --> 06:42:00,000
+
+68
+06:42:00,000 --> 06:48:00,000
+The scheduler runs daily at 9 AM.
+It fetches all components from the catalog.
+
+69
+06:48:00,000 --> 06:54:00,000
+For each component with a budget and a webhook.
+Get the current cost from Kubecost.
+
+70
+06:54:00,000 --> 07:00:00,000
+Calculate the percentage of budget used.
+Check against thresholds. Seventy-five, ninety, and one hundred percent.
+
+71
+07:00:00,000 --> 07:06:00,000
+If percentage exceeds a threshold and we haven't sent an alert
+for that threshold in the last twenty-four hours, send a Slack alert.
+
+72
+07:06:00,000 --> 07:12:00,000
+The alert includes current spend, budget, remaining budget,
+days left in month, and recommended actions.
+
+73
+07:12:00,000 --> 07:18:00,000
+Store the alert in memory to prevent duplicates.
+In production, use Redis.
+
+74
+07:18:00,000 --> 07:24:00,000
+
+75
+07:24:00,000 --> 07:30:00,000
+Register the scheduler in the plugin.
+Use the backend scheduler service to schedule a task.
+Frequency is cron zero nine star star star.
+
+76
+07:30:00,000 --> 07:36:00,000
+
+77
+07:36:00,000 --> 07:42:00,000
+Now create the Cost Dashboard frontend component.
+
+78
+07:42:00,000 --> 07:48:00,000
+Create a file called CostDashboard.tsx in plugins slash finops slash src slash components.
+
+79
+07:48:00,000 --> 07:54:00,000
+
+80
+07:54:00,000 --> 08:00:00,000
+The component fetches cost data from the backend API.
+It fetches rightsizing recommendations.
+
+81
+08:00:00,000 --> 08:06:00,000
+It displays four metric cards. Monthly cost with trend.
+Budget progress with colored bar.
+
+82
+08:06:00,000 --> 08:12:00,000
+Efficiency score with target guidance.
+Savings available from rightsizing.
+
+83
+08:12:00,000 --> 08:18:00,000
+It shows a cost breakdown chart.
+CPU, memory, storage, network, and idle costs.
+
+84
+08:18:00,000 --> 08:24:00,000
+It shows the top five rightsizing recommendations.
+Each recommendation shows current CPU and recommended CPU.
+Current RAM and recommended RAM. Monthly savings.
+
+85
+08:24:00,000 --> 08:30:00,000
+If budget is exceeded, it shows a red alert.
+If efficiency is low, it shows a yellow warning.
+
+86
+08:30:00,000 --> 08:36:00,000
+
+87
+08:36:00,000 --> 08:42:00,000
+Now create the FinOps homepage dashboard.
+
+88
+08:42:00,000 --> 08:48:00,000
+Create a file called FinOpsDashboard.tsx.
+
+89
+08:48:00,000 --> 08:54:00,000
+
+90
+08:54:00,000 --> 09:00:00,000
+The dashboard shows total monthly spend across all teams.
+Number of teams over or near budget.
+Average cluster efficiency.
+
+91
+09:00:00,000 --> 09:06:00,000
+A team budget table shows each team's spend, budget,
+progress bar, efficiency, service count, and status.
+
+92
+09:06:00,000 --> 09:12:00,000
+A top ten services table shows the most expensive services
+with their cost and efficiency.
+
+93
+09:12:00,000 --> 09:18:00,000
+
+94
+09:18:00,000 --> 09:24:00,000
+Add the dashboard to the Backstage homepage.
+
+95
+09:24:00,000 --> 09:30:00,000
+Open packages slash app slash src slash App.tsx.
+Add a new route at slash finops.
+Render the FinOpsDashboard component.
+
+96
+09:30:00,000 --> 09:36:00,000
+
+97
+09:36:00,000 --> 09:42:00,000
+Now generate a monthly chargeback report.
+
+98
+09:42:00,000 --> 09:48:00,000
+curl to the chargeback endpoint with format equals json.
+Pipe to python minus m json dot tool to view.
+
+99
+09:48:00,000 --> 09:54:00,000
+Download a CSV for the finance team.
+curl to the chargeback endpoint with format equals csv.
+Output to a file with the current date.
+
+100
+09:54:00,000 --> 10:00:00,000
+
+101
+10:00:00,000 --> 10:06:00,000
+Quick summary. curl to the chargeback endpoint.
+Use a Python one-liner to print total spend, team count,
+and each team's spend.
+
+102
+10:06:00,000 --> 10:12:00,000
+
+103
+10:12:00,000 --> 10:18:00,000
+Now configure Kubecost anomaly detection to send alerts to Backstage.
+
+104
+10:18:00,000 --> 10:24:00,000
+Configure Kubecost alerts to point at the Backstage webhook.
+Set threshold to fifty dollars. Set window to one day.
+
+105
+10:24:00,000 --> 10:30:00,000
+Test the webhook manually with a curl POST.
+Send a sample anomaly payload.
+
+106
+10:30:00,000 --> 10:36:00,000
+
+107
+10:36:00,000 --> 10:42:00,000
+Now update your baseline document.
+
+108
+10:42:00,000 --> 10:48:00,000
+Add the FinOps plugin status.
+Total spend, teams tracked, generated timestamp, teams over or near budget.
+
+109
+10:48:00,000 --> 10:54:00,000
+
+110
+10:54:00,000 --> 11:00:00,000
+Add budget alert coverage.
+Number of components with budget annotation.
+Number of components with alert webhook.
+
+111
+11:00:00,000 --> 11:06:00,000
+
+112
+11:06:00,000 --> 11:12:00,000
+Add a monthly chargeback snapshot.
+Total spend and top five teams by spend.
+
+113
+11:12:00,000 --> 11:18:00,000
+
+114
+11:18:00,000 --> 11:24:00,000
+Let me recap what you've built in Series ten.
+
+115
+11:24:00,000 --> 11:30:00,000
+You built a FinOps backend plugin.
+Single API for all cost data in Backstage.
+Cost per service, rightsizing recommendations, dashboard,
+chargeback, and anomaly webhook.
+
+116
+11:30:00,000 --> 11:36:00,000
+
+117
+11:36:00,000 --> 11:42:00,000
+You built a budget alert scheduler.
+Daily nine AM cycle. Proactive alerts before month-end surprises.
+
+118
+11:42:00,000 --> 11:48:00,000
+
+119
+11:48:00,000 --> 11:54:00,000
+You built a CostDashboard frontend component.
+Live cost per service in the catalog.
+
+120
+11:54:00,000 --> 12:00:00,000
+Budget progress with threshold alerts.
+Accountability at the service level.
+
+121
+12:00:00,000 --> 12:06:00,000
+Rightsizing recommendations in the catalog.
+One-click path from cost visibility to action.
+
+122
+12:06:00,000 --> 12:12:00,000
+
+123
+12:12:00,000 --> 12:18:00,000
+You built a FinOps homepage dashboard.
+Company-wide cost health in one view.
+
+124
+12:18:00,000 --> 12:24:00,000
+
+125
+12:24:00,000 --> 12:30:00,000
+You built a chargeback report endpoint.
+JSON for engineering dashboards. CSV for the finance team.
+Finance-ready monthly report.
+
+126
+12:30:00,000 --> 12:36:00,000
+
+127
+12:36:00,000 --> 12:42:00,000
+You configured an anomaly webhook to route AWS cost anomalies
+to service owners in Slack.
+
+128
+12:42:00,000 --> 12:48:00,000
+
+129
+12:48:00,000 --> 12:54:00,000
+Here's what you need before Series eleven, the capstone.
+
+130
+12:54:00,000 --> 13:00:00,000
+
+131
+13:00:00,000 --> 13:06:00,000
+First, the FinOps plugin running.
+curl to the dashboard endpoint returns data.
+
+132
+13:06:00,000 --> 13:12:00,000
+
+133
+13:12:00,000 --> 13:18:00,000
+Second, the Cost tab visible in the catalog for financial-rag-agent.
+
+134
+13:18:00,000 --> 13:24:00,000
+
+135
+13:24:00,000 --> 13:30:00,000
+Third, a budget alert tested.
+Manually trigger by lowering a threshold temporarily.
+
+136
+13:30:00,000 --> 13:36:00,000
+
+137
+13:36:00,000 --> 13:42:00,000
+Fourth, a chargeback CSV downloaded and reviewed.
+
+138
+13:42:00,000 --> 13:48:00,000
+
+139
+13:48:00,000 --> 13:54:00,000
+Fifth, the anomaly webhook tested.
+Manual POST to the endpoint with a sample payload.
+
+140
+13:54:00,000 --> 14:00:00,000
+
+141
+14:00:00,000 --> 14:06:00,000
+Sixth, your baseline document updated with final cost and budget coverage.
+
+142
+14:06:00,000 --> 14:12:00,000
+
+143
+14:12:00,000 --> 14:18:00,000
+If you have all six, you're ready for Series eleven.
+
+144
+14:18:00,000 --> 14:24:00,000
+
+145
+14:24:00,000 --> 14:30:00,000
+You have built everything. Every piece is working.
+Every component is deployed.
+
+146
+14:30:00,000 --> 14:36:00,000
+
+147
+14:36:00,000 --> 14:42:00,000
+Series eleven is the capstone.
+The end-to-end demonstration and the final measurement of everything you accomplished.
+
+148
+14:42:00,000 --> 14:48:00,000
+
+149
+14:48:00,000 --> 14:54:00,000
+You will start a fresh AWS account with a forty-seven thousand dollar per month
+equivalent workload. Run through every optimization from Series two through six
+in sequence.
+
+150
+14:54:00,000 --> 15:00:00,000
+Deploy the full IDP from Series seven through ten.
+Create a new service through the golden path and trace it to production.
+
+151
+15:00:00,000 --> 15:06:00,000
+Trigger a budget alert and show the Slack notification.
+Generate the final chargeback report.
+
+152
+15:06:00,000 --> 15:12:00,000
+Update the baseline document with before and after numbers.
+Calculate the total annual savings.
+
+153
+15:12:00,000 --> 15:18:00,000
+
+154
+15:18:00,000 --> 15:24:00,000
+The startup that started at forty-seven thousand dollars per month
+ends at nineteen thousand four hundred four dollars per month.
+
+155
+15:24:00,000 --> 15:30:00,000
+A twenty-seven thousand five hundred ninety-six dollar monthly saving.
+Three hundred thirty-one thousand one hundred fifty-two dollars per year.
+
+156
+15:30:00,000 --> 15:36:00,000
+
+157
+15:36:00,000 --> 15:42:00,000
+More importantly, the platform ensures it stays there.
+New engineers use the golden path. New services are cost-optimized automatically.
+
+158
+15:42:00,000 --> 15:48:00,000
+Budget alerts catch drift before it compounds.
+The FinOps practice is self-sustaining.
+
+159
+15:48:00,000 --> 15:54:00,000
+
+160
+15:54:00,000 --> 16:00:00,000
+That is what production FinOps engineering looks like.
+Series eleven proves it.
+
+161
+16:00:00,000 --> 16:06:00,000
+
+162
+16:06:00,000 --> 16:12:00,000
+Let's go to Series eleven.
+```
+
+---
+
+**END OF PHASE 10 — SERIES 10 COMPLETE**
+
+**Total SRT lines:** 162
+**Total duration:** Approximately 50-60 minutes
+
+**What is covered in this SRT:**
+
+| Section | Lines | Description |
+|---------|-------|-------------|
+| Closing the Loop | 2-20 | The gap between cost controls and developer visibility |
+| Architecture Overview | 22-28 | Data flow from AWS Cost Explorer to developer Slack |
+| FinOps Backend Plugin | 29-64 | Five endpoints: cost, rightsizing, dashboard, anomaly webhook, chargeback |
+| Budget Alert Scheduler | 65-76 | Daily 9 AM checks, Slack alerts, deduplication |
+| Cost Dashboard Frontend | 77-86 | Metric cards, budget progress, efficiency, rightsizing |
+| FinOps Homepage Dashboard | 87-96 | Team budget table, top services, company-wide view |
+| Chargeback Report | 97-102 | JSON for engineering, CSV for finance |
+| Anomaly Webhook | 103-106 | Configure Kubecost, manual test |
+| Update Baseline | 107-113 | Plugin status, budget coverage, chargeback snapshot |
+| Recap & Prerequisites | 114-143 | What you built, what's needed for Series 11 |
+| Series 11 Preview | 145-162 | Capstone: end-to-end demonstration, final savings calculation |

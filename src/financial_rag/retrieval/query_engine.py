@@ -122,22 +122,37 @@ class QueryEngine:
         """
         Build async OpenAI client if API key is available.
         Returns None in testing/mock mode — query() returns a stub response.
+
+        Uses GROQ_API_KEY for LLM (primary), falls back to OPENAI_API_KEY.
         """
         if self._settings.MOCK_EXTERNAL_APIS:
             logger.info("QueryEngine: LLM calls mocked (MOCK_EXTERNAL_APIS=True)")
             return None
 
-        if not self._settings.OPENAI_API_KEY:
-            logger.warning(
-                "QueryEngine: OPENAI_API_KEY not set — LLM calls disabled. Returning context only."
+        # === TRY GROQ FIRST (Primary LLM Provider) ===
+        if self._settings.GROQ_API_KEY:
+            logger.debug("QueryEngine: Using GROQ_API_KEY for LLM")
+            return AsyncOpenAI(
+                api_key=self._settings.GROQ_API_KEY.get_secret_value(),
+                base_url=self._settings.LLM_BASE_URL or "https://api.groq.com/openai/v1",
+                timeout=self._settings.LLM_REQUEST_TIMEOUT,
             )
-            return None
 
-        return AsyncOpenAI(
-            api_key=self._settings.OPENAI_API_KEY.get_secret_value(),
-            base_url=self._settings.LLM_BASE_URL or None,
-            timeout=self._settings.LLM_REQUEST_TIMEOUT,
+        # === FALLBACK TO OPENAI ===
+        if self._settings.OPENAI_API_KEY:
+            logger.debug("QueryEngine: Using OPENAI_API_KEY for LLM (fallback)")
+            return AsyncOpenAI(
+                api_key=self._settings.OPENAI_API_KEY.get_secret_value(),
+                base_url=self._settings.LLM_BASE_URL or "https://api.openai.com/v1",
+                timeout=self._settings.LLM_REQUEST_TIMEOUT,
+            )
+
+        # === NO API KEY AVAILABLE ===
+        logger.warning(
+            "QueryEngine: No API key available for LLM. "
+            "Set GROQ_API_KEY (preferred) or OPENAI_API_KEY."
         )
+        return None
 
     # ── Public API ────────────────────────────────────────────────────────────
 
@@ -168,6 +183,8 @@ class QueryEngine:
         Returns:
             QueryResult with answer, sources, latency.
         """
+        if not question or not question.strip():
+            raise ValueError("Question cannot be empty")
         t0 = time.monotonic()
 
         if analysis_style not in _SYSTEM_PROMPTS:

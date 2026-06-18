@@ -156,9 +156,9 @@ class Settings(BaseSettings):
         default=None,
         description="Required when EMBEDDING_PROVIDER or LLM_PROVIDER is 'openai'.",
     )
-    ANTHROPIC_API_KEY: SecretStr | None = Field(
+    GROQ_API_KEY: SecretStr | None = Field(
         default=None,
-        description="Required when LLM_PROVIDER is 'anthropic'.",
+        description="Required when LLM_PROVIDER is 'groq'.",
     )
 
     # =========================================================================
@@ -220,30 +220,32 @@ class Settings(BaseSettings):
 
     @computed_field
     @property
-    def DATABASE_URL(self) -> str:
+    def DATABASE_URL(self) -> SecretStr:
         """
         Async-compatible PostgreSQL DSN for SQLAlchemy + asyncpg.
         Returns a plain string — SQLAlchemy 2.0 accepts both str and URL.
         """
-        return (
+        url = (
             f"postgresql+asyncpg://"
             f"{self.POSTGRES_USER}:"
             f"{self.POSTGRES_PASSWORD.get_secret_value()}"
             f"@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}"
             f"/{self.POSTGRES_DB}"
         )
+        return SecretStr(url)
 
     @computed_field
     @property
-    def DATABASE_URL_SYNC(self) -> str:
+    def DATABASE_URL_SYNC(self) -> SecretStr:
         """Sync DSN for Alembic migrations (psycopg2)."""
-        return (
+        url = (
             f"postgresql+psycopg2://"
             f"{self.POSTGRES_USER}:"
             f"{self.POSTGRES_PASSWORD.get_secret_value()}"
             f"@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}"
             f"/{self.POSTGRES_DB}"
         )
+        return SecretStr(url)
 
     # =========================================================================
     # Redis
@@ -266,16 +268,17 @@ class Settings(BaseSettings):
 
     @computed_field
     @property
-    def REDIS_URL(self) -> str:
+    def REDIS_URL(self) -> SecretStr:
         """
         Redis DSN with auth. Returns plain string.
         Format: redis://:password@host:port/db
         """
-        return (
+        url = (
             f"redis://:{self.REDIS_PASSWORD.get_secret_value()}"
             f"@{self.REDIS_HOST}:{self.REDIS_PORT}"
             f"/{self.REDIS_DB}"
         )
+        return SecretStr(url)
 
     # =========================================================================
     # Processing & Retrieval
@@ -414,9 +417,9 @@ class Settings(BaseSettings):
                 issues.append(
                     "OPENAI_API_KEY is required when LLM_PROVIDER='openai'. Set it in .env."
                 )
-            if self.LLM_PROVIDER == "anthropic" and not self.ANTHROPIC_API_KEY:
+            if self.LLM_PROVIDER == "anthropic" and not self.GROQ_API_KEY:
                 issues.append(
-                    "ANTHROPIC_API_KEY is required when LLM_PROVIDER='anthropic'. Set it in .env."
+                    "GROQ_API_KEY is required when LLM_PROVIDER='anthropic'. Set it in .env."
                 )
 
         # ── Production hardening (production environment only) ────────────────

@@ -1,0 +1,858 @@
+# PHASE 9 — GOLDEN PATHS: SELF-SERVICE DEPLOYMENT VIA IDP
+
+## COMPLETE SRT — SERIES 9
+
+```srt
+1
+00:00:00,000 --> 00:00:06,000
+Welcome back to the course.
+
+2
+00:00:06,000 --> 00:00:12,000
+In Series eight, you built the scaffolder.
+A developer clicks Create, answers five questions.
+
+3
+00:00:12,000 --> 00:00:18,000
+They get a GitHub repo, a Helm chart, an ArgoCD app,
+an S3 bucket, and a catalog entry. All cost-optimized by default.
+
+4
+00:00:18,000 --> 00:00:24,000
+But that is day one. What about day two?
+
+5
+00:00:24,000 --> 00:00:30,000
+On day two, the developer needs to.
+Scale their service from two replicas to five during a traffic spike.
+
+6
+00:00:30,000 --> 00:00:36,000
+Roll back to the previous image tag after a bad deploy.
+Stream logs from a crashing pod without asking for kubectl access.
+
+7
+00:00:36,000 --> 00:00:42,000
+Restart a deployment that is stuck in a bad state.
+Check whether their service is actually running on Spot instances.
+
+8
+00:00:42,000 --> 00:00:48,000
+Understand why their pod failed to schedule.
+
+9
+00:00:48,000 --> 00:00:54,000
+Right now, every one of those actions requires kubectl.
+Which means either the developer has cluster access, which is a security risk.
+
+10
+00:00:54,000 --> 01:00:00,000
+Or they file a ticket with the platform team, which is a bottleneck.
+Neither is acceptable.
+
+11
+01:00:00,000 --> 01:06:00,000
+Series nine closes that gap.
+By the end, developers perform every day-two operation through the Backstage UI.
+
+12
+01:06:00,000 --> 01:12:00,000
+With cost impact shown for every action that changes resource consumption.
+The platform team is not involved.
+
+13
+01:12:00,000 --> 01:18:00,000
+The cluster is not directly accessible.
+Everything goes through the golden path.
+
+14
+01:18:00,000 --> 01:24:00,000
+
+15
+01:24:00,000 --> 01:30:00,000
+First, let's install the Kubernetes plugin for Backstage.
+This gives Backstage direct visibility into your cluster.
+
+16
+01:30:00,000 --> 01:36:00,000
+It shows pod status, resource usage, events, and rollout history.
+All filtered to the service the developer is looking at.
+
+17
+01:36:00,000 --> 01:42:00,000
+
+18
+01:42:00,000 --> 01:48:00,000
+cd finops-idp.
+
+19
+01:48:00,000 --> 01:54:00,000
+Add the frontend plugin.
+yarn at cwd packages/app add at backstage slash plugin-kubernetes.
+
+20
+01:54:00,000 --> 02:00:00,000
+Add the backend plugin.
+yarn at cwd packages/backend add at backstage slash plugin-kubernetes-backend.
+
+21
+02:00:00,000 --> 02:06:00,000
+
+22
+02:06:00,000 --> 02:12:00,000
+Wire up the backend.
+Open packages slash backend slash src slash index.ts.
+Add backend.add for the kubernetes-backend plugin.
+
+23
+02:12:00,000 --> 02:18:00,000
+
+24
+02:18:00,000 --> 02:24:00,000
+Configure cluster access in app-config.yaml.
+Add the kubernetes section.
+
+25
+02:24:00,000 --> 02:30:00,000
+Service locator method is multiTenant.
+Cluster locator methods use config.
+
+26
+02:30:00,000 --> 02:36:00,000
+Define the cluster name, URL, auth provider as AWS.
+Skip TLS verify false.
+
+27
+02:36:00,000 --> 02:42:00,000
+Assume role is the IAM role for Backstage to read the cluster.
+Map catalog entities to Kubernetes resources by label.
+
+28
+02:42:00,000 --> 02:48:00,000
+The scaffolder already adds the app.kubernetes.io/name label to all pods.
+So the Kubernetes plugin knows which pods belong to which service.
+
+29
+02:48:00,000 --> 02:54:00,000
+
+30
+02:54:00,000 --> 03:00:00,000
+Create an IAM role for Backstage cluster access.
+
+31
+03:00:00,000 --> 03:06:00,000
+First, get your OIDC ID.
+OIDC_ID equals the cluster OIDC issuer from the describe-cluster command.
+
+32
+03:06:00,000 --> 03:12:00,000
+Create a trust policy that allows the Backstage service account
+to assume the role.
+
+33
+03:12:00,000 --> 03:18:00,000
+Create the IAM role.
+Attach the ReadOnlyAccess managed policy.
+
+34
+03:18:00,000 --> 03:24:00,000
+
+35
+03:24:00,000 --> 03:30:00,000
+Now create Kubernetes RBAC for Backstage.
+
+36
+03:30:00,000 --> 03:36:00,000
+Create a service account in the backstage namespace.
+Annotate it with the IAM role ARN.
+
+37
+03:36:00,000 --> 03:42:00,000
+Create a ClusterRole called backstage-kubernetes-reader.
+It allows get, list, and watch on pods, services, events, deployments,
+replicasets, ingresses, and horizontalpodautoscalers.
+
+38
+03:42:00,000 --> 03:48:00,000
+Create a ClusterRoleBinding that binds the service account to the role.
+
+39
+03:48:00,000 --> 03:54:00,000
+
+40
+03:54:00,000 --> 04:00:00,000
+Now wire the Kubernetes tab into the catalog page.
+
+41
+04:00:00,000 --> 04:06:00,000
+Open packages slash app slash src slash components slash catalog slash EntityPage.tsx.
+
+42
+04:06:00,000 --> 04:12:00,000
+Import EntityKubernetesContent and isKubernetesAvailable from the kubernetes plugin.
+
+43
+04:12:00,000 --> 04:18:00,000
+Add a new route to the service entity page.
+Path slash kubernetes, title Kubernetes, condition isKubernetesAvailable.
+Content is EntityKubernetesContent with refresh interval thirty seconds.
+
+44
+04:18:00,000 --> 04:24:00,000
+
+45
+04:24:00,000 --> 04:30:00,000
+Now let's build day-two operations via Scaffolder actions.
+Day-two operations like scale, rollback, restart, and log stream.
+
+46
+04:30:00,000 --> 04:36:00,000
+They appear as buttons on the catalog entity page.
+They trigger GitHub Actions workflows.
+Keeping all cluster mutations auditable in Git.
+
+47
+04:36:00,000 --> 04:42:00,000
+
+48
+04:42:00,000 --> 04:48:00,000
+First, create custom Backstage actions.
+
+49
+04:48:00,000 --> 04:54:00,000
+Create a file called kubernetes-actions.ts in packages slash backend slash src slash plugins slash scaffolder-actions.
+
+50
+04:54:00,000 --> 05:00:00,000
+
+51
+05:00:00,000 --> 05:06:00,000
+First action. Scale a Kubernetes deployment.
+
+52
+05:06:00,000 --> 05:12:00,000
+Use createTemplateAction from the scaffolder-node package.
+Define the input schema. Namespace, deployment, replicas, reason, and actor.
+
+53
+05:12:00,000 --> 05:18:00,000
+
+54
+05:18:00,000 --> 05:24:00,000
+In the handler, load the kubeconfig from default.
+Create an AppsV1Api client.
+
+55
+05:24:00,000 --> 05:30:00,000
+Get the current replica count from the deployment.
+Log the scale event with actor and reason.
+
+56
+05:30:00,000 --> 05:36:00,000
+Patch the deployment with the new replica count.
+Return the previous and new replicas as output.
+
+57
+05:36:00,000 --> 05:42:00,000
+
+58
+05:42:00,000 --> 05:48:00,000
+Second action. Rollback a deployment to a specific image tag.
+
+59
+05:48:00,000 --> 05:54:00,000
+Input schema includes repo URL, image tag, namespace, deployment, and reason.
+
+60
+05:54:00,000 --> 06:00:00,000
+
+61
+06:00:00,000 --> 06:06:00,000
+In the handler, use the Octokit GitHub API client.
+
+62
+06:06:00,000 --> 06:12:00,000
+Get the current helm values.yaml file from the repository.
+Update the image tag in the file.
+
+63
+06:12:00,000 --> 06:18:00,000
+Commit and push the change with skip ci in the commit message.
+This triggers ArgoCD to sync the new image.
+
+64
+06:18:00,000 --> 06:24:00,000
+
+65
+06:24:00,000 --> 06:30:00,000
+Register the custom actions in your backend.
+Open packages slash backend slash src slash index.ts.
+
+66
+06:30:00,000 --> 06:36:00,000
+Import scaleDeploymentAction and rollbackDeploymentAction.
+Add a backend plugin that registers these actions.
+
+67
+06:36:00,000 --> 06:42:00,000
+
+68
+06:42:00,000 --> 06:48:00,000
+Now create the scale service template.
+A YAML file that defines a self-service action for developers.
+
+69
+06:48:00,000 --> 06:54:00,000
+
+70
+06:54:00,000 --> 07:00:00,000
+The template parameters include service name, namespace, current replicas,
+new replicas, and reason.
+
+71
+07:00:00,000 --> 07:06:00,000
+The cost impact review step shows the estimated cost per replica and the monthly cost change.
+
+72
+07:06:00,000 --> 07:12:00,000
+The scale step calls the kubernetes scale-deployment action.
+Passing the namespace, deployment, new replicas, reason, and actor.
+
+73
+07:12:00,000 --> 07:18:00,000
+
+74
+07:18:00,000 --> 07:24:00,000
+The output shows the scale complete message.
+Previous replicas, new replicas, monthly cost change, reason, and actor.
+Links to Kubernetes and cost dashboard.
+
+75
+07:24:00,000 --> 07:30:00,000
+
+76
+07:30:00,000 --> 07:36:00,000
+Now create the rollback service template.
+
+77
+07:36:00,000 --> 07:42:00,000
+Parameters include service name, image tag, reason, and optionally create an incident.
+
+78
+07:42:00,000 --> 07:48:00,000
+The rollback step calls the kubernetes rollback-deployment action.
+It updates the values.yaml file in GitHub.
+
+79
+07:48:00,000 --> 07:54:00,000
+If create incident is true, it creates a GitHub issue to track the rollback.
+The issue includes the service name, rolled-back image tag, triggering user, time, and reason.
+
+80
+07:54:00,000 --> 08:00:00,000
+
+81
+08:00:00,000 --> 08:06:00,000
+Now let's walk through a complete deployment trace.
+From developer click to running pod.
+
+82
+08:06:00,000 --> 08:12:00,000
+This is the end-to-end validation of your golden path.
+
+83
+08:12:00,000 --> 08:18:00,000
+
+84
+08:18:00,000 --> 08:24:00,000
+Scenario. A new developer joins the financial-rag team.
+They need to create the filing-classifier service.
+They have never used kubectl. They have never touched Terraform.
+
+85
+08:24:00,000 --> 08:30:00,000
+They open the Backstage portal.
+
+86
+08:30:00,000 --> 08:36:00,000
+
+87
+08:36:00,000 --> 08:42:00,000
+Step one. Developer creates the service via Backstage UI.
+Parameters chosen. Name filing-classifier, team team-financial-rag, traffic medium,
+database false, cache false, S3 true, environment dev.
+
+88
+08:42:00,000 --> 08:48:00,000
+
+89
+08:48:00,000 --> 08:54:00,000
+Step two. Scaffolder runs automatically.
+Verify GitHub repo was created.
+gh repo view aayostem slash filing-classifier.
+
+90
+08:54:00,000 --> 09:00:00,000
+Verify generated files.
+gh api to list the git tree. Expect GitHub workflows, Dockerfile,
+catalog-info.yaml, helm charts, main.py, requirements.txt, and tests.
+
+91
+09:00:00,000 --> 09:06:00,000
+
+92
+09:06:00,000 --> 09:12:00,000
+Step three. Developer writes code and pushes.
+Clone the repository. Make a trivial change, like updating the README.
+Commit and push to main.
+
+93
+09:12:00,000 --> 09:18:00,000
+
+94
+09:18:00,000 --> 09:24:00,000
+Step four. GitHub Actions runs automatically.
+Watch the CI pipeline with gh run watch.
+
+95
+09:24:00,000 --> 09:30:00,000
+Verify multi-arch image was pushed to ECR.
+Check that the image manifest has both amd64 and arm64 architectures.
+
+96
+09:30:00,000 --> 09:36:00,000
+The manifest type should be application slash vnd.docker.distribution.manifest.list.v2 plus json.
+That is a multi-arch manifest list.
+
+97
+09:36:00,000 --> 09:42:00,000
+
+98
+09:42:00,000 --> 09:48:00,000
+Step five. ArgoCD syncs automatically.
+Watch the ArgoCD application with kubectl get application.
+
+99
+09:48:00,000 --> 09:54:00,000
+Verify pods are running on the correct node type.
+For medium traffic, On-Demand nodes.
+
+100
+09:54:00,000 --> 10:00:00,000
+Check the node capacity type label.
+It should say on-demand.
+
+101
+10:00:00,000 --> 10:06:00,000
+
+102
+10:06:00,000 --> 10:12:00,000
+Step six. Developer checks the catalog via Backstage UI.
+
+103
+10:12:00,000 --> 10:18:00,000
+Verify catalog entry via API.
+curl to the catalog entities endpoint for the component.
+
+104
+10:18:00,000 --> 10:24:00,000
+Check name, owner, budget annotation, traffic tier annotation,
+spot enabled annotation, and lifecycle.
+
+105
+10:24:00,000 --> 10:30:00,000
+
+106
+10:30:00,000 --> 10:36:00,000
+Step seven. Measure total time.
+From click Create to running pod in EKS.
+Scaffolder takes about thirty seconds.
+GitHub Actions takes about three minutes for build, test, push, and update.
+ArgoCD sync takes about forty-five seconds.
+Total about four point five minutes.
+
+107
+10:36:00,000 --> 10:42:00,000
+Developer touched only Backstage UI.
+Zero kubectl commands used. Zero platform team tickets.
+
+108
+10:42:00,000 --> 10:48:00,000
+Eight cost optimizations applied automatically.
+
+109
+10:48:00,000 --> 10:54:00,000
+
+110
+10:54:00,000 --> 11:00:00,000
+Now let's build log streaming without kubectl.
+
+111
+11:00:00,000 --> 11:06:00,000
+Developers need logs. Giving them kubectl cluster access is a security risk.
+Build a log streaming endpoint.
+
+112
+11:06:00,000 --> 11:12:00,000
+
+113
+11:12:00,000 --> 11:18:00,000
+Create a file called log-stream.ts in packages slash backend slash src slash plugins.
+
+114
+11:18:00,000 --> 11:24:00,000
+Create a new Express router.
+A GET endpoint at slash pod-logs.
+
+115
+11:24:00,000 --> 11:30:00,000
+Query parameters include namespace, pod, container, and lines.
+
+116
+11:30:00,000 --> 11:36:00,000
+Create a KubeConfig and load from default.
+Create a Log client.
+
+117
+11:36:00,000 --> 11:42:00,000
+Use the Kubernetes log API to stream logs.
+Set content type to text plain and transfer encoding to chunked.
+
+118
+11:42:00,000 --> 11:48:00,000
+Stream the logs to the response.
+
+119
+11:48:00,000 --> 11:54:00,000
+
+120
+11:54:00,000 --> 12:00:00,000
+Create a log viewer component in the catalog.
+
+121
+12:00:00,000 --> 12:06:00,000
+The component fetches the list of pods in the namespace.
+It lets the developer select a pod and click Load Logs.
+
+122
+12:06:00,000 --> 12:12:00,000
+It colorizes the output.
+Red for errors, yellow for warnings, blue for info.
+
+123
+12:12:00,000 --> 12:18:00,000
+
+124
+12:18:00,000 --> 12:24:00,000
+Now integrate ArgoCD into the catalog.
+
+125
+12:24:00,000 --> 12:30:00,000
+Install the ArgoCD plugin.
+yarn add at roadiehq slash backstage-plugin-argo-cd for the frontend.
+yarn add at roadiehq slash backstage-plugin-argo-cd-backend for the backend.
+
+126
+12:30:00,000 --> 12:36:00,000
+
+127
+12:36:00,000 --> 12:42:00,000
+Add ArgoCD configuration to app-config.yaml.
+Define an ArgoCD instance with name, URL, and token.
+
+128
+12:42:00,000 --> 12:48:00,000
+
+129
+12:48:00,000 --> 12:54:00,000
+In the catalog entity page, add the EntityArgoCDOverviewCard.
+It shows sync status, health, and last sync time.
+
+130
+12:54:00,000 --> 13:00:00,000
+
+131
+13:00:00,000 --> 13:06:00,000
+Now let's track platform adoption metrics.
+This is the ultimate measure of platform success.
+
+132
+13:06:00,000 --> 13:12:00,000
+Are developers using the platform?
+That is the question your CTO will ask.
+
+133
+13:12:00,000 --> 13:18:00,000
+
+134
+13:18:00,000 --> 13:24:00,000
+Create a metrics endpoint at slash platform-metrics slash adoption.
+
+135
+13:24:00,000 --> 13:30:00,000
+Fetch all component entities from the catalog.
+
+136
+13:30:00,000 --> 13:36:00,000
+Calculate how many were created via the scaffolder.
+Look for the annotation finops slash cost-tier-set-by equals backstage-scaffolder.
+
+137
+13:36:00,000 --> 13:42:00,000
+Calculate how many have a monthly budget annotation.
+How many have spot enabled.
+How many are production services.
+
+138
+13:42:00,000 --> 13:48:00,000
+Group by traffic tier. Low, medium, high.
+
+139
+13:48:00,000 --> 13:54:00,000
+
+140
+13:54:00,000 --> 14:00:00,000
+Return the metrics in JSON.
+Total services, golden path coverage percentage, budget annotated percentage,
+spot enabled percentage, production services count, and breakdown by traffic tier.
+
+141
+14:00:00,000 --> 14:06:00,000
+
+142
+14:06:00,000 --> 14:12:00,000
+Check your adoption metrics.
+curl to localhost 7007 slash api slash platform-metrics slash adoption.
+
+143
+14:12:00,000 --> 14:18:00,000
+Target metrics by the end of Series eleven.
+Golden path coverage greater than eighty percent.
+Budget annotated greater than ninety percent.
+Spot enabled greater than fifty percent for all low-traffic services.
+
+144
+14:18:00,000 --> 14:24:00,000
+
+145
+14:24:00,000 --> 14:30:00,000
+Now update your baseline document.
+
+146
+14:30:00,000 --> 14:36:00,000
+Add the operations templates.
+List each template with its description.
+
+147
+14:36:00,000 --> 14:42:00,000
+
+148
+14:42:00,000 --> 14:48:00,000
+Add platform adoption metrics.
+Run the curl command and append the JSON output.
+
+149
+14:48:00,000 --> 14:54:00,000
+
+150
+14:54:00,000 --> 15:00:00,000
+Add deployment performance metrics.
+End-to-end time from click to running pod. About four point five minutes.
+Kubectl commands required. Zero.
+Platform team tickets required. Zero.
+FinOps controls applied automatically. Eight.
+
+151
+15:00:00,000 --> 15:06:00,000
+
+152
+15:06:00,000 --> 15:12:00,000
+Let me recap what you've built in Series nine.
+
+153
+15:12:00,000 --> 15:18:00,000
+You added the Kubernetes plugin with cluster RBAC.
+Live pod status in catalog without kubectl.
+
+154
+15:18:00,000 --> 15:24:00,000
+You created custom scale and rollback scaffolder actions.
+Day-two operations via IDP, fully auditable.
+
+155
+15:24:00,000 --> 15:30:00,000
+You added the scale template with cost impact display.
+Engineers see the cost before they scale.
+
+156
+15:30:00,000 --> 15:36:00,000
+You added the rollback template with GitOps integration.
+Incident rollback in the UI, Git-auditable.
+
+157
+15:36:00,000 --> 15:42:00,000
+You added automatic incident issue creation on rollback.
+Incident tracking is automatic.
+
+158
+15:42:00,000 --> 15:48:00,000
+You built a log streaming endpoint and viewer component.
+Logs in the catalog, no kubectl needed.
+
+159
+15:48:00,000 --> 15:54:00,000
+You added ArgoCD integration in the catalog.
+Deployment status in one place.
+
+160
+15:54:00,000 --> 16:00:00,000
+You built a platform adoption metrics endpoint.
+Data-driven platform investment decisions.
+
+161
+16:00:00,000 --> 16:06:00,000
+You traced an end-to-end deployment in four point five minutes.
+Proof that the golden path works.
+
+162
+16:06:00,000 --> 16:12:00,000
+
+163
+16:12:00,000 --> 16:18:00,000
+Here's what you need before Series ten.
+
+164
+16:18:00,000 --> 16:24:00,000
+First, the Kubernetes plugin showing pod status in the catalog.
+
+165
+16:24:00,000 --> 16:30:00,000
+
+166
+16:30:00,000 --> 16:36:00,000
+Second, the scale template working.
+Test by scaling a service from the UI, then verify in the cluster.
+
+167
+16:36:00,000 --> 16:42:00,000
+
+168
+16:42:00,000 --> 16:48:00,000
+Third, the rollback template working.
+Test by triggering a rollback, then verify the values.yaml file was updated in GitHub.
+
+169
+16:48:00,000 --> 16:54:00,000
+
+170
+16:54:00,000 --> 17:00:00,000
+Fourth, the log viewer showing pod logs in the catalog.
+
+171
+17:00:00,000 --> 17:06:00,000
+
+172
+17:06:00,000 --> 17:12:00,000
+Fifth, the adoption metrics endpoint returning data.
+
+173
+17:12:00,000 --> 17:18:00,000
+
+174
+17:18:00,000 --> 17:24:00,000
+Sixth, your baseline document updated with deployment performance metrics.
+
+175
+17:24:00,000 --> 17:30:00,000
+
+176
+17:30:00,000 --> 17:36:00,000
+If you have all six, you're ready for Series ten.
+
+177
+17:36:00,000 --> 17:42:00,000
+
+178
+17:42:00,000 --> 17:48:00,000
+You have built the platform. You have built the golden paths.
+You have built self-service operations.
+
+179
+17:48:00,000 --> 17:54:00,000
+Every service created goes through the FinOps-optimized pipeline automatically.
+
+180
+17:54:00,000 --> 18:00:00,000
+
+181
+18:00:00,000 --> 18:06:00,000
+Series ten closes the loop.
+It brings FinOps cost data directly into the developer's workflow inside the platform itself.
+
+182
+18:06:00,000 --> 18:12:00,000
+
+183
+18:12:00,000 --> 18:18:00,000
+You will build.
+Live cost dashboards per service in the catalog Cost tab.
+
+184
+18:18:00,000 --> 18:24:00,000
+Budget alerts that fire in Slack when a team hits eighty percent of their monthly budget.
+Chargeback reports showing each team's spend for the monthly finance review.
+
+185
+18:24:00,000 --> 18:30:00,000
+An anomaly detection webhook that routes AWS cost anomalies to service owners.
+A FinOps homepage dashboard showing total spend, team budgets, and top cost drivers.
+
+186
+18:30:00,000 --> 18:36:00,000
+
+187
+18:36:00,000 --> 18:42:00,000
+After Series ten, a developer opening the Backstage catalog sees their service's monthly cost,
+their team's budget usage, and any active cost anomalies.
+
+188
+18:42:00,000 --> 18:48:00,000
+Without opening a single AWS console page.
+FinOps becomes invisible to them and omnipresent in their workflow.
+
+189
+18:48:00,000 --> 18:54:00,000
+
+190
+18:54:00,000 --> 19:00:00,000
+That is the final piece of the FinOps platform puzzle.
+
+191
+19:00:00,000 --> 19:06:00,000
+
+192
+19:06:00,000 --> 19:12:00,000
+Let's go to Series ten.
+```
+
+---
+
+**END OF PHASE 9 — SERIES 9 COMPLETE**
+
+**Total SRT lines:** 192
+**Total duration:** Approximately 55-65 minutes
+
+**What is covered in this SRT:**
+
+| Section | Lines | Description |
+|---------|-------|-------------|
+| The Gap Between Creation and Operation | 4-13 | Day-two operations require kubectl today — security risk or bottleneck |
+| Kubernetes Plugin for Backstage | 15-43 | Install, configure, IAM role, RBAC, catalog tab |
+| Day-Two Operations via Scaffolder Actions | 45-75 | Custom scale and rollback actions, cost impact display |
+| Complete Deployment Trace | 81-108 | End-to-end from click to running pod (4.5 minutes) |
+| Log Streaming Without kubectl | 110-123 | Express endpoint, log viewer component, colorized output |
+| ArgoCD Integration | 124-130 | Show sync status in catalog |
+| Platform Adoption Metrics | 131-143 | Track golden path coverage, budget annotations, spot usage |
+| Update Baseline | 145-151 | Add templates, adoption metrics, deployment performance |
+| Recap & Prerequisites | 152-176 | What you built, what's needed for Series 10 |
+| Series 10 Preview | 178-192 | FinOps integration, cost dashboards, budget alerts, chargeback |

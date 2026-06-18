@@ -33,8 +33,8 @@ def configure_limiter(app: FastAPI) -> None:
     settings = get_settings()
     storage_uri: str | None = None
 
-    if settings.APP_ENV == "production" and settings.REDIS_URL:
-        storage_uri = settings.REDIS_URL
+    if settings.APP_ENV == "production" and settings.REDIS_URL.get_secret_value():
+        storage_uri = settings.REDIS_URL.get_secret_value()
         logger.info("Rate limiter: Redis backend at %s", settings.REDIS_HOST)
     else:
         logger.info("Rate limiter: in-memory backend (dev/test)")

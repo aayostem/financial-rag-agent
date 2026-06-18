@@ -98,8 +98,9 @@ class TextParser:
             "$1,234,567 million" → "1234567 million"
             "12.5 %" → "12.5%"
         """
-        for pattern, replacement in _NUMBER_PATTERNS:
-            text = pattern.sub(replacement, text)
+        text = re.sub(r"\$\s*", "", text)
+        text = text.replace(",", "")
+        text = re.sub(r"(\d)\s+%", r"\1%", text)
         return text
 
     def extract_metrics(self, text: str) -> dict[str, float]:

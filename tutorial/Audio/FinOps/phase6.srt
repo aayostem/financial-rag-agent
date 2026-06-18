@@ -1,0 +1,1243 @@
+# PHASE 6 — STORAGE & DATABASE COST CONTROLS
+
+## COMPLETE SRT — SERIES 6
+
+```srt
+1
+00:00:00,000 --> 00:00:06,000
+Welcome back to the course.
+
+2
+00:00:06,000 --> 00:00:12,000
+In Series one, you built the foundation.
+You learned what FinOps is. You learned the three phases.
+
+3
+00:00:12,000 --> 00:00:18,000
+You learned unit economics. You built a tagging strategy.
+You created your baseline document.
+
+4
+00:00:18,000 --> 00:00:24,000
+In Series two, you found the waste outside the cluster.
+You migrated gp2 volumes to gp3.
+
+5
+00:00:24,000 --> 00:00:30,000
+You released unattached Elastic IPs.
+You added VPC Endpoints for S3 and DynamoDB.
+
+6
+00:00:30,000 --> 00:00:36,000
+In Series three, you deployed Kubecost.
+You got visibility inside the cluster.
+
+7
+00:00:36,000 --> 00:00:42,000
+You applied rightsizing recommendations.
+You reduced CPU requests by sixty percent.
+
+8
+00:00:42,000 --> 00:00:48,000
+In Series four, you deployed Karpenter.
+You enabled continuous consolidation.
+
+9
+00:00:48,000 --> 00:00:54,000
+You added Spot versus On-Demand splits.
+Your compute costs dropped by thirty-five percent.
+
+10
+00:00:54,000 --> 00:01:00,000
+In Series five, you went all in on Spot.
+You implemented checkpointing.
+
+11
+01:00:00,000 --> 01:06:00,000
+You added Pod Disruption Budgets.
+Your ML compute costs dropped by seventy to ninety percent.
+
+12
+01:06:00,000 --> 01:12:00,000
+Now it's time to talk about storage and databases.
+The quiet killers.
+
+13
+01:12:00,000 --> 01:18:00,000
+The costs that don't go down when you scale in.
+The bills that keep growing even when you're not adding users.
+
+14
+01:18:00,000 --> 01:24:00,000
+Storage and databases are different from compute.
+Compute is elastic. You can scale it up and down.
+
+15
+01:24:00,000 --> 01:30:00,000
+You can use Spot. You can consolidate nodes.
+You can turn it off when you don't need it.
+
+16
+01:30:00,000 --> 01:36:00,000
+Storage is persistent. Once you store data, it stays there.
+You pay for it forever. Every month. Every byte.
+
+17
+01:36:00,000 --> 01:42:00,000
+Even if no one ever looks at it again.
+Even if it's a log file from three years ago.
+
+18
+01:42:00,000 --> 01:48:00,000
+Even if it's a backup of a service that no longer exists.
+
+19
+01:48:00,000 --> 01:54:00,000
+Databases are stateful. You can't just turn them off.
+You can't just scale them down without planning.
+
+20
+01:54:00,000 --> 02:00:00,000
+You have to think about data migration, connection pooling,
+caching layers, read replicas, backup retention.
+
+21
+02:00:00,000 --> 02:06:00,000
+You have to plan.
+
+22
+02:06:00,000 --> 02:12:00,000
+But storage and databases also have huge opportunities
+for savings.
+
+23
+02:12:00,000 --> 02:18:00,000
+S3 lifecycle policies can automatically move old data
+to cheaper tiers.
+
+24
+02:18:00,000 --> 02:24:00,000
+S3 Intelligent-Tiering can do this automatically
+without you writing rules.
+
+25
+02:24:00,000 --> 02:30:00,000
+ECR image cleanup can delete untagged images
+you're not using.
+
+26
+02:30:00,000 --> 02:36:00,000
+RDS stop and start schedules can save you sixty percent
+on development databases.
+
+27
+02:36:00,000 --> 02:42:00,000
+RDS reserved instances can save you forty to sixty percent
+on production databases.
+
+28
+02:42:00,000 --> 02:48:00,000
+ElastiCache savings plans can save you on caching.
+And all of this can be enforced with Terraform
+so it never drifts.
+
+29
+02:48:00,000 --> 02:54:00,000
+Let me tell you a story.
+
+30
+02:54:00,000 --> 03:00:00,000
+Remember the startup from previous series?
+After all their optimizations, their AWS bill was down
+to twenty thousand dollars per month.
+
+31
+03:00:00,000 --> 03:06:00,000
+They were thrilled. But storage was still a problem.
+A quiet problem. A problem that was growing every month
+without anyone noticing.
+
+32
+03:06:00,000 --> 03:12:00,000
+They had fifteen terabytes of data in S3.
+Most of it was old. Logs from six months ago.
+
+33
+03:12:00,000 --> 03:18:00,000
+Model checkpoints from failed experiments
+that no one remembered.
+
+34
+03:18:00,000 --> 03:24:00,000
+Backup files from services that had been decommissioned.
+User uploads from a feature that was deprecated.
+
+35
+03:24:00,000 --> 03:30:00,000
+All of it was sitting in S3 Standard.
+
+36
+03:30:00,000 --> 03:36:00,000
+S3 Standard costs two point three cents per gigabyte per month.
+Fifteen terabytes costs three hundred forty-five dollars per month.
+
+37
+03:36:00,000 --> 03:42:00,000
+Not huge compared to their twenty thousand dollar bill.
+But it was growing.
+
+38
+03:42:00,000 --> 03:48:00,000
+Every month, they added another terabyte.
+Every month, the cost went up by twenty-three dollars.
+
+39
+03:48:00,000 --> 03:54:00,000
+In a year, that's two hundred seventy-six dollars more per month.
+In two years, that's five hundred fifty-two dollars more per month.
+
+40
+03:54:00,000 --> 04:00:00,000
+It compounds.
+
+41
+04:00:00,000 --> 04:06:00,000
+We added lifecycle policies.
+Data older than thirty days moved to Standard-IA
+at one point two five cents per gigabyte.
+
+42
+04:06:00,000 --> 04:12:00,000
+Data older than ninety days moved to Glacier Instant Retrieval
+at zero point four cents per gigabyte.
+
+43
+04:12:00,000 --> 04:18:00,000
+Data older than three hundred sixty-five days moved
+to Glacier Deep Archive at zero point zero nine nine cents per gigabyte.
+
+44
+04:18:00,000 --> 04:24:00,000
+The cost dropped from three hundred forty-five dollars
+to sixty dollars per month.
+
+45
+04:24:00,000 --> 04:30:00,000
+Savings of two hundred eighty-five dollars per month.
+Over three thousand dollars per year.
+
+46
+04:30:00,000 --> 04:36:00,000
+And now it stays low. Old data automatically moves
+to cheaper tiers. They don't have to think about it.
+
+47
+04:36:00,000 --> 04:42:00,000
+Then we looked at ECR.
+Their container registry was a disaster.
+
+48
+04:42:00,000 --> 04:48:00,000
+Every build pushed a new image. Every developer pushed images
+for their feature branches.
+
+49
+04:48:00,000 --> 04:54:00,000
+Every CI run pushed images for testing.
+They never cleaned up.
+
+50
+04:54:00,000 --> 05:00:00,000
+They had over two thousand images. Many of them untagged.
+Many of them from builds that failed.
+
+51
+05:00:00,000 --> 05:06:00,000
+Many of them from branches that were deleted months ago.
+Many of them from experiments that never made it to production.
+
+52
+05:06:00,000 --> 05:12:00,000
+ECR storage costs ten cents per gigabyte per month.
+Two thousand images, average size five hundred megabytes,
+is one terabyte. One hundred dollars per month.
+
+53
+05:12:00,000 --> 05:18:00,000
+Not huge. But unnecessary.
+All of those images were useless.
+
+54
+05:18:00,000 --> 05:24:00,000
+No one was ever going to use a failed build
+from a deleted branch.
+
+55
+05:24:00,000 --> 05:30:00,000
+We added an ECR lifecycle policy.
+Untagged images deleted after thirty days.
+
+56
+05:30:00,000 --> 05:36:00,000
+Images older than ninety days deleted regardless of tags.
+Keep only the ten most recent images per repository.
+
+57
+05:36:00,000 --> 05:42:00,000
+The number of images dropped from two thousand to two hundred.
+Storage cost dropped from one hundred dollars to ten dollars per month.
+
+58
+05:42:00,000 --> 05:48:00,000
+Then we looked at RDS.
+Their production database was running on a db.r5.large instance.
+
+59
+05:48:00,000 --> 05:54:00,000
+On-Demand. No reserved instance.
+They were paying two hundred dollars per month for a database
+that could have cost one hundred twenty dollars
+with a one-year reservation.
+
+60
+05:54:00,000 --> 06:00:00,000
+They had three development databases,
+each running twenty-four seven.
+
+61
+06:00:00,000 --> 06:06:00,000
+No one used them at night. No one used them on weekends.
+No one used them during holidays. But they were running.
+
+62
+06:06:00,000 --> 06:12:00,000
+They were costing money. They were wasting resources.
+
+63
+06:12:00,000 --> 06:18:00,000
+We purchased a one-year Regional Reserved Instance
+for the production database.
+
+64
+06:18:00,000 --> 06:24:00,000
+Upfront payment of six hundred dollars.
+Monthly cost dropped from two hundred dollars
+to one hundred twenty dollars.
+
+65
+06:24:00,000 --> 06:30:00,000
+Break-even in five months. After that, pure savings.
+Eight hundred dollars saved in the first year.
+
+66
+06:30:00,000 --> 06:36:00,000
+We added stop and start schedules for development databases.
+Lambda functions stop instances at 8 PM and start them at 8 AM.
+
+67
+06:36:00,000 --> 06:42:00,000
+Stop on Friday night. Start on Monday morning.
+Monthly cost dropped by sixty percent.
+
+68
+06:42:00,000 --> 06:48:00,000
+From sixty dollars to twenty-four dollars per database.
+Three databases, savings of one hundred eight dollars per month.
+Over one thousand two hundred dollars per year.
+
+69
+06:48:00,000 --> 06:54:00,000
+Then we looked at ElastiCache.
+They had a Redis cluster for session storage.
+
+70
+06:54:00,000 --> 07:00:00,000
+On-Demand. No savings plan.
+They were paying forty dollars per month for a cache
+that could have cost twenty-five dollars with a savings plan.
+
+71
+07:00:00,000 --> 07:06:00,000
+We purchased a one-year savings plan.
+Monthly cost dropped to twenty-five dollars.
+Savings of fifteen dollars per month. One hundred eighty dollars per year.
+
+72
+07:06:00,000 --> 07:12:00,000
+Total storage and database savings.
+Over six hundred dollars per month.
+Seven thousand two hundred dollars per year.
+
+73
+07:12:00,000 --> 07:18:00,000
+Not the biggest savings in the course, but important.
+And permanent. These controls don't need to be reapplied.
+
+74
+07:18:00,000 --> 07:24:00,000
+They just work.
+
+75
+07:24:00,000 --> 07:30:00,000
+That's what storage and database cost controls deliver.
+
+76
+07:30:00,000 --> 07:36:00,000
+Now let me show you how to do it.
+
+77
+07:36:00,000 --> 07:42:00,000
+First, let's set up our environment.
+
+78
+07:42:00,000 --> 07:48:00,000
+export ACCOUNT_ID equals aws sts get-caller-identity query Account output text.
+export REGION equals us-east-1.
+export START equals date minus d 30 days ago plus YYYY-MM-DD.
+export END equals date plus YYYY-MM-DD.
+
+79
+07:48:00,000 --> 07:54:00,000
+Verify your current storage spend.
+aws ce get-cost-and-usage with filter for S3, RDS, ElastiCache, and ECR.
+
+80
+07:54:00,000 --> 08:00:00,000
+Write this number down. It is your baseline for Series six.
+
+81
+08:00:00,000 --> 08:06:00,000
+Let's start with S3.
+
+82
+08:06:00,000 --> 08:12:00,000
+First, find your most expensive buckets.
+
+83
+08:12:00,000 --> 08:18:00,000
+Loop through all S3 buckets.
+For each bucket, get the total size in gigabytes.
+Calculate the estimated monthly cost at the Standard tier.
+
+84
+08:18:00,000 --> 08:24:00,000
+Sort by cost descending.
+The top result is your most expensive bucket.
+
+85
+08:24:00,000 --> 08:30:00,000
+Now check the storage class distribution for each bucket.
+
+86
+08:30:00,000 --> 08:36:00,000
+List all objects. Count how many are in Standard,
+how many in Standard-IA, how many in Glacier Instant Retrieval,
+how many in Glacier Flexible Retrieval, and how many in Deep Archive.
+
+87
+08:36:00,000 --> 08:42:00,000
+If most objects are in Standard and the bucket is old,
+you have a lifecycle policy problem.
+
+88
+08:42:00,000 --> 08:48:00,000
+Now check if lifecycle policies exist.
+For each bucket, try to get the lifecycle configuration.
+
+89
+08:48:00,000 --> 08:54:00,000
+If the command fails, the bucket has no lifecycle policy.
+Print the bucket name and its size.
+
+90
+08:54:00,000 --> 09:00:00,000
+These are your optimization targets.
+
+91
+09:00:00,000 --> 09:06:00,000
+Now let's understand the tiering strategy.
+
+92
+09:06:00,000 --> 09:12:00,000
+Data zero to thirty days old stays in Standard.
+Cost two point three cents per gigabyte per month.
+Active data. Frequent access.
+
+93
+09:12:00,000 --> 09:18:00,000
+Data thirty-one to ninety days old moves to Standard-IA.
+Cost one point two five cents per gigabyte per month.
+Infrequent but fast retrieval.
+
+94
+09:18:00,000 --> 09:24:00,000
+Data ninety-one to one hundred eighty days old moves
+to Glacier Instant Retrieval.
+Cost zero point four cents per gigabyte per month.
+Rare access, instant retrieval.
+
+95
+09:24:00,000 --> 09:30:00,000
+Data one hundred eighty-one to three hundred sixty-five days old
+moves to Glacier Flexible Retrieval.
+Cost zero point three six cents per gigabyte per month.
+Archive, minutes to retrieve.
+
+96
+09:30:00,000 --> 09:36:00,000
+Data older than three hundred sixty-five days moves
+to Deep Archive.
+Cost zero point zero nine nine cents per gigabyte per month.
+Compliance, twelve to forty-eight hours retrieval.
+
+97
+09:36:00,000 --> 09:42:00,000
+Data older than seven hundred thirty days is deleted.
+Gone forever.
+
+98
+09:42:00,000 --> 09:48:00,000
+There is a trap you need to understand.
+The IA minimum charge trap.
+
+99
+09:48:00,000 --> 09:54:00,000
+S3 Standard-IA has a thirty-day minimum storage charge per object.
+If you store a one kilobyte log file for one day and delete it,
+you pay for thirty days.
+
+100
+09:54:00,000 --> 10:00:00,000
+Never use IA for objects smaller than one hundred twenty-eight kilobytes.
+Never use IA for objects shorter-lived than thirty days.
+
+101
+10:00:00,000 --> 10:06:00,000
+The lifecycle policy below filters by object size to avoid this.
+
+102
+10:06:00,000 --> 10:12:00,000
+Create a lifecycle policy for the financial-rag documents bucket.
+
+103
+10:12:00,000 --> 10:18:00,000
+Rule one. Transition logs and old data.
+Filter on the logs prefix and object size greater than one hundred twenty-eight kilobytes.
+
+104
+10:18:00,000 --> 10:24:00,000
+Transition to Standard-IA at thirty days.
+Transition to Glacier Instant Retrieval at ninety days.
+Transition to Deep Archive at three hundred sixty-five days.
+Expire at seven hundred thirty days.
+
+105
+10:24:00,000 --> 10:30:00,000
+Rule two. Transition model checkpoints.
+Filter on the checkpoints prefix.
+Transition to Standard-IA at seven days.
+Transition to Glacier Instant Retrieval at ninety days.
+Expire at one hundred eighty days.
+
+106
+10:30:00,000 --> 10:36:00,000
+Rule three. Transition SEC filings.
+Filter on the filings prefix.
+Transition to Standard-IA at ninety days.
+Transition to Glacier Instant Retrieval at three hundred sixty-five days.
+
+107
+10:36:00,000 --> 10:42:00,000
+Rule four. Delete incomplete multipart uploads after seven days.
+Rule five. Clean old versions of objects.
+Transition noncurrent versions to Standard-IA at thirty days.
+Transition to Glacier Instant Retrieval at ninety days.
+Expire noncurrent versions at three hundred sixty-five days.
+
+108
+10:42:00,000 --> 10:48:00,000
+Apply the lifecycle policy to the financial-rag documents bucket.
+aws s3api put-bucket-lifecycle-configuration.
+
+109
+10:48:00,000 --> 10:54:00,000
+Verify the policy was applied.
+aws s3api get-bucket-lifecycle-configuration.
+
+110
+10:54:00,000 --> 11:00:00,000
+Now bulk apply lifecycle to all unprotected buckets.
+
+111
+11:00:00,000 --> 11:06:00,000
+Create a script called bulk-apply-lifecycle.sh.
+Loop through every bucket.
+Check if a lifecycle policy already exists.
+
+112
+11:06:00,000 --> 11:12:00,000
+If not, apply a default lifecycle policy.
+Transition large objects to Standard-IA at thirty days,
+to Glacier Instant Retrieval at ninety days,
+to Deep Archive at three hundred sixty-five days.
+Expire at seven hundred thirty days.
+
+113
+11:12:00,000 --> 11:18:00,000
+Abort incomplete multipart uploads after seven days.
+
+114
+11:18:00,000 --> 11:24:00,000
+For buckets with unpredictable access patterns,
+use S3 Intelligent-Tiering instead of manual lifecycle rules.
+
+115
+11:24:00,000 --> 11:30:00,000
+Riskoracle experiment outputs. Data science ad-hoc analysis.
+You don't know when it will be accessed.
+
+116
+11:30:00,000 --> 11:36:00,000
+Intelligent-Tiering automatically moves data between tiers
+based on access patterns.
+
+117
+11:36:00,000 --> 11:42:00,000
+No rules to write. No guessing.
+Enable archive access tiers at ninety days.
+Enable deep archive access at one hundred eighty days.
+
+118
+11:42:00,000 --> 11:48:00,000
+There is a monitoring fee. Two point five cents per thousand objects per month.
+For a bucket with five hundred thousand objects, that is one dollar twenty-five cents per month.
+
+119
+11:48:00,000 --> 11:54:00,000
+If even twenty percent of your objects are infrequently accessed,
+Intelligent-Tiering saves money.
+
+120
+11:54:00,000 --> 12:00:00,000
+For buckets with more than one hundred thousand objects
+and unpredictable access, always use Intelligent-Tiering.
+
+121
+12:00:00,000 --> 12:06:00,000
+Now calculate your savings after applying lifecycle policies.
+
+122
+12:06:00,000 --> 12:12:00,000
+Write a Python script that iterates through all objects
+in your bucket.
+For each object, get its age in days.
+
+123
+12:12:00,000 --> 12:18:00,000
+Calculate current cost assuming all objects are in Standard.
+Calculate projected cost based on your lifecycle policy.
+
+124
+12:18:00,000 --> 12:24:00,000
+Print current cost, projected cost, monthly savings,
+and annual savings.
+
+125
+12:24:00,000 --> 12:30:00,000
+Run the script. You will likely see sixty to eighty percent savings.
+
+126
+12:30:00,000 --> 12:36:00,000
+Now let's audit your ECR repositories.
+
+127
+12:36:00,000 --> 12:42:00,000
+Loop through each repository.
+Get the total image count, untagged image count,
+total storage in gigabytes, and estimated monthly cost.
+
+128
+12:42:00,000 --> 12:48:00,000
+Print the results in a table.
+Sort by cost descending.
+
+129
+12:48:00,000 --> 12:54:00,000
+Your top repository is your biggest waste source.
+
+130
+12:54:00,000 --> 13:00:00,000
+Apply a lifecycle policy to all repositories.
+
+131
+13:00:00,000 --> 13:06:00,000
+Rule one. Delete untagged images after fourteen days.
+
+132
+13:06:00,000 --> 13:12:00,000
+Rule two. Keep only the last five tagged images
+per feature branch, fix branch, and hotfix branch.
+
+133
+13:12:00,000 --> 13:18:00,000
+Rule three. Keep only the last twenty images total.
+
+134
+13:18:00,000 --> 13:24:00,000
+Lifecycle policies are evaluated at push time AND daily by AWS.
+They do not run immediately when you apply them.
+
+135
+13:24:00,000 --> 13:30:00,000
+The first cleanup runs within twenty-four hours.
+Come back tomorrow and check your image counts.
+You will typically see a sixty to eighty percent reduction.
+
+136
+13:30:00,000 --> 13:36:00,000
+
+137
+13:36:00,000 --> 13:42:00,000
+Now let's add stop and start schedules for RDS development databases.
+
+138
+13:42:00,000 --> 13:48:00,000
+Development and staging databases run twenty-four seven.
+Nobody uses them between 8 PM and 8 AM on weekdays,
+or anytime on weekends.
+
+139
+13:48:00,000 --> 13:54:00,000
+That is one hundred twenty-eight hours per week of idle compute.
+Fifty-four percent of the time.
+
+140
+13:54:00,000 --> 14:00:00,000
+A db.t4g.medium RDS instance costs six point five cents per hour On-Demand.
+Running twenty-four seven is forty-seven dollars forty-five cents per month.
+
+141
+14:00:00,000 --> 14:06:00,000
+With stop and start schedule, eight AM to 8 PM weekdays only,
+the cost is seventeen dollars forty-two cents per month.
+Sixty-three percent savings.
+
+142
+14:06:00,000 --> 14:12:00,000
+
+143
+14:12:00,000 --> 14:18:00,000
+We will use a Lambda function triggered by EventBridge.
+Tag RDS instances with Schedule equals dev-hours to opt in.
+
+144
+14:18:00,000 --> 14:24:00,000
+
+145
+14:24:00,000 --> 14:30:00,000
+Create the Lambda handler.
+
+146
+14:30:00,000 --> 14:36:00,000
+First, get the action from the event. Start or stop.
+Log the action, timestamp, and day of week.
+
+147
+14:36:00,000 --> 14:42:00,000
+Find all instances tagged with Schedule equals dev-hours.
+For each instance, check its current status.
+
+148
+14:42:00,000 --> 14:48:00,000
+If the action is stop and the instance is available, stop it.
+If the action is start and the instance is stopped, start it.
+
+149
+14:48:00,000 --> 14:54:00,000
+Log all actions to CloudWatch for audit trail.
+
+150
+14:54:00,000 --> 15:00:00,000
+
+151
+15:00:00,000 --> 15:06:00,000
+Deploy the Lambda function.
+Package the code into a zip file.
+
+152
+15:06:00,000 --> 15:12:00,000
+Create an IAM role for Lambda.
+Attach a policy allowing rds:DescribeDBInstances,
+rds:ListTagsForResource, rds:StartDBInstance, rds:StopDBInstance,
+and logs:CreateLogGroup, logs:CreateLogStream, logs:PutLogEvents.
+
+153
+15:12:00,000 --> 15:18:00,000
+Create the Lambda function with Python 3.11 runtime.
+Set timeout to sixty seconds. Memory to one hundred twenty-eight megabytes.
+
+154
+15:18:00,000 --> 15:24:00,000
+
+155
+15:24:00,000 --> 15:30:00,000
+Create EventBridge rules.
+Stop at 8 PM weekdays. cron zero zero zero question mark question mark MON-FRI question mark.
+Start at 8 AM weekdays. cron zero twelve zero question mark question mark MON-FRI question mark.
+
+156
+15:30:00,000 --> 15:36:00,000
+
+157
+15:36:00,000 --> 15:42:00,000
+Grant EventBridge permission to invoke Lambda.
+Add targets to each rule with the action payload.
+
+158
+15:42:00,000 --> 15:48:00,000
+
+159
+15:48:00,000 --> 15:54:00,000
+Now tag your dev databases to opt in.
+
+160
+15:54:00,000 --> 16:00:00,000
+For each dev database identifier, get the database ARN.
+Add a tag with key Schedule and value dev-hours.
+
+161
+16:00:00,000 --> 16:06:00,000
+
+162
+16:06:00,000 --> 16:12:00,000
+Test the scheduler manually.
+Invoke the Lambda with a stop action payload.
+Check the instance states.
+
+163
+16:12:00,000 --> 16:18:00,000
+
+164
+16:18:00,000 --> 16:24:00,000
+There is a trap you need to understand.
+The seven-day RDS auto-restart.
+
+165
+16:24:00,000 --> 16:30:00,000
+AWS automatically restarts stopped RDS instances after seven days.
+Regardless of your tags or configuration.
+
+166
+16:30:00,000 --> 16:36:00,000
+If a developer is on holiday and the instance restarts on day seven
+and runs for a week, you have paid for it.
+
+167
+16:36:00,000 --> 16:42:00,000
+Mitigate by setting up a CloudWatch alarm that detects the auto-restart
+and immediately re-stops the instance.
+
+168
+16:42:00,000 --> 16:48:00,000
+Create a CloudWatch alarm on the DatabaseConnections metric.
+If connections exceed zero for five minutes, trigger the Lambda to stop the instance.
+
+169
+16:48:00,000 --> 16:54:00,000
+
+170
+16:54:00,000 --> 17:00:00,000
+Now let's purchase RDS Reserved Instances for production databases.
+
+171
+17:00:00,000 --> 17:06:00,000
+First, get recommendations from Cost Explorer.
+aws ce get-reservation-purchase-recommendation for RDS.
+
+172
+17:06:00,000 --> 17:12:00,000
+Look at the instance type, region, engine,
+estimated savings amount, and estimated savings percentage.
+
+173
+17:12:00,000 --> 17:18:00,000
+
+174
+17:18:00,000 --> 17:24:00,000
+Compare payment options.
+No Upfront, Partial Upfront, and All Upfront.
+For each, get the offering ID, fixed price, and usage price.
+
+175
+17:24:00,000 --> 17:30:00,000
+
+176
+17:30:00,000 --> 17:36:00,000
+Calculate true break-even.
+Write a Python script that accounts for upfront cost,
+hourly rate, and opportunity cost.
+
+177
+17:36:00,000 --> 17:42:00,000
+Run the script for your instance type.
+It will show you the total cost for each payment option
+and the savings percentage.
+
+178
+17:42:00,000 --> 17:48:00,000
+
+179
+17:48:00,000 --> 17:54:00,000
+Here are the rules for RI purchasing from real experience.
+
+180
+17:54:00,000 --> 18:00:00,000
+Only buy RIs for resources that have been running for thirty days or more.
+Buying an RI for a service you deployed last week is premature.
+You do not know if it will stick.
+
+181
+18:00:00,000 --> 18:06:00,000
+No Upfront is usually the right call for startups.
+All Upfront saves slightly more, about five percent, but locks up cash.
+For a startup, cash flow beats marginal savings.
+
+182
+18:06:00,000 --> 18:12:00,000
+Never buy three-year RIs for anything using rapidly changing instance types.
+Graviton instances like r6g and m6g are already being superseded
+by r7g and m7g.
+
+183
+18:12:00,000 --> 18:18:00,000
+A three-year r6g RI purchased today may be on a less-optimal instance type
+by year two.
+
+184
+18:18:00,000 --> 18:24:00,000
+RIs are Regional, not Availability Zone specific.
+A Regional RI applies to any Availability Zone in the region.
+Always buy Regional.
+
+185
+18:24:00,000 --> 18:30:00,000
+
+186
+18:30:00,000 --> 18:36:00,000
+Now purchase a Reserved Instance for ElastiCache.
+
+187
+18:36:00,000 --> 18:42:00,000
+Get recommendations from Cost Explorer for ElastiCache.
+Find available offerings for your cache node type.
+
+188
+18:42:00,000 --> 18:48:00,000
+Purchase the reserved cache node.
+
+189
+18:48:00,000 --> 18:54:00,000
+
+190
+18:54:00,000 --> 19:00:00,000
+Now let's enforce everything with Terraform.
+
+191
+19:00:00,000 --> 19:06:00,000
+Everything you have done manually must be Terraform-encoded
+or it will drift back.
+
+192
+19:06:00,000 --> 19:12:00,000
+This is the discipline that separates a FinOps program
+from a FinOps project.
+
+193
+19:12:00,000 --> 19:18:00,000
+
+194
+19:18:00,000 --> 19:24:00,000
+Create a Terraform module for managed S3 buckets.
+Enable versioning. Enable server-side encryption with KMS.
+
+195
+19:24:00,000 --> 19:30:00,000
+Add lifecycle rules for transition and expiration.
+Add abort incomplete multipart upload rule.
+
+196
+19:30:00,000 --> 19:36:00,000
+Add noncurrent version transition and expiration.
+Block public access.
+
+197
+19:36:00,000 --> 19:42:00,000
+
+198
+19:42:00,000 --> 19:48:00,000
+Create a Terraform module for managed ECR repositories.
+Set image tag mutability to immutable.
+Enable image scanning on push.
+
+199
+19:48:00,000 --> 19:54:00,000
+Enable encryption with KMS.
+Add a lifecycle policy to delete untagged images,
+limit feature branch images, and keep only the last twenty images total.
+
+200
+19:54:00,000 --> 20:00:00,000
+
+201
+20:00:00,000 --> 20:06:00,000
+Create a Terraform module for managed RDS databases.
+Set storage type to gp3, never gp2.
+Enable storage encryption.
+
+202
+20:06:00,000 --> 20:12:00,000
+Set backup retention period.
+Set performance insights retention period.
+Set deletion protection for production databases.
+
+203
+20:12:00,000 --> 20:18:00,000
+Add a tag for Schedule. Set it to dev-hours for non-production.
+Set it to always-on for production.
+
+204
+20:18:00,000 --> 20:24:00,000
+Use lifecycle prevent destroy for production databases.
+This prevents accidental deletion by a careless terraform destroy.
+
+205
+20:24:00,000 --> 20:30:00,000
+
+206
+20:30:00,000 --> 20:36:00,000
+Add OPA policies for storage.
+
+207
+20:36:00,000 --> 20:42:00,000
+Deny any S3 bucket without a lifecycle configuration.
+Deny any ECR repository without a lifecycle policy.
+
+208
+20:42:00,000 --> 20:48:00,000
+Deny any RDS instance using gp2 storage.
+Warn for any non-production RDS instance without a Schedule tag.
+
+209
+20:48:00,000 --> 20:54:00,000
+
+210
+20:54:00,000 --> 21:00:00,000
+Now update your baseline document.
+
+211
+21:00:00,000 --> 21:06:00,000
+Add S3 lifecycle coverage. How many buckets have lifecycle policies?
+Add ECR lifecycle coverage. How many repositories have lifecycle policies?
+
+212
+21:06:00,000 --> 21:12:00,000
+Add RDS scheduled instances. List each instance with its status and schedule tag.
+Add current storage and database spend.
+
+213
+21:12:00,000 --> 21:18:00,000
+
+214
+21:18:00,000 --> 21:24:00,000
+Let me recap what you've built in Series six.
+
+215
+21:24:00,000 --> 21:30:00,000
+You added S3 lifecycle policies to all buckets.
+Sixty to eighty percent savings on old data storage.
+
+216
+21:30:00,000 --> 21:36:00,000
+You enabled S3 Intelligent-Tiering for unpredictable access patterns.
+Auto-optimized access cost.
+
+217
+21:36:00,000 --> 21:42:00,000
+You added ECR lifecycle policies to all repositories.
+Eighty percent savings on ECR storage.
+
+218
+21:42:00,000 --> 21:48:00,000
+You built an RDS Lambda stop and start scheduler.
+Sixty-three percent savings on development database cost.
+
+219
+21:48:00,000 --> 21:54:00,000
+You added a CloudWatch alarm for auto-restart detection.
+Prevents silent auto-restart cost.
+
+220
+21:54:00,000 --> 22:00:00,000
+You purchased RDS Reserved Instances for production databases.
+Forty percent savings on production database cost.
+
+221
+22:00:00,000 --> 22:06:00,000
+You purchased ElastiCache Reserved Nodes.
+Thirty to forty percent savings on cache cost.
+
+222
+22:06:00,000 --> 22:12:00,000
+You created Terraform modules with lifecycle enforcement.
+Zero drift on all controls.
+
+223
+22:12:00,000 --> 22:18:00,000
+You added OPA Terraform policies for storage.
+CI enforcement of lifecycle rules.
+
+224
+22:18:00,000 --> 22:24:00,000
+
+225
+22:24:00,000 --> 22:30:00,000
+Here's what you need before Series seven.
+
+226
+22:30:00,000 --> 22:36:00,000
+First, S3 lifecycle applied to all buckets.
+Check with get-bucket-lifecycle-configuration.
+
+227
+22:36:00,000 --> 22:42:00,000
+Second, ECR lifecycle applied to all repositories.
+Check with get-lifecycle-policy.
+
+228
+22:42:00,000 --> 22:48:00,000
+Third, at least one dev RDS instance tagged with Schedule equals dev-hours.
+Check with list-tags-for-resource.
+
+229
+22:48:00,000 --> 22:54:00,000
+Fourth, Lambda scheduler deployed and tested.
+Manual invocation returned results.
+
+230
+22:54:00,000 --> 23:00:00,000
+Fifth, your baseline document updated with storage and database spend.
+
+231
+23:00:00,000 --> 23:06:00,000
+
+232
+23:06:00,000 --> 23:12:00,000
+If you have all five, you're ready for Series seven.
+
+233
+23:12:00,000 --> 23:18:00,000
+
+234
+23:18:00,000 --> 23:24:00,000
+Series two through six covered the technical FinOps layer.
+Finding, eliminating, and automating cost controls
+at the infrastructure level.
+
+235
+23:24:00,000 --> 23:30:00,000
+The startup's bill went from forty-seven thousand dollars
+to nineteen thousand four hundred four dollars.
+
+236
+23:30:00,000 --> 23:36:00,000
+But there is a problem.
+
+237
+23:36:00,000 --> 23:42:00,000
+You did all of this. You. Personally.
+Running commands in a terminal, applying policies, tagging resources.
+
+238
+23:42:00,000 --> 23:48:00,000
+The moment a new engineer joins and creates a new S3 bucket,
+a new RDS instance, or a new ECR repository.
+
+239
+23:48:00,000 --> 23:54:00,000
+They will not know about any of these controls.
+They will create unoptimized resources. The waste will return.
+
+240
+23:54:00,000 --> 00:00:00,000
+
+241
+00:00:00,000 --> 00:06:00,000
+Series seven starts the second half of this course.
+Platform engineering.
+
+242
+00:06:00,000 --> 00:12:00,000
+You will learn what an Internal Developer Platform is
+and why it is the only sustainable solution to long-term FinOps.
+
+243
+00:12:00,000 --> 00:18:00,000
+The controls you applied manually in Series two through six
+become encoded into golden paths that every new engineer uses automatically.
+
+244
+00:18:00,000 --> 00:24:00,000
+Without knowing they are optimizing costs.
+
+245
+00:24:00,000 --> 00:30:00,000
+The startup that went from forty-seven thousand dollars
+to nineteen thousand four hundred four dollars
+stayed at nineteen thousand four hundred four dollars for eighteen months after.
+
+246
+00:30:00,000 --> 00:36:00,000
+Even as they grew from forty to eighty engineers.
+Even as they added thirty new services.
+
+247
+00:36:00,000 --> 00:42:00,000
+Because they had a platform.
+Not because they had a FinOps engineer watching everything.
+
+248
+00:42:00,000 --> 00:48:00,000
+
+249
+00:48:00,000 --> 00:54:00,000
+That is what you are going to build.
+
+250
+00:54:00,000 --> 01:00:00,000
+Let's go to Series seven.
+```
+
+---
+
+**END OF PHASE 6 — SERIES 6 COMPLETE**
+
+**Total SRT lines:** 250
+**Total duration:** Approximately 60-70 minutes (adjust timestamps upward for slower pacing)
+
+**What is covered in this SRT:**
+
+| Section | Lines | Description |
+|---------|-------|-------------|
+| The Costs That Never Go Down | 12-29 | Why storage and databases are different from compute |
+| The Numbers | 29-74 | Startup story: S3, ECR, RDS, ElastiCache savings |
+| Environment Setup | 77-80 | Variables, verify storage spend baseline |
+| S3 Cost Analysis | 82-89 | Find expensive buckets, storage class distribution |
+| S3 Lifecycle Policies | 91-125 | Tiering strategy, IA minimum charge trap, apply policies, bulk apply, Intelligent-Tiering, savings calculation |
+| ECR Image Lifecycle | 126-136 | Audit repositories, apply lifecycle policies, 24-hour cleanup window |
+| RDS Stop/Start Schedules | 137-169 | Lambda scheduler, EventBridge rules, tag dev databases, 7-day auto-restart trap, CloudWatch alarm |
+| RDS Reserved Instance Purchasing | 170-185 | Cost Explorer recommendations, compare payment options, RI calculator, purchasing rules |
+| ElastiCache Reserved Nodes | 186-189 | Get recommendations, purchase |
+| Terraform Enforcement | 190-209 | S3 module, ECR module, RDS module, OPA storage policies |
+| Update Baseline | 210-213 | Measure coverage and spend |
+| Recap & Prerequisites | 214-232 | What you built, what's needed for Series 7 |
+| Series 7 Preview | 234-250 | Platform engineering, IDP, golden paths |

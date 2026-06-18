@@ -1,0 +1,1771 @@
+# PHASE 3 — KUBERNETES COST VISIBILITY: KUBECOST ON EKS
+
+## COMPLETE SRT — SERIES 3
+
+```srt
+1
+00:00:00,000 --> 00:00:06,000
+Welcome back to the course.
+
+2
+00:00:06,000 --> 00:00:12,000
+In Series one, you built the foundation.
+You learned what FinOps is. You learned the three phases.
+
+3
+00:00:12,000 --> 00:00:18,000
+You learned unit economics. You built a tagging strategy.
+You created your baseline document.
+
+4
+00:00:18,000 --> 00:00:24,000
+In Series two, you found the waste outside the cluster.
+You migrated gp2 volumes to gp3.
+
+5
+00:00:24,000 --> 00:00:30,000
+You released unattached Elastic IPs.
+You cleaned up stopped instances.
+
+6
+00:00:30,000 --> 00:00:36,000
+You added VPC Endpoints for S3 and DynamoDB.
+You identified thousands of dollars in monthly waste.
+
+7
+00:00:36,000 --> 00:00:42,000
+That was the low-hanging fruit.
+That was Phase one of FinOps. The Inform phase at the AWS account level.
+
+8
+00:00:42,000 --> 00:00:48,000
+Now it's time to go deeper. Much deeper.
+
+9
+00:00:48,000 --> 00:00:54,000
+Series three is where we move from account-level visibility
+to namespace-level visibility.
+
+10
+00:00:54,000 --> 00:01:00,000
+From service-level cost to pod-level cost.
+From guessing which team spent what to knowing exactly which deployment
+is wasting money.
+
+11
+00:01:00,000 --> 01:06:00,000
+Series three is where we deploy Kubecost on EKS.
+
+12
+01:06:00,000 --> 01:12:00,000
+Before we deploy, let me explain why AWS Cost Explorer is not enough.
+
+13
+01:12:00,000 --> 01:18:00,000
+AWS Cost Explorer shows you EC2 cost.
+It shows you EBS cost. It shows you NAT Gateway cost.
+
+14
+01:18:00,000 --> 01:24:00,000
+But it cannot answer the question that actually matters
+to an engineering team running Kubernetes.
+
+15
+01:24:00,000 --> 01:30:00,000
+Which namespace, which deployment, which pod is wasting my money?
+
+16
+01:30:00,000 --> 01:36:00,000
+Cost Explorer operates at the AWS resource level.
+It does not know about Kubernetes concepts.
+
+17
+01:36:00,000 --> 01:42:00,000
+It does not know that ten pods are sharing one EC2 instance.
+It does not know which namespace owns which pod.
+
+18
+01:42:00,000 --> 01:48:00,000
+It does not know that the llm-ingest deployment requested eight CPUs
+and only uses two.
+
+19
+01:48:00,000 --> 01:54:00,000
+Kubecost does.
+
+20
+01:54:00,000 --> 02:00:00,000
+Kubecost sits inside your cluster.
+It watches every pod, namespace, deployment, and persistent volume claim.
+
+21
+02:00:00,000 --> 02:06:00,000
+It collects CPU, memory, storage, and network metrics every thirty seconds.
+
+22
+02:06:00,000 --> 02:12:00,000
+It combines those Kubernetes metrics with your AWS billing data.
+
+23
+02:12:00,000 --> 02:18:00,000
+It calculates exactly how much of each EC2 instance's cost
+should be attributed to each pod.
+
+24
+02:18:00,000 --> 02:24:00,000
+Then it rolls that up to namespace, team, and service.
+
+25
+02:24:00,000 --> 02:30:00,000
+The result. You go from "our EC2 bill is twenty-two thousand dollars"
+to "the financial-rag namespace is spending fourteen thousand two hundred dollars
+at forty-eight percent efficiency."
+
+26
+02:30:00,000 --> 02:36:00,000
+And the llm-ingest deployment is the top contributor.
+
+27
+02:36:00,000 --> 02:42:00,000
+That is the difference between guessing and knowing.
+
+28
+02:42:00,000 --> 02:48:00,000
+Let me tell you the rest of the story.
+
+29
+02:48:00,000 --> 02:54:00,000
+After the waste audit in Series two, that same startup's bill
+dropped from forty-seven thousand dollars to thirty-four thousand eight hundred.
+
+30
+02:54:00,000 --> 03:00:00,000
+They were thrilled. They thought they were done.
+
+31
+03:00:00,000 --> 03:06:00,000
+But inside the cluster, there was more waste. Much more.
+
+32
+03:06:00,000 --> 03:12:00,000
+We deployed Kubecost. Within one hour.
+
+33
+03:12:00,000 --> 03:18:00,000
+The financial-rag namespace was costing twenty-two thousand dollars per month.
+At zero point four eight efficiency. Wasting fifty-two percent of requested compute.
+
+34
+03:18:00,000 --> 03:24:00,000
+The riskoracle namespace was costing nine thousand dollars per month.
+At zero point six one efficiency. Wasting thirty-nine percent.
+
+35
+03:24:00,000 --> 03:30:00,000
+Kube-system and monitoring together were costing three thousand eight hundred dollars.
+
+36
+03:30:00,000 --> 03:36:00,000
+We applied the rightsizing recommendations.
+CPU requests reduced by sixty percent. Memory requests reduced by forty percent.
+
+37
+03:36:00,000 --> 03:42:00,000
+Karpenter, which we will cover in Series four,
+removed the now-empty nodes.
+
+38
+03:42:00,000 --> 03:48:00,000
+The financial-rag namespace dropped from twenty-two thousand dollars
+to fourteen thousand dollars.
+
+39
+03:48:00,000 --> 03:54:00,000
+Riskoracle dropped from nine thousand dollars to six thousand dollars.
+
+40
+03:54:00,000 --> 04:00:00,000
+Combined with Series two savings.
+Total bill went from forty-seven thousand dollars to twenty thousand dollars.
+
+41
+04:00:00,000 --> 04:06:00,000
+In two series.
+
+42
+04:06:00,000 --> 04:12:00,000
+That's what Kubecost delivers.
+
+43
+04:12:00,000 --> 04:18:00,000
+Now let me show you how to deploy it.
+
+44
+04:18:00,000 --> 04:24:00,000
+Before we deploy Kubecost, you need a few things.
+Let me walk through each prerequisite.
+
+45
+04:24:00,000 --> 04:30:00,000
+First, you need an EKS cluster.
+EKS stands for Elastic Kubernetes Service.
+
+46
+04:30:00,000 --> 04:36:00,000
+It's Amazon's managed Kubernetes service.
+If you don't have an EKS cluster, pause this video and create one.
+
+47
+04:36:00,000 --> 04:42:00,000
+You have several options. You can use the AWS console.
+Go to the EKS service, click Create cluster, give it a name.
+
+48
+04:42:00,000 --> 04:48:00,000
+Choose a Kubernetes version, choose a role, and click create.
+It takes about fifteen minutes.
+
+49
+04:48:00,000 --> 04:54:00,000
+You can use eksctl. eksctl is a command-line tool for EKS.
+
+50
+04:54:00,000 --> 05:00:00,000
+One command. eksctl create cluster with name finops-cluster,
+region us-east-1, nodegroup-name standard-workers, node-type t3.medium, nodes three.
+
+51
+05:00:00,000 --> 05:06:00,000
+It takes about fifteen minutes.
+You can use Terraform.
+
+52
+05:06:00,000 --> 05:12:00,000
+The GitHub repository for this course has Terraform configurations
+for financial-rag-agent and riskoracle.
+
+53
+05:12:00,000 --> 05:18:00,000
+Clone the repo, run terraform apply,
+and you'll have a cluster with both applications deployed.
+
+54
+05:18:00,000 --> 05:24:00,000
+That's the best option because you'll have real workloads to optimize.
+
+55
+05:24:00,000 --> 05:30:00,000
+Whichever method you choose, make sure your cluster has at least three nodes.
+Each node should be at least t3.medium or equivalent.
+
+56
+05:30:00,000 --> 05:36:00,000
+You need enough resources to run Kubecost
+alongside your applications.
+
+57
+05:36:00,000 --> 05:42:00,000
+Second, you need kubectl installed and configured.
+Kubectl is the command-line tool for Kubernetes.
+
+58
+05:42:00,000 --> 05:48:00,000
+It's how you deploy and manage applications on your cluster.
+You use it to create resources, delete resources, view logs, exec into containers.
+
+59
+05:48:00,000 --> 05:54:00,000
+Verify that kubectl can talk to your cluster.
+Run kubectl get nodes.
+
+60
+05:54:00,000 --> 06:00:00,000
+You should see a list of nodes. Each node will have a name,
+a status, a role, an age, and a version.
+
+61
+06:00:00,000 --> 06:06:00,000
+The status should be Ready.
+If you see NotReady, your cluster has problems.
+
+62
+06:06:00,000 --> 06:12:00,000
+If you see an error that says "Unable to connect to the server",
+your kubeconfig is not configured correctly.
+
+63
+06:12:00,000 --> 06:18:00,000
+To configure your kubeconfig, run this command.
+aws eks update-kubeconfig with region dollar sign REGION
+and name your-cluster-name.
+
+64
+06:18:00,000 --> 06:24:00,000
+Replace your-cluster-name with the actual name of your EKS cluster.
+This command downloads the cluster's certificate and configures kubectl to use it.
+
+65
+06:24:00,000 --> 06:30:00,000
+Now run kubectl get nodes again. You should see your nodes.
+
+66
+06:30:00,000 --> 06:36:00,000
+Third, you need Helm installed.
+Helm is the package manager for Kubernetes.
+
+67
+06:36:00,000 --> 06:42:00,000
+Think of it as apt-get or brew for Kubernetes.
+It packages Kubernetes resources into charts.
+
+68
+06:42:00,000 --> 06:48:00,000
+A chart can contain deployments, services, config maps, secrets,
+persistent volume claims, ingress rules, everything your application needs.
+
+69
+06:48:00,000 --> 06:54:00,000
+We're going to install Kubecost using Helm.
+The Kubecost chart contains about thirty different Kubernetes resources.
+
+70
+06:54:00,000 --> 07:00:00,000
+Without Helm, you'd have to create each one manually.
+With Helm, it's one command.
+
+71
+07:00:00,000 --> 07:06:00,000
+Verify that Helm is installed. Run helm version.
+
+72
+07:06:00,000 --> 07:12:00,000
+You should see a version number.
+If you get an error that says command not found, you need to install Helm.
+
+73
+07:12:00,000 --> 07:18:00,000
+On Mac, brew install helm. On Ubuntu, sudo apt install helm.
+On Windows, download the installer from the Helm website.
+
+74
+07:18:00,000 --> 07:24:00,000
+It takes two minutes.
+
+75
+07:24:00,000 --> 07:30:00,000
+Fourth, you need the AWS CLI configured with permissions
+to read billing data.
+
+76
+07:30:00,000 --> 07:36:00,000
+Kubecost needs to call AWS Cost Explorer to get your account's pricing information.
+
+77
+07:36:00,000 --> 07:42:00,000
+It needs to know how much EC2 costs per hour,
+how much EBS costs per gigabyte, how much NAT Gateway costs per gigabyte.
+
+78
+07:42:00,000 --> 07:48:00,000
+Without this, Kubecost can only estimate costs based on public pricing.
+With it, Kubecost shows your actual costs including discounts,
+Savings Plans, and Reserved Instances.
+
+79
+07:48:00,000 --> 07:54:00,000
+You should already have this from Series one and two.
+You ran aws ce get-cost-and-usage and it returned your total monthly spend.
+
+80
+07:54:00,000 --> 08:00:00,000
+If that worked, your AWS CLI is configured correctly.
+If not, go back to Series one and fix it.
+
+81
+08:00:00,000 --> 08:06:00,000
+Now you're ready.
+
+82
+08:06:00,000 --> 08:12:00,000
+First, add the Kubecost Helm repository.
+A Helm repository is a collection of charts.
+
+83
+08:12:00,000 --> 08:18:00,000
+The Kubecost repository contains the Kubecost chart
+and all its dependencies.
+
+84
+08:18:00,000 --> 08:24:00,000
+helm repo add kubecost https://kubecost.github.io/cost-analyzer/
+
+85
+08:24:00,000 --> 08:30:00,000
+You'll see output like kubecost has been added to your repositories.
+
+86
+08:30:00,000 --> 08:36:00,000
+Now update your local cache of available charts.
+This downloads the latest list of charts and versions from the repository.
+
+87
+08:36:00,000 --> 08:42:00,000
+helm repo update
+
+88
+08:42:00,000 --> 08:48:00,000
+You'll see output like Hang tight while we grab the latest from your chart repositories.
+
+89
+08:48:00,000 --> 08:54:00,000
+Now create a namespace for Kubecost.
+Namespaces are how Kubernetes organizes resources.
+
+90
+08:54:00,000 --> 09:00:00,000
+They're like folders on a filesystem.
+Putting Kubecost in its own namespace keeps it separate from your applications.
+
+91
+09:00:00,000 --> 09:06:00,000
+It also makes it easier to clean up later if you need to.
+
+92
+09:06:00,000 --> 09:12:00,000
+kubectl create namespace kubecost
+
+93
+09:12:00,000 --> 09:18:00,000
+You'll see namespace slash kubecost created.
+
+94
+09:18:00,000 --> 09:24:00,000
+Now let's verify the namespace exists.
+kubectl get namespaces
+
+95
+09:24:00,000 --> 09:30:00,000
+You should see kubecost in the list, along with default,
+kube-system, kube-public, and any other namespaces you have.
+
+96
+09:30:00,000 --> 09:36:00,000
+Now install Kubecost. This is the main command.
+Copy it carefully.
+
+97
+09:36:00,000 --> 09:42:00,000
+helm install kubecost kubecost/cost-analyzer
+with namespace kubecost
+
+98
+09:42:00,000 --> 09:48:00,000
+set kubecostToken equals your email at company.com
+set global.aws.enabled equals true
+
+99
+09:48:00,000 --> 09:54:00,000
+set global.aws.cloudIntegrationEnabled equals true
+set prometheus.server.persistentVolume.enabled equals false
+
+100
+09:54:00,000 --> 10:00:00,000
+set kubecostProductConfigs.clusterName equals finops-cluster
+set kubecostProductConfigs.currencyCode equals USD
+
+101
+10:00:00,000 --> 10:06:00,000
+Let me break down each parameter so you understand
+what you're running.
+
+102
+10:06:00,000 --> 10:12:00,000
+helm install kubecost tells Helm to install a chart
+with the release name kubecost.
+
+103
+10:12:00,000 --> 10:18:00,000
+The release name is like a label for this installation.
+You can name it anything you want, but kubecost is fine.
+
+104
+10:18:00,000 --> 10:24:00,000
+kubecost/cost-analyzer is the chart name.
+It's in the kubecost repository we added earlier.
+
+105
+10:24:00,000 --> 10:30:00,000
+The chart name is cost-analyzer, but the repository is kubecost.
+So together it's kubecost/cost-analyzer.
+
+106
+10:30:00,000 --> 10:36:00,000
+dash dash namespace kubecost tells Helm to install the resources
+in the kubecost namespace.
+
+107
+10:36:00,000 --> 10:42:00,000
+All the pods, services, config maps, secrets,
+and persistent volume claims will be created inside this namespace.
+
+108
+10:42:00,000 --> 10:48:00,000
+dash set kubecostToken sets a configuration value.
+Kubecost uses this token for analytics.
+
+109
+10:48:00,000 --> 10:54:00,000
+They want to know how many people are using their software.
+It's not required, but it's polite.
+
+110
+10:54:00,000 --> 11:00:00,000
+You can use your email address instead of mine.
+Use whatever you want.
+
+111
+11:00:00,000 --> 11:06:00,000
+dash set global.aws.enabled equals true tells Kubecost
+that you're running on AWS.
+
+112
+11:06:00,000 --> 11:12:00,000
+This enables AWS-specific features.
+It changes the default pricing from GCP pricing to AWS pricing.
+
+113
+11:12:00,000 --> 11:18:00,000
+It enables integration with AWS services.
+
+114
+11:18:00,000 --> 11:24:00,000
+dash set global.aws.cloudIntegrationEnabled equals true
+tells Kubecost to integrate with AWS's cloud billing APIs.
+
+115
+11:24:00,000 --> 11:30:00,000
+This is how Kubecost gets your actual EC2 pricing,
+your actual EBS pricing, your actual NAT Gateway pricing.
+
+116
+11:30:00,000 --> 11:36:00,000
+Including any discounts, Savings Plans, or Reserved Instances you have.
+Without this, Kubecost estimates costs based on public on-demand pricing.
+
+117
+11:36:00,000 --> 11:42:00,000
+With this, Kubecost shows your actual costs.
+
+118
+11:42:00,000 --> 11:48:00,000
+dash set prometheus.server.persistentVolume.enabled equals false
+tells Kubecost not to create a persistent volume for Prometheus.
+
+119
+11:48:00,000 --> 11:54:00,000
+Prometheus is the time-series database that Kubecost uses
+to store metrics.
+
+120
+11:54:00,000 --> 12:00:00,000
+It collects CPU usage, memory usage, network traffic,
+and other metrics every thirty seconds.
+
+121
+12:00:00,000 --> 12:06:00,000
+By default, Prometheus stores these metrics on a persistent volume
+so they survive restarts.
+
+122
+12:06:00,000 --> 12:12:00,000
+But for testing and for this course, you don't need persistent storage.
+Setting this to false saves you money on EBS volumes.
+
+123
+12:12:00,000 --> 12:18:00,000
+dash set kubecostProductConfigs.clusterName labels all cost data
+with your cluster name.
+
+124
+12:18:00,000 --> 12:24:00,000
+This is critical for multi-cluster setups.
+If you have dev, staging, and prod clusters, you need to know which cluster
+is spending what.
+
+125
+12:24:00,000 --> 12:30:00,000
+dash set kubecostProductConfigs.currencyCode sets the currency
+for cost display. USD is fine.
+
+126
+12:30:00,000 --> 12:36:00,000
+Now wait for Kubecost to start.
+This takes a few minutes.
+
+127
+12:36:00,000 --> 12:42:00,000
+The first time you install Kubecost, it needs to download container images
+from Docker Hub. It needs to start the pods.
+
+128
+12:42:00,000 --> 12:48:00,000
+It needs to initialize the databases. It needs to scrape metrics
+for the first time.
+
+129
+12:48:00,000 --> 12:54:00,000
+Watch the pods come up.
+kubectl get pods dash n kubecost
+
+130
+12:54:00,000 --> 13:00:00,000
+You'll see several pods. Let me explain what each one does.
+
+131
+13:00:00,000 --> 13:06:00,000
+The kubecost-cost-analyzer pod is the main Kubecost pod.
+It runs the API server, the UI server, and the cost calculation engine.
+
+132
+13:06:00,000 --> 13:12:00,000
+It's the brain of Kubecost.
+
+133
+13:12:00,000 --> 13:18:00,000
+The prometheus-server pod runs Prometheus,
+the time-series database. It stores all the metrics.
+
+134
+13:18:00,000 --> 13:24:00,000
+CPU usage, memory usage, network traffic, storage usage, everything.
+
+135
+13:24:00,000 --> 13:30:00,000
+The kubecost-grafana pod runs Grafana,
+a dashboarding tool.
+
+136
+13:30:00,000 --> 13:36:00,000
+Kubecost includes a pre-configured Grafana instance
+with dashboards for cost visualization.
+
+137
+13:36:00,000 --> 13:42:00,000
+The kubecost-network-costs pod collects network traffic metrics.
+It uses eBPF to monitor network traffic between pods
+and between pods and the internet.
+
+138
+13:42:00,000 --> 13:48:00,000
+The kubecost-agent pod collects metrics from the Kubernetes API.
+It watches for new pods, deleted pods, scaled deployments, everything.
+
+139
+13:48:00,000 --> 13:54:00,000
+Wait for all pods to show status Running.
+You can watch them in real time with the dash w flag.
+
+140
+13:54:00,000 --> 14:00:00,000
+kubectl get pods dash n kubecost dash w
+
+141
+14:00:00,000 --> 14:06:00,000
+The dash w flag watches for changes.
+You'll see pods transition from Pending to ContainerCreating to Running.
+
+142
+14:06:00,000 --> 14:12:00,000
+When all pods are Running, press Ctrl C to exit.
+
+143
+14:12:00,000 --> 14:18:00,000
+If a pod stays in Pending for more than five minutes,
+your cluster might not have enough resources.
+
+144
+14:18:00,000 --> 14:24:00,000
+Check your node sizes. Check your resource requests.
+You might need to add more nodes or use larger nodes.
+
+145
+14:24:00,000 --> 14:30:00,000
+If a pod stays in CrashLoopBackOff,
+something is wrong with the configuration.
+
+146
+14:30:00,000 --> 14:36:00,000
+Check the pod logs.
+kubectl logs dash n kubecost pod-name dash dash previous
+
+147
+14:36:00,000 --> 14:42:00,000
+Replace pod-name with the actual name of the crashing pod.
+The logs will usually tell you what's wrong.
+
+148
+14:42:00,000 --> 14:48:00,000
+Once all pods are running, port-forward to the Kubecost dashboard.
+
+149
+14:48:00,000 --> 14:54:00,000
+Port-forwarding creates a tunnel from your local machine
+to the Kubecost service inside the cluster.
+
+150
+14:54:00,000 --> 15:00:00,000
+kubectl port-forward dash dash namespace kubecost
+service/kubecost-cost-analyzer 9090:9090 ampersand
+
+151
+15:00:00,000 --> 15:06:00,000
+This command forwards traffic from port 9090 on your computer
+to port 9090 on the kubecost-cost-analyzer service inside the cluster.
+
+152
+15:06:00,000 --> 15:12:00,000
+It will continue running until you press Ctrl C.
+Keep this terminal window open.
+
+153
+15:12:00,000 --> 15:18:00,000
+Now open your browser. Go to http://localhost:9090.
+
+154
+15:18:00,000 --> 15:24:00,000
+You are looking at the Kubecost dashboard.
+This is your window into Kubernetes cost.
+
+155
+15:24:00,000 --> 15:30:00,000
+This is the tool that will save you thousands of dollars.
+Take a moment to look around. Click on things. Explore.
+
+156
+15:30:00,000 --> 15:36:00,000
+The first thing to look at is the Allocation page.
+Click Allocation in the left menu.
+
+157
+15:36:00,000 --> 15:42:00,000
+If you don't see the menu, look for a hamburger icon
+in the top left corner. Three horizontal lines.
+
+158
+15:42:00,000 --> 15:48:00,000
+Click it. The menu will slide out.
+
+159
+15:48:00,000 --> 15:54:00,000
+You'll see a table. Each row is a namespace.
+The columns show CPU cost, RAM cost, storage cost, network cost,
+and total cost.
+
+160
+15:54:00,000 --> 16:00:00,000
+There's also an Efficiency column.
+That's the most important one.
+
+161
+16:00:00,000 --> 16:06:00,000
+Here is sample output. Your numbers will be different.
+
+162
+16:06:00,000 --> 16:12:00,000
+Namespace: financial-rag.
+CPU cost: $1,420. RAM cost: $890. Total cost: $2,310. Efficiency: 0.48.
+
+163
+16:12:00,000 --> 16:18:00,000
+Namespace: riskoracle.
+CPU cost: $980. RAM cost: $670. Total cost: $1,650. Efficiency: 0.61.
+
+164
+16:18:00,000 --> 16:24:00,000
+Namespace: kube-system.
+CPU cost: $180. RAM cost: $120. Total cost: $300. Efficiency: 0.45.
+
+165
+16:24:00,000 --> 16:30:00,000
+Namespace: monitoring.
+CPU cost: $95. RAM cost: $65. Total cost: $160. Efficiency: 0.38.
+
+166
+16:30:00,000 --> 16:36:00,000
+Namespace: kubecost.
+CPU cost: $220. RAM cost: $130. Total cost: $350. Efficiency: 0.72.
+
+167
+16:36:00,000 --> 16:42:00,000
+Let me explain each column.
+
+168
+16:42:00,000 --> 16:48:00,000
+CPU Cost is the cost of the CPU resources allocated to pods
+in this namespace.
+
+169
+16:48:00,000 --> 16:54:00,000
+Kubecost calculates this by looking at the CPU requests of all pods
+in the namespace.
+
+170
+16:54:00,000 --> 17:00:00,000
+Then multiplying by the cost per CPU core from AWS.
+
+171
+17:00:00,000 --> 17:06:00,000
+If a pod requests two CPUs, Kubecost allocates the cost of two CPUs
+to that pod, regardless of how much CPU the pod actually uses.
+
+172
+17:06:00,000 --> 17:12:00,000
+That's important. You pay for what you request, not what you use.
+
+173
+17:12:00,000 --> 17:18:00,000
+RAM Cost is the cost of the memory resources allocated to pods
+in this namespace. Same principle.
+
+174
+17:18:00,000 --> 17:24:00,000
+Storage Cost is the cost of persistent volumes attached to pods
+in this namespace.
+
+175
+17:24:00,000 --> 17:30:00,000
+If a pod has a persistent volume claim for a one hundred gigabyte
+EBS volume, Kubecost allocates the cost of that volume
+to the pod's namespace.
+
+176
+17:30:00,000 --> 17:36:00,000
+Network Cost is the cost of network traffic.
+Cross-zone traffic. NAT Gateway traffic. Load balancer traffic.
+Kubecost tracks it all.
+
+177
+17:36:00,000 --> 17:42:00,000
+Total Cost is the sum of CPU Cost, RAM Cost, Storage Cost,
+and Network Cost.
+
+178
+17:42:00,000 --> 17:48:00,000
+Now look at the Efficiency column.
+This is the most important number on the page.
+
+179
+17:48:00,000 --> 17:54:00,000
+Efficiency is the ratio of actual usage to requested resources.
+
+180
+17:54:00,000 --> 18:00:00,000
+Kubecost calculates it by looking at the actual CPU and memory usage
+of every pod over the last seven days.
+
+181
+18:00:00,000 --> 18:06:00,000
+Comparing it to the requested CPU and memory.
+And averaging across the namespace.
+
+182
+18:06:00,000 --> 18:12:00,000
+If a pod requests two CPUs but only uses one CPU,
+its CPU efficiency is zero point five.
+
+183
+18:12:00,000 --> 18:18:00,000
+If it requests two CPUs and uses two CPUs, its efficiency is one point zero.
+
+184
+18:18:00,000 --> 18:24:00,000
+Kubecost aggregates these pod-level efficiencies up to the namespace level.
+
+185
+18:24:00,000 --> 18:30:00,000
+An efficiency of zero point seven means seventy percent
+of requested resources are being used.
+
+186
+18:30:00,000 --> 18:36:00,000
+Thirty percent is idle. Thirty percent is waste.
+
+187
+18:36:00,000 --> 18:42:00,000
+Here's how to interpret efficiency scores.
+
+188
+18:42:00,000 --> 18:48:00,000
+If your efficiency is below zero point seven,
+you are overprovisioning.
+
+189
+18:48:00,000 --> 18:54:00,000
+You are paying for resources you don't need.
+You should reduce your CPU and memory requests.
+
+190
+18:54:00,000 --> 19:00:00,000
+You can safely reduce them because you have plenty of headroom.
+Your pods are not using what they're asking for.
+
+191
+19:00:00,000 --> 19:06:00,000
+If your efficiency is above zero point nine,
+you are underprovisioning.
+
+192
+19:06:00,000 --> 19:12:00,000
+Your pods are using almost all of their requested resources.
+One small spike in traffic could cause CPU throttling
+or memory pressure.
+
+193
+19:12:00,000 --> 19:18:00,000
+Your pods might get killed. Your application might slow down.
+You should increase your CPU and memory requests
+to give yourself more headroom.
+
+194
+19:18:00,000 --> 19:24:00,000
+The goal is efficiency between zero point seven and zero point eight five.
+
+195
+19:24:00,000 --> 19:30:00,000
+Enough headroom for spikes. Not so much headroom that you're wasting money.
+
+196
+19:30:00,000 --> 19:36:00,000
+This is the sweet spot. This is where you want to be.
+
+197
+19:36:00,000 --> 19:42:00,000
+Now let's get the same data from the command line.
+Because you might want to script this.
+
+198
+19:42:00,000 --> 19:48:00,000
+You might want to include it in your baseline document.
+You might want to automate reporting to Slack or email.
+
+199
+19:48:00,000 --> 19:54:00,000
+You might want to integrate it into your existing dashboards.
+
+200
+19:54:00,000 --> 20:00:00,000
+kubectl exec dash n kubecost deploy/kubecost-cost-analyzer dash dash
+curl dash s http://localhost:9090/allocation?window=7d&aggregate=namespace
+
+201
+20:00:00,000 --> 20:06:00,000
+Pipe to jq .data zero to_entries array
+get namespace, totalCost, efficiency
+
+202
+20:06:00,000 --> 20:12:00,000
+Let me break down this command. It's doing several things.
+
+203
+20:12:00,000 --> 20:18:00,000
+kubectl exec dash n kubecost deploy/kubecost-cost-analyzer
+tells kubectl to execute a command inside the kubecost-cost-analyzer pod.
+
+204
+20:18:00,000 --> 20:24:00,000
+The dash n kubecost specifies the namespace.
+deploy/kubecost-cost-analyzer specifies the deployment.
+
+205
+20:24:00,000 --> 20:30:00,000
+Kubectl will pick any pod in that deployment
+and run the command there.
+
+206
+20:30:00,000 --> 20:36:00,000
+The dash dash separates kubectl arguments
+from the command to run inside the pod.
+
+207
+20:36:00,000 --> 20:42:00,000
+Everything after dash dash is the command that runs inside the pod.
+
+208
+20:42:00,000 --> 20:48:00,000
+curl dash s http://localhost:9090/allocation?window=7d&aggregate=namespace
+is the command inside the pod.
+
+209
+20:48:00,000 --> 20:54:00,000
+It uses curl to call the Kubecost API.
+The API endpoint is allocation.
+
+210
+20:54:00,000 --> 21:00:00,000
+The parameters are window equals 7d for the last seven days
+and aggregate equals namespace to group by namespace.
+
+211
+21:00:00,000 --> 21:06:00,000
+The dash s flag makes curl silent.
+No progress meter, no error messages unless something fails.
+
+212
+21:06:00,000 --> 21:12:00,000
+The pipe symbol pipes the output of curl to jq.
+jq is a command-line JSON processor.
+
+213
+21:12:00,000 --> 21:18:00,000
+It's like sed or awk for JSON.
+
+214
+21:18:00,000 --> 21:24:00,000
+The jq filter extracts the first element of the data array,
+converts it to entries, then for each entry creates a new object
+with namespace, cost, and efficiency.
+
+215
+21:24:00,000 --> 21:30:00,000
+You should see output like this.
+
+216
+21:30:00,000 --> 21:36:00,000
+namespace financial-rag, cost 2310, efficiency 0.48.
+namespace riskoracle, cost 1650, efficiency 0.61.
+
+217
+21:36:00,000 --> 21:42:00,000
+namespace kube-system, cost 300, efficiency 0.45.
+namespace monitoring, cost 160, efficiency 0.38.
+
+218
+21:42:00,000 --> 21:48:00,000
+namespace kubecost, cost 350, efficiency 0.72.
+
+219
+21:48:00,000 --> 21:54:00,000
+Now you have cost per namespace from the command line.
+This is chargeback-ready data.
+
+220
+21:54:00,000 --> 22:00:00,000
+You can show each team exactly what they spend.
+You can send this to your finance team.
+
+221
+22:00:00,000 --> 22:06:00,000
+You can include it in your monthly report.
+
+222
+22:06:00,000 --> 22:12:00,000
+Now let's look at cost by team label.
+In Series one, you added a Team tag to all your AWS resources.
+
+223
+22:12:00,000 --> 22:18:00,000
+You tagged EC2 instances with Team equals financial-rag.
+You tagged EBS volumes with Team equals riskoracle.
+
+224
+22:18:00,000 --> 22:24:00,000
+But Kubernetes doesn't know about AWS tags.
+Kubernetes has its own labeling system.
+
+225
+22:24:00,000 --> 22:30:00,000
+You can add labels to Kubernetes namespaces.
+Then Kubecost can aggregate costs by those labels.
+
+226
+22:30:00,000 --> 22:36:00,000
+First, label your namespaces with the team name.
+
+227
+22:36:00,000 --> 22:42:00,000
+kubectl label namespace financial-rag team=financial-rag
+kubectl label namespace riskoracle team=risktoracle
+kubectl label namespace monitoring team=platform
+
+228
+22:42:00,000 --> 22:48:00,000
+Now verify the labels were added.
+kubectl get namespaces dash dash show-labels
+
+229
+22:48:00,000 --> 22:54:00,000
+You should see team equals financial-rag, team equals riskoracle.
+
+230
+22:54:00,000 --> 23:00:00,000
+Now query cost by that label.
+
+231
+23:00:00,000 --> 23:06:00,000
+kubectl exec dash n kubecost deploy/kubecost-cost-analyzer dash dash
+curl dash s http://localhost:9090/allocation?window=7d&aggregate=label:team
+
+232
+23:06:00,000 --> 23:12:00,000
+Pipe to jq data zero to entries array get team, monthlyProjected, efficiency.
+
+233
+23:12:00,000 --> 23:18:00,000
+The aggregate equals label colon team parameter tells Kubecost
+to group costs by the value of the team label.
+
+234
+23:18:00,000 --> 23:24:00,000
+Kubecost looks at every namespace, finds the team label,
+and adds the namespace's cost to that team's total.
+
+235
+23:24:00,000 --> 23:30:00,000
+You should see output like this.
+team financial-rag, monthlyProjected 2310, efficiency 0.48.
+
+236
+23:30:00,000 --> 23:36:00,000
+team riskoracle, monthlyProjected 1650, efficiency 0.61.
+team platform, monthlyProjected 600, efficiency 0.45.
+
+237
+23:36:00,000 --> 23:42:00,000
+Now you have cost per team.
+This is what your CTO wants to see.
+
+238
+23:42:00,000 --> 23:48:00,000
+This is what your finance team wants to see.
+This is what each engineering manager wants to see.
+
+239
+23:48:00,000 --> 23:54:00,000
+No more guessing. No more spreadsheets. No more manual allocation.
+Just data.
+
+240
+23:54:00,000 --> 00:00:00,000
+Now let's look at efficiency scores in more detail.
+We want to find namespaces that are wasting money.
+
+241
+00:00:00,000 --> 00:06:00,000
+Add select efficiency less than zero point seven to the jq filter.
+This filters out namespaces with efficiency below zero point seven.
+
+242
+00:06:00,000 --> 00:12:00,000
+Add wastedCPU and wastedRAMGB to see the exact waste.
+wastedCPU is requested CPU minus actual usage.
+
+243
+00:12:00,000 --> 00:18:00,000
+wastedRAMGB is requested RAM minus actual usage in gigabytes.
+
+244
+00:18:00,000 --> 00:24:00,000
+You should see output like this.
+namespace financial-rag, efficiency 0.48,
+wastedCPU 3.2, wastedRAMGB 8.
+
+245
+00:24:00,000 --> 00:30:00,000
+namespace riskoracle, efficiency 0.61,
+wastedCPU 1.8, wastedRAMGB 4.
+
+246
+00:30:00,000 --> 00:36:00,000
+Now you know exactly how much waste is in each namespace.
+The financial-rag namespace is wasting three point two CPU cores
+and eight gigabytes of RAM.
+
+247
+00:36:00,000 --> 00:42:00,000
+That's real money. That's resources you're paying for but not using.
+
+248
+00:42:00,000 --> 00:48:00,000
+Now let's look at rightsizing recommendations.
+This is where Kubecost tells you exactly what to change.
+
+249
+00:48:00,000 --> 00:54:00,000
+Not just you're overprovisioned.
+Not just you should reduce your requests.
+
+250
+00:54:00,000 --> 01:00:00,000
+Specific recommendations. For each deployment.
+Current CPU request. Recommended CPU request.
+
+251
+01:00:00,000 --> 01:06:00,000
+Current RAM request. Recommended RAM request.
+Estimated monthly savings.
+
+252
+01:06:00,000 --> 01:12:00,000
+kubectl exec dash n kubecost deploy/kubecost-cost-analyzer dash dash
+curl dash s http://localhost:9090/savings/rightSizing?window=7d
+
+253
+01:12:00,000 --> 01:18:00,000
+Pipe to jq rightSizing zero to 15 dot array
+get namespace, deployment, currentCPU, recommendedCPU, currentRAMGB,
+recommendedRAMGB, monthlySavings
+
+254
+01:18:00,000 --> 01:24:00,000
+Sort by monthlySavings descending.
+
+255
+01:24:00,000 --> 01:30:00,000
+Let me break down this command.
+
+256
+01:30:00,000 --> 01:36:00,000
+The API endpoint is savings slash rightSizing.
+The parameter window equals 7d tells Kubecost to look at the last seven days
+of usage data.
+
+257
+01:36:00,000 --> 01:42:00,000
+The jq filter takes the first fifteen recommendations.
+Then it creates an object with namespace, deployment, currentCPU,
+recommendedCPU, currentRAMGB, recommendedRAMGB, and monthlySavings.
+
+258
+01:42:00,000 --> 01:48:00,000
+Then it sorts by monthlySavings descending.
+
+259
+01:48:00,000 --> 01:54:00,000
+You should see output like this.
+
+260
+01:54:00,000 --> 02:00:00,000
+namespace financial-rag, deployment llm-ingest.
+currentCPU 8, recommendedCPU 2.
+currentRAMGB 16, recommendedRAMGB 6.
+monthlySavings 47.20
+
+261
+02:00:00,000 --> 02:06:00,000
+namespace financial-rag, deployment vector-db.
+currentCPU 4, recommendedCPU 1.5.
+currentRAMGB 32, recommendedRAMGB 12.
+monthlySavings 89.30
+
+262
+02:06:00,000 --> 02:12:00,000
+namespace financial-rag, deployment batch-processor.
+currentCPU 4, recommendedCPU 1.
+currentRAMGB 8, recommendedRAMGB 3.
+monthlySavings 34.10
+
+263
+02:12:00,000 --> 02:18:00,000
+namespace riskoracle, deployment risk-calc.
+currentCPU 6, recommendedCPU 2.5.
+currentRAMGB 24, recommendedRAMGB 10.
+monthlySavings 62.40
+
+264
+02:18:00,000 --> 02:24:00,000
+These are your optimization targets.
+
+265
+02:24:00,000 --> 02:30:00,000
+Kubecost has analyzed the actual usage of every deployment
+over the last seven days.
+
+266
+02:30:00,000 --> 02:36:00,000
+It calculated the ninety-fifth percentile of CPU usage.
+The ninety-fifth percentile of memory usage.
+
+267
+02:36:00,000 --> 02:42:00,000
+Then it compared that to the requested resources.
+And it gave you specific numbers.
+
+268
+02:42:00,000 --> 02:48:00,000
+The llm-ingest deployment requested eight CPUs.
+Kubecost saw that the ninety-fifth percentile CPU usage was one point eight cores.
+
+269
+02:48:00,000 --> 02:54:00,000
+So it recommends reducing the CPU request to two cores.
+That's a seventy-five percent reduction.
+
+270
+02:54:00,000 --> 03:00:00,000
+Monthly savings forty-seven dollars.
+
+271
+03:00:00,000 --> 03:06:00,000
+Now let's apply these recommendations.
+
+272
+03:06:00,000 --> 03:12:00,000
+For the llm-ingest deployment, you would update its resource requests.
+
+273
+03:12:00,000 --> 03:18:00,000
+The exact method depends on how you deploy your applications.
+If you use Kubernetes YAML files, you edit the file.
+
+274
+03:18:00,000 --> 03:24:00,000
+If you use Helm, you update the values.
+If you use Terraform, you update the Terraform configuration.
+
+275
+03:24:00,000 --> 03:30:00,000
+Here's how to patch a deployment directly with kubectl.
+
+276
+03:30:00,000 --> 03:36:00,000
+kubectl patch deployment llm-ingest dash n financial-rag
+with json patch replace resources requests cpu to 2000m
+
+277
+03:36:00,000 --> 03:42:00,000
+replace resources requests memory to 6Gi
+replace resources limits cpu to 4000m
+replace resources limits memory to 8Gi
+
+278
+03:42:00,000 --> 03:48:00,000
+This command changes the deployment in place.
+The deployment will restart.
+
+279
+03:48:00,000 --> 03:54:00,000
+Watch the rollout.
+kubectl rollout status deployment/llm-ingest dash n financial-rag
+
+280
+03:54:00,000 --> 04:00:00,000
+The pods will come up with the new resource requests.
+The cluster will have more free capacity.
+
+281
+04:00:00,000 --> 04:06:00,000
+The Cluster Autoscaler or Karpenter will detect the unused nodes
+and remove them. Your EC2 bill will go down.
+
+282
+04:06:00,000 --> 04:12:00,000
+Now check for CPU throttling after applying.
+
+283
+04:12:00,000 --> 04:18:00,000
+CPU throttling is the silent performance killer.
+A pod can be running with no OOMKills but severely throttled.
+
+284
+04:18:00,000 --> 04:24:00,000
+Requests taking three times longer because the CPU limit is too tight.
+
+285
+04:24:00,000 --> 04:30:00,000
+Check CPU throttling ratio.
+kubectl exec dash n kubecost deploy/kubecost-cost-analyzer dash dash
+curl dash s http://localhost:9090/metrics
+
+286
+04:30:00,000 --> 04:36:00,000
+Pipe to grep container_cpu_cfs_throttled_seconds_total
+
+287
+04:36:00,000 --> 04:42:00,000
+Or query Prometheus directly.
+kubectl exec dash n kubecost deploy/prometheus-server-0 dash dash
+wget dash qO dash http://localhost:9090/api/v1/query
+
+288
+04:42:00,000 --> 04:48:00,000
+Query rate of container_cpu_cfs_throttled_seconds_total over five minutes
+greater than zero point one
+
+289
+04:48:00,000 --> 04:54:00,000
+If throttle ratio is greater than zero point one after rightsizing,
+the CPU limit is too tight. Increase it.
+
+290
+04:54:00,000 --> 05:00:00,000
+Do not increase the request. Increase the limit.
+
+291
+05:00:00,000 --> 05:06:00,000
+The distinction between limit and request is critical.
+
+292
+05:06:00,000 --> 05:12:00,000
+Requests are what Kubernetes uses for scheduling.
+What you pay for in Kubecost.
+
+293
+05:12:00,000 --> 05:18:00,000
+Limits are the hard ceiling. What prevents one pod from killing the node.
+
+294
+05:18:00,000 --> 05:24:00,000
+Always set limits higher than requests.
+A good rule is limits equals two times requests for CPU.
+One point five times requests for memory.
+
+295
+05:24:00,000 --> 05:30:00,000
+Now let's look at idle costs.
+Idle costs are resources that are allocated but not used.
+
+296
+05:30:00,000 --> 05:36:00,000
+Pods that are running but not processing requests.
+Nodes that are up but have low utilization.
+
+297
+05:36:00,000 --> 05:42:00,000
+Add idle equals true to the allocation API.
+This tells Kubecost to include idle costs in the response.
+
+298
+05:42:00,000 --> 05:48:00,000
+Idle cost is the cost of resources that were allocated but not used.
+
+299
+05:48:00,000 --> 05:54:00,000
+You should see output like this.
+namespace financial-rag, idleCost 1120
+namespace riskoracle, idleCost 640
+
+300
+05:54:00,000 --> 06:00:00,000
+The financial-rag namespace has an idle cost of one thousand one hundred twenty dollars.
+
+301
+06:00:00,000 --> 06:06:00,000
+That's the cost of resources that were allocated but not used.
+That's pure waste.
+
+302
+06:06:00,000 --> 06:12:00,000
+That's the money you can save by rightsizing.
+
+303
+06:12:00,000 --> 06:18:00,000
+Now let's look at your cluster's overall efficiency.
+This is a single number that tells you how well your cluster is utilizing
+its resources.
+
+304
+06:18:00,000 --> 06:24:00,000
+Aggregate equals cluster.
+
+305
+06:24:00,000 --> 06:30:00,000
+You should see a number like zero point five eight or zero point six five
+or zero point seven two.
+
+306
+06:30:00,000 --> 06:36:00,000
+If your cluster efficiency is below zero point seven,
+you have work to do. You are overprovisioning.
+
+307
+06:36:00,000 --> 06:42:00,000
+You are paying for resources you don't need.
+You should apply the rightsizing recommendations.
+
+308
+06:42:00,000 --> 06:48:00,000
+You should reduce your resource requests.
+You should let the cluster scale down.
+
+309
+06:48:00,000 --> 06:54:00,000
+If your cluster efficiency is above zero point eight five,
+you are at risk of performance problems.
+
+310
+06:54:00,000 --> 07:00:00,000
+Your pods are using almost all of their requested resources.
+One small spike in traffic could cause CPU throttling.
+
+311
+07:00:00,000 --> 07:06:00,000
+One memory leak could cause an OOM kill.
+You should increase your resource requests to give yourself more headroom.
+
+312
+07:06:00,000 --> 07:12:00,000
+The ideal range is zero point seven to zero point eight five.
+This is the sweet spot.
+
+313
+07:12:00,000 --> 07:18:00,000
+Enough headroom for spikes. Not so much headroom that you're wasting money.
+
+314
+07:18:00,000 --> 07:24:00,000
+Now let's save everything to your baseline document.
+You created this document in Series one.
+
+315
+07:24:00,000 --> 07:30:00,000
+You updated it in Series two.
+Now you're going to add your Kubecost findings.
+
+316
+07:30:00,000 --> 07:36:00,000
+echo three equals signs SERIES 3 KUBECOST DEPLOYMENT three equals signs
+with date.
+
+317
+07:36:00,000 --> 07:42:00,000
+echo dash dash dash COST BY NAMESPACE dash dash dash
+then the allocation command with jq.
+
+318
+07:42:00,000 --> 07:48:00,000
+echo dash dash dash CLUSTER EFFICIENCY dash dash dash
+then the aggregate equals cluster command.
+
+319
+07:48:00,000 --> 07:54:00,000
+echo dash dash dash TOP RIGHTSIZING OPPORTUNITIES dash dash dash
+then the rightsizing command with first five results.
+
+320
+07:54:00,000 --> 08:00:00,000
+echo dash dash dash TOTAL SAVINGS IDENTIFIED dash dash dash
+then the savings endpoint.
+
+321
+08:00:00,000 --> 08:06:00,000
+Now view your updated baseline document.
+cat tilde slash finops-baseline.txt
+
+322
+08:06:00,000 --> 08:12:00,000
+You should see your Series one baseline,
+your Series two waste audit findings,
+and your Series three Kubecost findings.
+
+323
+08:12:00,000 --> 08:18:00,000
+This document is your complete record.
+It shows your starting point, your identified waste,
+your visibility improvements, and your rightsizing recommendations.
+
+324
+08:18:00,000 --> 08:24:00,000
+Let's recap what you've built in Series three.
+
+325
+08:24:00,000 --> 08:30:00,000
+You deployed Kubecost on EKS.
+You have a dashboard that shows cost per namespace,
+cost per team, efficiency scores, and rightsizing recommendations.
+
+326
+08:30:00,000 --> 08:36:00,000
+You can open http://localhost:9090 anytime
+to see your cluster's cost visibility.
+
+327
+08:36:00,000 --> 08:42:00,000
+You learned how to query the Kubecost API from the command line.
+You can script these queries.
+
+328
+08:42:00,000 --> 08:48:00,000
+You can automate reporting. You can integrate cost data
+into your existing dashboards.
+
+329
+08:48:00,000 --> 08:54:00,000
+You can send cost reports to Slack or email.
+
+330
+08:54:00,000 --> 09:00:00,000
+You learned how to interpret efficiency scores.
+Below zero point seven means overprovisioning.
+
+331
+09:00:00,000 --> 09:06:00,000
+You're paying for resources you don't need.
+Above zero point eight five means underprovisioning.
+
+332
+09:06:00,000 --> 09:12:00,000
+You're at risk of performance problems.
+The sweet spot is zero point seven to zero point eight five.
+
+333
+09:12:00,000 --> 09:18:00,000
+You learned how to find idle costs.
+Resources that are allocated but not used.
+
+334
+09:18:00,000 --> 09:24:00,000
+These are your optimization targets.
+These are the dollars you can save.
+
+335
+09:24:00,000 --> 09:30:00,000
+You learned how to get rightsizing recommendations.
+Kubecost tells you exactly what to change.
+
+336
+09:30:00,000 --> 09:36:00,000
+For each deployment. Current CPU request. Recommended CPU request.
+Current RAM request. Recommended RAM request. Estimated monthly savings.
+
+337
+09:36:00,000 --> 09:42:00,000
+You learned how to apply those recommendations.
+Update your deployment YAML.
+
+338
+09:42:00,000 --> 09:48:00,000
+Reduce CPU requests. Reduce memory requests.
+Let the cluster scale down. Watch your bill drop.
+
+339
+09:48:00,000 --> 09:54:00,000
+You now have visibility that AWS Cost Explorer cannot provide.
+
+340
+09:54:00,000 --> 10:00:00,000
+Cost Explorer shows you EC2. Kubecost shows you namespace.
+Cost Explorer shows you EBS. Kubecost shows you pod.
+
+341
+10:00:00,000 --> 10:06:00,000
+Cost Explorer shows you NAT Gateway. Kubecost shows you service.
+
+342
+10:06:00,000 --> 10:12:00,000
+This is the difference between guessing and knowing.
+This is the difference between hoping your costs are optimized
+and knowing they are.
+
+343
+10:12:00,000 --> 10:18:00,000
+This is the difference between being a junior engineer who runs commands
+and a senior engineer who understands the system.
+
+344
+10:18:00,000 --> 10:24:00,000
+Here's what you need before Series four.
+
+345
+10:24:00,000 --> 10:30:00,000
+First, Kubecost must be running on your EKS cluster.
+Run kubectl get pods dash n kubecost.
+
+346
+10:30:00,000 --> 10:36:00,000
+You should see all pods with status Running.
+If any pods are not running, check the logs. Fix the issues.
+
+347
+10:36:00,000 --> 10:42:00,000
+Second, you must be able to access the Kubecost dashboard.
+Run kubectl port-forward and open localhost 9090.
+
+348
+10:42:00,000 --> 10:48:00,000
+You should see the Allocation page with data.
+If you see no data, wait a few minutes. Kubecost needs time to collect metrics.
+
+349
+10:48:00,000 --> 10:54:00,000
+Third, you must have cost per namespace data.
+Run the API query from earlier. You should see JSON output with namespaces and costs.
+
+350
+10:54:00,000 --> 11:00:00,000
+If you see an empty array, your cluster might not have any pods.
+Deploy financial-rag-agent or riskoracle to generate metrics.
+
+351
+11:00:00,000 --> 11:06:00,000
+Fourth, you must have at least one rightsizing recommendation.
+Run the rightsizing API query.
+
+352
+11:06:00,000 --> 11:12:00,000
+You should see at least one deployment with currentCPU and recommendedCPU.
+If you see no recommendations, your cluster might already be optimized.
+
+353
+11:12:00,000 --> 11:18:00,000
+Or your usage might be too low. Or your window might be too short.
+Try increasing the window to 14d instead of 7d.
+
+354
+11:18:00,000 --> 11:24:00,000
+If you have all four, you're ready for Series four.
+
+355
+11:24:00,000 --> 11:30:00,000
+In Series four, we deploy Karpenter.
+Karpenter is Kubernetes-native autoscaling.
+
+356
+11:30:00,000 --> 11:36:00,000
+It replaces the traditional Cluster Autoscaler.
+It launches nodes in seconds instead of minutes.
+
+357
+11:36:00,000 --> 11:42:00,000
+It chooses the cheapest available instance types
+from a list you provide.
+
+358
+11:42:00,000 --> 11:48:00,000
+It consolidates workloads to reduce the number of nodes.
+It can save you thirty to forty percent on compute costs.
+
+359
+11:48:00,000 --> 11:54:00,000
+Where Kubecost shows you the waste,
+Karpenter eliminates it automatically.
+
+360
+11:54:00,000 --> 12:00:00,000
+Let's go to Series four.
+```
+
+---
+
+**END OF PHASE 3 — SERIES 3 COMPLETE**
+
+**Total SRT lines:** 360
+**Total duration:** Approximately 60-75 minutes
+
+**What is covered in this SRT:**
+
+| Section | Lines | Description |
+|---------|-------|-------------|
+| Why Cost Explorer Is Not Enough | 12-27 | The problem Kubecost solves |
+| The Rest of the Story | 28-42 | Startup case study |
+| Prerequisites | 44-80 | EKS cluster, kubectl, Helm, AWS CLI |
+| Install Kubecost | 82-155 | Helm repo, namespace, install, pod explanations |
+| Cost by Namespace | 156-221 | Allocation page, efficiency scores, CLI query |
+| Cost by Team Label | 222-239 | Label namespaces, query by label |
+| Efficiency Scores Deep Dive | 240-247 | Find overprovisioned namespaces |
+| Rightsizing Recommendations | 248-271 | Get recommendations, interpret output |
+| Apply Rightsizing | 272-294 | Patch deployment, check throttling |
+| Idle Cost Analysis | 295-302 | Find allocated but unused resources |
+| Cluster Efficiency | 303-313 | Single number for CTO |
+| Update Baseline Document | 314-323 | Save findings |
+| Recap & Prerequisites | 324-354 | What you built, what's needed for Series 4 |
+| Series 4 Preview | 355-360 | What's coming next |

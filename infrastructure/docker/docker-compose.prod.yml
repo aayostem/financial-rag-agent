@@ -4,18 +4,17 @@
 #
 # Services:
 #   - app:        FastAPI application (gunicorn + uvicorn workers)
-#   - postgres:   PostgreSQL 16 with pgvector
+#   - postgres:   PostgreSQL 17 with pgvector
 #   - redis:      Redis 7 (cache + rate limiter)
 #   - prometheus: Metrics collection
 #   - grafana:    Metrics visualization
-#   - nginx:      Reverse proxy + TLS termination
 #
 # Usage:
-#   docker compose -f docker-compose.prod.yml up -d
+#   docker compose -f docker-compose.prod.yml --env-file .env.prod up -d
 #
-# Required env vars (set in .env.prod or environment):
+# Required env vars (set in .env.prod):
 #   POSTGRES_PASSWORD, REDIS_PASSWORD, API_KEY,
-#   OPENAI_API_KEY (or Groq key), SECRET_KEY
+#   OPENAI_API_KEY (or GROQ_API_KEY), SECRET_KEY
 # =============================================================================
 
 x-restart: &restart
@@ -41,21 +40,43 @@ services:
     container_name: finrag-app
     <<: [*restart, *logging]
     environment:
-      APP_ENV:            production
-      POSTGRES_HOST:      postgres
-      POSTGRES_PORT:      "5432"
-      POSTGRES_DB:        financial_rag
-      POSTGRES_USER:      finrag
-      POSTGRES_PASSWORD:  ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD required}
-      REDIS_HOST:         redis
-      REDIS_PORT:         "6379"
-      REDIS_PASSWORD:     ${REDIS_PASSWORD:?REDIS_PASSWORD required}
-      OPENAI_API_KEY:     ${OPENAI_API_KEY:?OPENAI_API_KEY required}
-      LLM_MODEL:          ${LLM_MODEL:-llama-3.3-70b-versatile}
-      LLM_BASE_URL:       ${LLM_BASE_URL:-https://api.groq.com/openai/v1}
-      API_KEY_ENABLED:    "true"
-      API_KEY:            ${API_KEY:?API_KEY required}
-      CORS_ORIGINS:       ${CORS_ORIGINS:-https://yourdomain.com}
+      # === App Environment ===
+      APP_ENV: production
+      MOCK_EXTERNAL_APIS: "false"
+      
+      # === PostgreSQL ===
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      POSTGRES_DB: financial_rag
+      POSTGRES_USER: finrag
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD required}
+      
+      # === Redis ===
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD required}
+      
+      # === Embeddings (OpenAI) ===
+      EMBEDDING_PROVIDER: openai
+      EMBEDDING_MODEL: text-embedding-3-small
+      EMBEDDING_DIMENSIONS: "1536"
+      OPENAI_API_KEY: ${OPENAI_API_KEY:?OPENAI_API_KEY required}
+      
+      # === LLM (Groq) ===
+      LLM_PROVIDER: openai
+      LLM_BASE_URL: ${LLM_BASE_URL:-https://api.groq.com/openai/v1}
+      LLM_MODEL: ${LLM_MODEL:-llama-3.3-70b-versatile}
+      GROQ_API_KEY: ${GROQ_API_KEY:?GROQ_API_KEY required}
+      
+      # === API Security ===
+      API_KEY_ENABLED: "true"
+      API_KEY: ${API_KEY:?API_KEY required}
+      CORS_ORIGINS: ${CORS_ORIGINS:-https://yourdomain.com}
+      
+      # === Logging ===
+      LOG_LEVEL: ${LOG_LEVEL:-WARNING}
+      LOG_FORMAT: json
+      
     ports:
       - "8000:8000"
     depends_on:
@@ -72,34 +93,39 @@ services:
     deploy:
       resources:
         limits:
-          memory: 4g
-          cpus: "2.0"
+          memory: ${APP_MEMORY_LIMIT:-4g}
+          cpus: "${APP_CPU_LIMIT:-2.0}"
+        reservations:
+          memory: 1g
 
   # ============================================================================
   # PostgreSQL + pgvector
   # ============================================================================
   postgres:
-    image: pgvector/pgvector:pg16
+    image: pgvector/pgvector:pg17
     container_name: finrag-postgres
     <<: [*restart, *logging]
     environment:
-      POSTGRES_USER:     finrag
+      POSTGRES_USER: finrag
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB:       financial_rag
+      POSTGRES_DB: financial_rag
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./init/create_schema.sql:/docker-entrypoint-initdb.d/01_schema.sql
-      - ./init/create_hnsw_index.sql:/docker-entrypoint-initdb.d/02_hnsw.sql
+      - ./init/01_create_schema.sql:/docker-entrypoint-initdb.d/01_create_schema.sql:ro
     healthcheck:
-      test: ["CMD", "pg_isready", "-U", "finrag", "-d", "financial_rag"]
+      test: ["CMD-SHELL", "pg_isready -U finrag -d financial_rag"]
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 30s
     deploy:
       resources:
         limits:
           memory: ${POSTGRES_MEMORY_LIMIT:-4g}
           cpus: "${POSTGRES_CPU_LIMIT:-2.0}"
+        reservations:
+          memory: 512m
 
   # ============================================================================
   # Redis
@@ -115,17 +141,22 @@ services:
       --maxmemory-policy allkeys-lru
       --appendonly yes
       --tcp-keepalive 60
+      --loglevel notice
     volumes:
       - redis_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "--no-auth-warning", "-a", "$$REDIS_PASSWORD", "ping"]
+      test: ["CMD", "redis-cli", "--no-auth-warning", "-a", "${REDIS_PASSWORD}", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 10s
     deploy:
       resources:
         limits:
-          memory: 1g
+          memory: ${REDIS_MEMORY_LIMIT:-1g}
+          cpus: "${REDIS_CPU_LIMIT:-1.0}"
+        reservations:
+          memory: 128m
 
   # ============================================================================
   # Prometheus
@@ -140,12 +171,17 @@ services:
     command:
       - "--config.file=/etc/prometheus/prometheus.yml"
       - "--storage.tsdb.path=/prometheus"
-      - "--storage.tsdb.retention.time=30d"
+      - "--storage.tsdb.retention.time=${PROMETHEUS_RETENTION:-30d}"
       - "--web.enable-lifecycle"
     ports:
       - "9090:9090"
     depends_on:
       - app
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+          cpus: "0.5"
 
   # ============================================================================
   # Grafana
@@ -156,8 +192,9 @@ services:
     <<: [*restart, *logging]
     environment:
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-changeme}
-      GF_USERS_ALLOW_SIGN_UP:     "false"
-      GF_SERVER_ROOT_URL:         ${GRAFANA_URL:-http://localhost:3000}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_SERVER_ROOT_URL: ${GRAFANA_URL:-http://localhost:3000}
+      GF_INSTALL_PLUGINS: "grafana-piechart-panel"
     volumes:
       - grafana_data:/var/lib/grafana
       - ./grafana/provisioning:/etc/grafana/provisioning:ro
@@ -165,13 +202,23 @@ services:
       - "3000:3000"
     depends_on:
       - prometheus
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+          cpus: "0.5"
 
 volumes:
   postgres_data:
+    name: finrag_postgres_data
   redis_data:
+    name: finrag_redis_data
   prometheus_data:
+    name: finrag_prometheus_data
   grafana_data:
+    name: finrag_grafana_data
 
 networks:
   default:
     name: finrag-prod-network
+    driver: bridge

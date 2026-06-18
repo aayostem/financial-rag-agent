@@ -1,0 +1,893 @@
+# PHASE 7 — CI/CD PIPELINE
+
+[## [SECTION: New Files in This Phase]]
+
+
+1
+02:50:06,000 --> 02:50:12,000
+Now let's move to Phase 7. The CI/CD pipeline.
+This automates testing, security scanning, and building our Docker images.
+
+2
+02:50:12,000 --> 02:50:18,000
+Here are the new files we'll create in Phase 7.
+
+3
+02:50:18,000 --> 02:50:24,000
+.github/workflows/ci.yml
+GitHub Actions workflow for CI/CD.
+
+4
+02:50:24,000 --> 02:50:30,000
+infrastructure/docker/Dockerfile
+Multi-stage Docker build for the application.
+
+5
+02:50:30,000 --> 02:50:36,000
+infrastructure/docker/docker-compose.prod.yml
+Production Docker Compose with all services.
+
+6
+02:50:36,000 --> 02:50:42,000
+infrastructure/docker/prometheus/prometheus.yml
+Prometheus configuration for production.
+
+7
+02:50:42,000 --> 02:50:48,000
+scripts/start.sh
+Utility script to start development services.
+
+8
+02:50:48,000 --> 02:50:54,000
+scripts/stop.sh
+Utility script to stop all services.
+
+9
+02:50:54,000 --> 02:51:00,000
+scripts/cleanup.sh
+Utility script to remove containers and volumes.
+
+10
+02:51:00,000 --> 02:51:06,000
+policies/rego/vault_policy.rego
+OPA Rego policy for Vault configuration validation.
+
+
+[## [SECTION: Step 12 — The CI Pipeline Architecture]]
+
+
+11
+02:51:06,000 --> 02:51:12,000
+Now let's build our GitHub Actions workflow.
+We'll put it in .github/workflows/ci.yml
+
+12
+02:51:12,000 --> 02:51:18,000
+The workflow runs on pushes to main and develop, and on pull requests.
+It has seven jobs that run in parallel with dependencies.
+
+13
+02:51:18,000 --> 02:51:24,000
+First, secret scanning with gitleaks.
+It scans your git history for accidentally committed secrets.
+
+14
+02:51:24,000 --> 02:51:30,000
+API keys, passwords, tokens that were committed by mistake.
+gitleaks finds them even if they were deleted later.
+
+15
+02:51:30,000 --> 02:51:36,000
+fetch-depth zero is critical. It fetches the full git history.
+Otherwise, gitleaks only sees the latest commit.
+
+16
+02:51:36,000 --> 02:51:42,000
+Second job. dependency vulnerability scan with pip-audit.
+It checks if any of your Python packages have known CVEs.
+
+17
+02:51:42,000 --> 02:51:48,000
+Third job. lint and type check.
+ruff checks code style and common errors.
+
+18
+02:51:48,000 --> 02:51:54,000
+mypy checks type annotations.
+This catches bugs before runtime.
+
+19
+02:51:54,000 --> 02:52:00,000
+Fourth job. unit tests.
+These run fast with mocked dependencies.
+
+20
+02:52:00,000 --> 02:52:06,000
+We set APP_ENV to testing, and provide test passwords.
+We run pytest with coverage and fail if coverage drops below 50 percent.
+
+21
+02:52:06,000 --> 02:52:12,000
+Fifth job. integration tests.
+These require real PostgreSQL and Redis containers.
+
+22
+02:52:12,000 --> 02:52:18,000
+GitHub Actions provides services for this.
+We define a postgres container and a redis container.
+
+23
+02:52:18,000 --> 02:52:24,000
+We apply the schema, then run pytest.
+Integration tests only run on pushes, not on pull requests.
+
+24
+02:52:24,000 --> 02:52:30,000
+Sixth job. build the Docker image.
+This only runs on pushes to the main branch.
+
+25
+02:52:30,000 --> 02:52:36,000
+We set up Docker Buildx for multi-platform builds.
+We log in to GitHub Container Registry.
+
+26
+02:52:36,000 --> 02:52:42,000
+We extract metadata for tags. branch name, commit SHA, and latest.
+Then we build and push the image.
+
+27
+02:52:42,000 --> 02:52:48,000
+Seventh job. container security scan with Trivy.
+Trivy scans the image for CVEs in OS and Python packages.
+
+28
+02:52:48,000 --> 02:52:54,000
+It produces a SARIF report. This gets uploaded to the GitHub Security tab.
+You can see all vulnerabilities in your repository's security dashboard.
+
+29
+02:52:54,000 --> 02:53:00,000
+Concurrency prevents multiple workflows from running simultaneously.
+If a new push happens, the previous workflow is cancelled.
+
+30
+02:53:00,000 --> 02:53:06,000
+This saves CI minutes and prevents wasted work.
+
+
+[## [SECTION: Step 13 — Multi-Stage Dockerfile (Component #71)]]
+
+
+31
+02:53:06,000 --> 02:53:12,000
+Now let's build our multi-stage Dockerfile.
+We'll put it in infrastructure/docker/Dockerfile
+
+32
+02:53:12,000 --> 02:53:18,000
+Let me explain three important Docker patterns.
+First, layer caching order.
+
+33
+02:53:18,000 --> 02:53:24,000
+Docker caches each layer. If nothing changed, it reuses the cache.
+This makes builds much faster.
+
+34
+02:53:24,000 --> 02:53:30,000
+Copy dependency files first. pyproject.toml changes rarely.
+Install pip dependencies next. This layer is cached until pyproject.toml changes.
+
+35
+02:53:30,000 --> 02:53:36,000
+Then copy application code. Code changes frequently.
+But the pip install layer is still cached.
+
+36
+02:53:36,000 --> 02:53:42,000
+Second pattern. non-root user.
+Containers run as root by default.
+
+37
+02:53:42,000 --> 02:53:48,000
+If an attacker escapes the container, they have root on the host.
+Running as a non-root user limits the damage.
+
+38
+02:53:48,000 --> 02:53:54,000
+We create a finrag user and group.
+Then change ownership of the app directory and switch to that user.
+
+39
+02:53:54,000 --> 02:54:00,000
+Third pattern. HEALTHCHECK in the image.
+This checks if the container is still alive.
+
+40
+02:54:00,000 --> 02:54:06,000
+The healthcheck runs curl to the health endpoint every 30 seconds.
+It waits 40 seconds for startup before checking.
+
+41
+02:54:06,000 --> 02:54:12,000
+This is redundant with Docker Compose and Kubernetes healthchecks.
+But defense in depth means having it in the image as a fallback.
+
+42
+02:54:12,000 --> 02:54:18,000
+The Dockerfile uses multi-stage builds.
+First stage is builder. It installs dependencies and compiles anything needed.
+
+43
+02:54:18,000 --> 02:54:24,000
+Second stage is production. It copies only the virtual environment and source code.
+No build tools in the final image. This makes it smaller and more secure.
+
+44
+02:54:24,000 --> 02:54:30,000
+We use a slim Python base image.
+Alpine is even smaller but can have compatibility issues.
+
+45
+02:54:30,000 --> 02:54:36,000
+Our Dockerfile is complete.
+Now we can build secure, production-ready images.
+
+
+[## [SECTION: Step 14 — Container Scanning with Trivy (Component #72)]]
+
+
+46
+02:54:36,000 --> 02:54:42,000
+Now let's understand container scanning with Trivy.
+Trivy scans the built image for CVEs in OS and Python packages.
+
+47
+02:54:42,000 --> 02:54:48,000
+The workflow uploads results in SARIF format to GitHub Security tab.
+This gives you a dashboard of all vulnerabilities.
+
+48
+02:54:48,000 --> 02:54:54,000
+exit-code zero means Trivy reports findings but does not fail the build.
+Change to one to block deployments with CRITICAL vulnerabilities.
+
+49
+02:54:54,000 --> 02:55:00,000
+You can test Trivy locally before pushing.
+Install Trivy, then run trivy image against your image.
+
+50
+02:55:00,000 --> 02:55:06,000
+Scan with severity CRITICAL, HIGH and format table.
+This shows you exactly what vulnerabilities exist.
+
+51
+02:55:06,000 --> 02:55:12,000
+Our container scanning is integrated into CI.
+Every image is scanned before deployment.
+
+
+[## [SECTION: Step 15 — Secret Scanning with gitleaks (Component #73)]]
+
+
+52
+02:55:12,000 --> 02:55:18,000
+Now let's understand secret scanning with gitleaks.
+gitleaks scans your git history for secrets that were accidentally committed.
+
+53
+02:55:18,000 --> 02:55:24,000
+The workflow uses the official gitleaks GitHub Action.
+It scans the entire repository history.
+
+54
+02:55:24,000 --> 02:55:30,000
+fetch-depth zero is critical. Without it, Actions only fetches the latest commit.
+gitleaks needs full history to catch secrets that were added in commit A and deleted in commit B.
+
+55
+02:55:30,000 --> 02:55:36,000
+Even if a secret is deleted, it still exists in the git object store.
+Anyone who clones the repo can see it.
+
+56
+02:55:36,000 --> 02:55:42,000
+You can test gitleaks locally before pushing.
+gitleaks detect with the source flag.
+
+57
+02:55:42,000 --> 02:55:48,000
+Add a dot gitleaks.toml file to allowlist false positives.
+Test passwords in CI YAML, and placeholder values.
+
+58
+02:55:48,000 --> 02:55:54,000
+Our secret scanning is integrated into CI.
+If a secret is found, the workflow fails.
+
+
+[## [SECTION: Step 16 — OPA Rego Policy (Component #74)]]
+
+
+59
+02:55:54,000 --> 02:56:00,000
+Now let's look at the OPA Rego policy for Vault.
+This validates Vault policy HCL files before they are applied.
+
+60
+02:56:00,000 --> 02:56:06,000
+Three rules are enforced by the Rego policy.
+
+61
+02:56:06,000 --> 02:56:12,000
+First, no wildcard write on secret paths.
+This prevents secret star with write capability.
+
+62
+02:56:12,000 --> 02:56:18,000
+Second, no delete on secret paths.
+Application roles should never delete secrets.
+
+63
+02:56:18,000 --> 02:56:24,000
+Third, no sudo capability except for admin policies.
+And no sys slash access from non-admin workloads.
+
+64
+02:56:24,000 --> 02:56:30,000
+Use the file from your repo as-is.
+Test it with conftest.
+
+65
+02:56:30,000 --> 02:56:36,000
+Install conftest. pip install conftest.
+Create a test input with a bad policy that grants write on a wildcard path.
+
+66
+02:56:36,000 --> 02:56:42,000
+Run conftest test against the input.
+Using vault_policy.rego as the policy.
+
+67
+02:56:42,000 --> 02:56:48,000
+Expected output shows failures.
+The policy catches the wildcard write and the delete capability.
+
+68
+02:56:48,000 --> 02:56:54,000
+Our OPA Rego policy is complete.
+Vault policies are validated before they reach production.
+
+
+[## [SECTION: Step 17 — Production Docker Compose]]
+
+
+69
+02:56:54,000 --> 02:57:00,000
+Now let's set up the production Docker Compose configuration.
+We'll put it in infrastructure/docker/docker-compose.prod.yml
+
+70
+02:57:00,000 --> 02:57:06,000
+This runs the entire application stack in production.
+We have five core services.
+
+71
+02:57:06,000 --> 02:57:12,000
+The FastAPI application, PostgreSQL, Redis, Prometheus, and Grafana.
+
+72
+02:57:12,000 --> 02:57:18,000
+First, the app service.
+It builds the Docker image using the production target.
+
+73
+02:57:18,000 --> 02:57:24,000
+Environment variables come from a dot env dot prod file.
+All required variables have the colon question mark syntax.
+
+74
+02:57:24,000 --> 02:57:30,000
+If POSTGRES_PASSWORD is missing, Docker Compose refuses to start.
+This is fail-fast at startup.
+
+75
+02:57:30,000 --> 02:57:36,000
+The app depends on postgres and redis with condition service_healthy.
+It only starts after both dependencies are healthy.
+
+76
+02:57:36,000 --> 02:57:42,000
+The app has its own healthcheck.
+curl to the health endpoint every 30 seconds.
+
+77
+02:57:42,000 --> 02:57:48,000
+This tells Docker if the container is alive.
+If the healthcheck fails, the container can be restarted.
+
+78
+02:57:48,000 --> 02:57:54,000
+Second, the PostgreSQL service.
+We use the pgvector slash pg16 image.
+
+79
+02:57:54,000 --> 02:58:00,000
+Environment variables include the database name, user, and password.
+Notice the password is not using colon question mark here.
+
+80
+02:58:00,000 --> 02:58:06,000
+It comes from the same environment variable.
+But the check happens at the app level.
+
+81
+02:58:06,000 --> 02:58:12,000
+Volumes mount persistent data storage.
+And the init SQL scripts run on first start.
+
+82
+02:58:12,000 --> 02:58:18,000
+Third, the Redis service.
+Redis 7 on Alpine Linux for a small image size.
+
+83
+02:58:18,000 --> 02:58:24,000
+The command configures the server.
+Requirepass uses the password from environment.
+
+84
+02:58:24,000 --> 02:58:30,000
+Maxmemory is set to 1 gigabyte.
+The eviction policy is allkeys-lru, correct for a cache.
+
+85
+02:58:30,000 --> 02:58:36,000
+Appendonly yes enables persistence to disk.
+This means Redis survives container restarts.
+
+86
+02:58:36,000 --> 02:58:42,000
+Fourth, Prometheus for metrics collection.
+It scrapes the app's metrics endpoint every 10 seconds.
+
+87
+02:58:42,000 --> 02:58:48,000
+Prometheus stores data for 30 days.
+It has a web lifecycle enabled for reloads without restart.
+
+88
+02:58:48,000 --> 02:58:54,000
+Fifth, Grafana for metrics visualization.
+It connects to Prometheus as a data source.
+
+89
+02:58:54,000 --> 02:59:00,000
+The admin password is set from environment variables.
+User sign-up is disabled for security.
+
+90
+02:59:00,000 --> 02:59:06,000
+We need to create the Prometheus configuration file.
+It goes in infrastructure slash docker slash prometheus.
+
+91
+02:59:06,000 --> 02:59:12,000
+Global scrape interval is 15 seconds.
+Evaluation interval is also 15 seconds.
+
+92
+02:59:12,000 --> 02:59:18,000
+Scrape configs define which targets to monitor.
+One job for the financial-rag-api, target app port 8000.
+
+93
+02:59:18,000 --> 02:59:24,000
+And one job for Prometheus itself, target localhost 9090.
+
+94
+02:59:24,000 --> 02:59:30,000
+To start the production stack, first create a dot env dot prod file.
+Copy from dot env example and edit with production values.
+
+95
+02:59:30,000 --> 02:59:36,000
+Then run docker compose with the production compose file.
+Use the dash dash env dash file flag to specify your environment file.
+
+96
+02:59:36,000 --> 02:59:42,000
+Verify all services are running with docker compose ps.
+You should see five services all in the Up state.
+
+97
+02:59:42,000 --> 02:59:48,000
+Let me summarize the production architecture.
+
+98
+02:59:48,000 --> 02:59:54,000
+The app service connects to PostgreSQL and Redis.
+It exposes Prometheus metrics on the slash metrics endpoint.
+
+99
+02:59:54,000 --> 03:00:00,000
+Prometheus scrapes those metrics every 10 seconds.
+Grafana visualizes them in dashboards.
+
+100
+03:00:00,000 --> 03:00:06,000
+All data is persisted in Docker volumes.
+PostgreSQL data, Redis data, Prometheus data, and Grafana data.
+
+101
+03:00:06,000 --> 03:00:12,000
+Our production Docker Compose stack is complete.
+The entire application is ready for deployment.
+
+
+[## [SECTION: Step 18 — Utility Scripts]]
+
+
+102
+03:00:12,000 --> 03:00:18,000
+Now let's create the utility scripts for development.
+These make starting and stopping the environment much easier.
+
+103
+03:00:18,000 --> 03:00:24,000
+First, start.sh. This script starts the development environment.
+It has error handling with set dash e uo pipefail.
+
+104
+03:00:24,000 --> 03:00:30,000
+If any command fails, the script exits immediately.
+This prevents running with half-initialized services.
+
+105
+03:00:30,000 --> 03:00:36,000
+The script does preflight checks first.
+It checks if dot env file exists.
+
+106
+03:00:36,000 --> 03:00:42,000
+Then it sources the dot env file to load environment variables.
+It sets all variables, then unsets the automatic export.
+
+107
+03:00:42,000 --> 03:00:48,000
+It checks if docker is installed.
+And if the docker daemon is actually running.
+
+108
+03:00:48,000 --> 03:00:54,000
+Next, it starts the core services.
+PostgreSQL and Redis with docker compose up minus d.
+
+109
+03:00:54,000 --> 03:01:00,000
+The wait_healthy function loops until each container is healthy.
+It checks docker inspect for the health status.
+
+110
+03:01:00,000 --> 03:01:06,000
+It retries up to 30 times, waiting 2 seconds between tries.
+If a container never becomes healthy, the script fails with an error.
+
+111
+03:01:06,000 --> 03:01:12,000
+Then it asks if you want to start management tools.
+pgAdmin and Redis Commander are in the tools profile.
+
+112
+03:01:12,000 --> 03:01:18,000
+If you say yes, it runs docker compose with the profile flag.
+These tools are optional and not required for the app to run.
+
+113
+03:01:18,000 --> 03:01:24,000
+Finally, it prints a summary of where services are running.
+PostgreSQL on localhost with the configured port.
+
+114
+03:01:24,000 --> 03:01:30,000
+Redis on localhost with its port.
+And if you started tools, pgAdmin on port 5050, Redis UI on port 8081.
+
+115
+03:01:30,000 --> 03:01:36,000
+Second, stop.sh. This is the simplest script.
+It just runs docker compose down.
+
+116
+03:01:36,000 --> 03:01:42,000
+This stops all containers but preserves the data volumes.
+Your PostgreSQL and Redis data remain on disk.
+
+117
+03:01:42,000 --> 03:01:48,000
+Third, cleanup.sh. This is destructive.
+It asks for confirmation before doing anything.
+
+118
+03:01:48,000 --> 03:01:54,000
+If you type y or Y, it runs docker compose down with the minus v flag.
+The minus v flag removes all named volumes.
+
+119
+03:01:54,000 --> 03:02:00,000
+This deletes your PostgreSQL database, Redis data, and any other persistent storage.
+Use this to completely reset your development environment.
+
+120
+03:02:00,000 --> 03:02:06,000
+Make the scripts executable first.
+chmod plus x scripts slash start.sh, stop.sh, and cleanup.sh.
+
+121
+03:02:06,000 --> 03:02:12,000
+Here is the development workflow.
+First, run dot slash scripts slash start.sh.
+
+122
+03:02:12,000 --> 03:02:18,000
+This starts PostgreSQL and Redis.
+It waits for them to be healthy.
+
+123
+03:02:18,000 --> 03:02:24,000
+Do your development work.
+Run your application, run tests.
+
+124
+03:02:24,000 --> 03:02:30,000
+When you're done, run dot slash scripts slash stop.sh.
+The data stays on disk for next time.
+
+125
+03:02:30,000 --> 03:02:36,000
+If you want a completely fresh start, run dot slash scripts slash cleanup.sh.
+This removes everything, including your data.
+
+126
+03:02:36,000 --> 03:02:42,000
+Our utility scripts are complete.
+Development environment management is now simple and consistent.
+
+
+[## [SECTION: Final File Tree — Phases 6 & 7]]
+
+
+127
+03:02:42,000 --> 03:02:48,000
+Let me show you the complete file tree for Phases 6 and 7.
+
+128
+03:02:48,000 --> 03:02:54,000
+Phase 6 files.
+infrastructure/vault/vault-bootstrap.sh
+
+129
+03:02:54,000 --> 03:03:00,000
+infrastructure/vault/policies/api-policy.hcl
+infrastructure/vault/policies/agent-policy.hcl
+infrastructure/vault/policies/ingestion-policy.hcl
+
+130
+03:03:00,000 --> 03:03:06,000
+infrastructure/k8s/service-accounts.yaml
+infrastructure/vault/vault-agent-config.hcl
+
+131
+03:03:06,000 --> 03:03:12,000
+src/financial_rag/security/vault.py
+src/financial_rag/security/__init__.py
+
+132
+03:03:12,000 --> 03:03:18,000
+Phase 7 files.
+.github/workflows/ci.yml
+
+133
+03:03:18,000 --> 03:03:24,000
+infrastructure/docker/Dockerfile
+infrastructure/docker/docker-compose.prod.yml
+infrastructure/docker/prometheus/prometheus.yml
+
+134
+03:03:24,000 --> 03:03:30,000
+scripts/start.sh
+scripts/stop.sh
+scripts/cleanup.sh
+
+135
+03:03:30,000 --> 03:03:36,000
+policies/rego/vault_policy.rego
+
+136
+03:03:36,000 --> 03:03:42,000
+All these files work together.
+The CI pipeline builds and tests everything.
+The production compose file runs the stack.
+
+
+[## [SECTION: Common Errors and Fixes — Phases 6 & 7]]
+
+
+137
+03:03:42,000 --> 03:03:48,000
+Let me walk through common errors in Phases 6 and 7.
+And how to fix them.
+
+138
+03:03:48,000 --> 03:03:54,000
+Error one. permission denied on vault-bootstrap.sh.
+The file is not executable.
+
+139
+03:03:54,000 --> 03:04:00,000
+The fix is simple. Run chmod plus x on the script file.
+Then try again.
+
+140
+03:04:00,000 --> 03:04:06,000
+Error two. listener permission denied on port 8200.
+Another process is already using that port.
+
+141
+03:04:06,000 --> 03:04:12,000
+Run lsof dash i colon 8200 to find the process.
+Then kill it and restart Vault.
+
+142
+03:04:12,000 --> 03:04:18,000
+Error three. connection refused to Vault in CI.
+Vault is only for Kubernetes, not for CI.
+
+143
+03:04:18,000 --> 03:04:24,000
+CI should use environment variables from GitHub Secrets.
+Not try to connect to a Vault instance.
+
+144
+03:04:24,000 --> 03:04:30,000
+Error four. POSTGRES_PASSWORD required in unit tests.
+Your settings validation requires the password.
+
+145
+03:04:30,000 --> 03:04:36,000
+Set POSTGRES_PASSWORD in your CI environment variables.
+Use a test password like test dash pg dash password.
+
+146
+03:04:36,000 --> 03:04:42,000
+Error five. gitleaks fails on dot env example.
+The placeholder values look like real secrets.
+
+147
+03:04:42,000 --> 03:04:48,000
+The fix is to add these placeholders to the allowlist.
+Update dot gitleaks.toml with the regexes.
+
+148
+03:04:48,000 --> 03:04:54,000
+Error six. Trivy not finding the image.
+The image hasn't been built locally.
+
+149
+03:04:54,000 --> 03:05:00,000
+Run docker build first.
+Then run trivy image against the local image name.
+
+150
+03:05:00,000 --> 03:05:06,000
+Error seven. conftest command not found.
+The tool isn't installed on your system.
+
+151
+03:05:06,000 --> 03:05:12,000
+On macOS, run brew install conftest.
+On Linux, download the binary from GitHub.
+
+152
+03:05:12,000 --> 03:05:18,000
+Error eight. schema not found in CI.
+The path to the SQL file is incorrect.
+
+153
+03:05:18,000 --> 03:05:24,000
+Check your ci.yml file. Make sure the path matches.
+Should be infrastructure slash docker slash init slash create_schema.sql.
+
+154
+03:05:24,000 --> 03:05:30,000
+Error nine. dynamic credentials expire mid-request.
+The TTL is too short or the renewal is missed.
+
+155
+03:05:30,000 --> 03:05:36,000
+In production, Vault Agent handles renewal automatically.
+Make sure the sidecar is running in your pod.
+
+156
+03:05:36,000 --> 03:05:42,000
+Bookmark this section.
+When you hit an error, you'll know exactly where to look.
+
+
+[## [SECTION: What's Next — Phase 8]]
+
+
+157
+03:05:42,000 --> 03:05:48,000
+Now let me preview Phase 8.
+
+158
+03:05:48,000 --> 03:05:54,000
+In Phase 8, we move to full Kubernetes deployment.
+This is production-grade infrastructure.
+
+159
+03:05:54,000 --> 03:06:00,000
+You'll learn Helm chart structure with underscore helpers dot tpl.
+StatefulSets for PostgreSQL and Redis with persistent volumes.
+
+160
+03:06:00,000 --> 03:06:06,000
+HorizontalPodAutoscaler for the API.
+Scaling based on CPU and custom metrics.
+
+161
+03:06:06,000 --> 03:06:12,000
+Karpenter for node provisioning.
+Spot instances for ingestion workloads to save money.
+
+162
+03:06:12,000 --> 03:06:18,000
+AWS ALB Ingress with SSL termination.
+Terragrunt modules for VPC, EKS, RDS, and ElastiCache.
+
+163
+03:06:18,000 --> 03:06:24,000
+Multi-environment configuration.
+Separate deployments for dev, staging, and production.
+
+164
+03:06:24,000 --> 03:06:30,000
+The file tree for Phase 8 will include.
+infrastructure/helm/Chart.yaml and values.yaml.
+
+165
+03:06:30,000 --> 03:06:36,000
+infrastructure/helm/templates/api-deployment.yaml.
+infrastructure/helm/templates/agent-deployment.yaml.
+
+166
+03:06:36,000 --> 03:06:42,000
+infrastructure/helm/templates/pgvector-statefulset.yaml.
+infrastructure/helm/templates/redis-statefulset.yaml.
+
+167
+03:06:42,000 --> 03:06:48,000
+infrastructure/terraform/environments/dev/env.hcl.
+infrastructure/terraform/environments/staging/env.hcl.
+infrastructure/terraform/environments/prod/env.hcl.
+
+168
+03:06:48,000 --> 03:06:54,000
+Phase 7 is complete.
+Our CI/CD pipeline is ready.
+
+169
+03:06:54,000 --> 03:07:00,000
+In Phase 8, we deploy everything to Kubernetes.
+The application becomes truly production-ready.
+
+170
+03:07:00,000 --> 03:07:06,000
+Ready to proceed to Phase 8?
+
+---
+
+**End of Phase 7. Phase 8 covers Kubernetes Production Deployment. Shall I continue?**

@@ -1,0 +1,140 @@
+# =============================================================================
+# Financial RAG Agent — Development Infrastructure
+# infrastructure/docker/docker-compose.dev.yml
+# This docker-compose file is used for local development and testing of the Financial RAG Agent application.
+# =============================================================================
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+    labels: "service,env"
+
+x-restart: &default-restart
+  restart: unless-stopped
+
+x-postgres-healthcheck: &postgres-healthcheck
+  healthcheck:
+    test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+    interval: 10s
+    timeout: 5s
+    retries: 5
+    start_period: 30s
+
+x-redis-healthcheck: &redis-healthcheck
+  healthcheck:
+    test: ["CMD", "redis-cli", "--no-auth-warning", "-a", "$$REDIS_PASSWORD", "ping"]
+    interval: 10s
+    timeout: 5s
+    retries: 5
+    start_period: 10s
+
+services:
+  # ---------------------------------------------------------------------------
+  # PostgreSQL + pgvector
+  # ---------------------------------------------------------------------------
+  postgres:
+    image: pgvector/pgvector:pg17
+    container_name: ${POSTGRES_CONTAINER_TEST:-finrag-postgres-test}
+    <<: [*default-restart, *postgres-healthcheck]
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-finrag}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}
+      POSTGRES_DB: ${POSTGRES_DB_TEST:-financial_rag_test}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C"
+    ports:
+      - "${POSTGRES_PORT_TEST:-5433}:5432"
+    volumes:
+      - postgres_test_data:/var/lib/postgresql/data
+      - ./init/01_create_schema.sql:/docker-entrypoint-initdb.d/01_create_schema.sql:ro
+    networks:
+      - finrag-test-network
+    logging: *default-logging
+
+  # ---------------------------------------------------------------------------
+  # Redis
+  # ---------------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: ${REDIS_CONTAINER_TEST:-finrag-redis-test}
+    <<: [*default-restart, *redis-healthcheck]
+    command: >
+      redis-server
+        --appendonly yes
+        --requirepass ${REDIS_PASSWORD:?REDIS_PASSWORD must be set in .env}
+        --maxmemory ${REDIS_MAXMEMORY:-256mb}
+        --maxmemory-policy allkeys-lru
+        --tcp-keepalive 60
+        --loglevel notice
+    ports:
+      - "${REDIS_PORT_TEST:-6380}:6379"
+    volumes:
+      - redis_test_data:/data
+    networks:
+      - finrag-test-network
+    logging: *default-logging
+
+  # ---------------------------------------------------------------------------
+  # Application Container
+  # ---------------------------------------------------------------------------
+  app:
+    image: financial-rag-agent:latest
+    container_name: ${APP_CONTAINER:-finrag-app-test}
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT:-8000}:8000"
+    environment:
+      # Services
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: ${POSTGRES_USER:-finrag}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}
+      POSTGRES_DB: ${POSTGRES_DB_TEST:-financial_rag_test}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD must be set in .env}
+      
+      # App
+      APP_ENV: ${APP_ENV:-testing}
+      MOCK_EXTERNAL_APIS: ${MOCK_EXTERNAL_APIS:-true}
+      
+      # === EMBEDDINGS (OpenAI) ===
+      OPENAI_API_KEY: ${OPENAI_API_KEY:?OPENAI_API_KEY must be set in .env}
+      EMBEDDING_PROVIDER: ${EMBEDDING_PROVIDER:-openai}
+      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-text-embedding-3-small}
+      EMBEDDING_DIMENSIONS: ${EMBEDDING_DIMENSIONS:-1536}
+      EMBEDDING_BATCH_SIZE: ${EMBEDDING_BATCH_SIZE:-100}
+      
+      # === LLM (Groq) ===
+      GROQ_API_KEY: ${GROQ_API_KEY:?GROQ_API_KEY must be set in .env}
+      LLM_PROVIDER: ${LLM_PROVIDER:-openai}
+      LLM_BASE_URL: ${LLM_BASE_URL:-https://api.groq.com/openai/v1}
+      LLM_MODEL: ${LLM_MODEL:-llama-3.3-70b-versatile}
+      LLM_TEMPERATURE: ${LLM_TEMPERATURE:-0.0}
+      LLM_MAX_TOKENS: ${LLM_MAX_TOKENS:-2048}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - finrag-test-network
+    logging: *default-logging
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  finrag-test-network:
+    driver: bridge
+    name: finrag-test-network
+
+volumes:
+  postgres_test_data:
+    name: finrag_postgres_test_data
+  redis_test_data:
+    name: finrag_redis_test_data

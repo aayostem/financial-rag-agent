@@ -15,6 +15,7 @@ import pytest
 from pydantic import SecretStr, ValidationError
 
 from financial_rag.config import Settings, get_settings
+from tests.conftest import VALID_SECRETS
 
 # =============================================================================
 # Shared fixtures
@@ -23,10 +24,6 @@ from financial_rag.config import Settings, get_settings
 # Minimum valid env vars required to instantiate Settings in any test.
 # POSTGRES_PASSWORD and REDIS_PASSWORD have no defaults — every Settings()
 # call must supply them or the instantiation will raise ValidationError.
-VALID_SECRETS = {
-    "POSTGRES_PASSWORD": "test-pg-password-32-chars-minimum",
-    "REDIS_PASSWORD": "test-redis-password-32-chars-min",
-}
 
 
 @pytest.fixture(autouse=True)
@@ -176,31 +173,33 @@ class TestNumericConstraints:
 
 class TestComputedProperties:
     def test_database_url_scheme(self, test_settings):
-        url = test_settings.DATABASE_URL
+        url = test_settings.DATABASE_URL.get_secret_value()
         assert url.startswith("postgresql+asyncpg://")
 
     def test_database_url_contains_host_and_db(self, test_settings):
-        url = test_settings.DATABASE_URL
+        url = test_settings.DATABASE_URL.get_secret_value()
         assert test_settings.POSTGRES_HOST in url
         assert test_settings.POSTGRES_DB in url
 
     def test_database_url_contains_user(self, test_settings):
-        url = test_settings.DATABASE_URL
+        url = test_settings.DATABASE_URL.get_secret_value()
         assert test_settings.POSTGRES_USER in url
 
     def test_database_url_sync_uses_psycopg2(self, test_settings):
-        assert test_settings.DATABASE_URL_SYNC.startswith("postgresql+psycopg2://")
+        assert test_settings.DATABASE_URL_SYNC.get_secret_value().startswith(
+            "postgresql+psycopg2://"
+        )
 
     def test_redis_url_scheme(self, test_settings):
-        assert test_settings.REDIS_URL.startswith("redis://")
+        assert test_settings.REDIS_URL.get_secret_value().startswith("redis://")
 
     def test_redis_url_contains_host(self, test_settings):
-        assert test_settings.REDIS_HOST in test_settings.REDIS_URL
+        assert test_settings.REDIS_HOST in test_settings.REDIS_URL.get_secret_value()
 
     def test_redis_url_contains_password(self, test_settings):
         """Password must be embedded in the Redis URL for auth."""
         password = test_settings.REDIS_PASSWORD.get_secret_value()
-        assert password in test_settings.REDIS_URL
+        assert password in test_settings.REDIS_URL.get_secret_value()
 
     def test_vector_store_dir_is_tmp_in_testing(self, test_settings):
         """Testing environment must use /tmp to avoid polluting real data."""

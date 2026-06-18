@@ -1,0 +1,1339 @@
+
+# PHASE 8 — PRODUCTION KUBERNETES DEPLOYMENT
+
+[## [SECTION: PART 1 — HELM CHART]]
+
+#[## [SECTION: Step 1 — Chart Structure (Component #75)]]
+
+
+1
+03:07:06,000 --> 03:07:12,000
+Now let's move to Phase 8. Production Kubernetes deployment.
+We'll deploy the entire stack on AWS EKS using Helm.
+
+2
+03:07:12,000 --> 03:07:18,000
+The Helm chart packages all Kubernetes manifests into a single versioned, configurable unit.
+The key design principle is never hardcode anything.
+
+3
+03:07:18,000 --> 03:07:24,000
+Every value that differs between environments lives in values.yaml.
+And is overridden per environment.
+
+4
+03:07:24,000 --> 03:07:30,000
+First, create infrastructure/helm/Chart.yaml.
+This defines the chart metadata.
+
+5
+03:07:30,000 --> 03:07:36,000
+apiVersion is v2. name is financial-rag-agent.
+type is application. version is 0.1.0. appVersion is 1.0.0.
+
+6
+03:07:36,000 --> 03:07:42,000
+We add keywords like rag, fintech, llm, pgvector, and fastapi.
+And maintainers with name Cloudfrugal and email.
+
+7
+03:07:42,000 --> 03:07:48,000
+Our chart structure is ready.
+Now let's create the helpers template.
+
+
+#[## [SECTION: Step 2 — Helpers Template (Component #76)]]
+
+
+8
+03:07:48,000 --> 03:08:00,000
+Now let's create the helpers template.
+We'll put it in infrastructure/helm/templates/_helpers.tpl
+
+9
+03:08:00,000 --> 03:08:06,000
+First, define the name helper.
+It expands the name of the chart using the nameOverride value.
+
+10
+03:08:06,000 --> 03:08:12,000
+It truncates to 63 characters and trims any trailing dash.
+This enforces Kubernetes' label value limit.
+
+11
+03:08:12,000 --> 03:08:18,000
+Next, the fullname helper.
+If fullnameOverride is provided, use it.
+Otherwise, use the chart name.
+
+12
+03:08:18,000 --> 03:08:24,000
+The chart helper returns the chart name and version.
+With plus signs replaced by underscores.
+
+13
+03:08:24,000 --> 03:08:30,000
+Now the labels helper.
+This defines common labels applied to every resource.
+
+14
+03:08:30,000 --> 03:08:36,000
+It includes helm.sh/chart, app.kubernetes.io/managed-by, and app.kubernetes.io/version.
+
+15
+03:08:36,000 --> 03:08:42,000
+The selectorLabels helper is critical.
+This is used in matchLabels and must be stable, never change.
+
+16
+03:08:42,000 --> 03:08:48,000
+It includes only app.kubernetes.io/name and app.kubernetes.io/instance.
+No chart version here. If chart version changes, the selector would mismatch.
+
+17
+03:08:48,000 --> 03:08:54,000
+This is a common Helm mistake.
+matchLabels is immutable after creation. If you include the chart version, every upgrade fails.
+
+18
+03:08:54,000 --> 03:09:00,000
+The image helper constructs the full image reference.
+It takes a global registry, an image repository, and a tag.
+
+19
+03:09:00,000 --> 03:09:06,000
+If registry is provided, it returns registry slash repository colon tag.
+If not, it returns repository colon tag.
+
+20
+03:09:06,000 --> 03:09:12,000
+This allows the registry to be set globally while repository and tag vary per component.
+
+21
+03:09:12,000 --> 03:09:18,000
+The podAnnotations helper merges global podAnnotations with per-component overrides.
+It uses Helm's merge function for deep merging.
+
+22
+03:09:18,000 --> 03:09:24,000
+Our helpers template is complete.
+Now let's create the base values.
+
+
+#[## [SECTION: Step 3 — Base Values (Component #75)]]
+
+
+23
+03:09:24,000 --> 03:09:30,000
+Now let's create the base values.yaml file.
+This defines the configuration for all environments.
+
+24
+03:09:30,000 --> 03:09:36,000
+First, the global section.
+image registry is empty, pullPolicy is IfNotPresent.
+
+25
+03:09:36,000 --> 03:09:42,000
+podAnnotations, podLabels, nodeSelector, tolerations, and affinity are empty by default.
+These will be overridden per environment.
+
+26
+03:09:42,000 --> 03:09:48,000
+The namespace is set to financial-rag.
+
+27
+03:09:48,000 --> 03:09:54,000
+Now the API section.
+enabled is true. image repository is financial-rag-agent/api. tag is latest.
+
+28
+03:09:54,000 --> 03:10:00,000
+replicaCount is 2. resources requests are 500 millicpu and 512 megabytes.
+limits are 1000 millicpu and 1 gigabyte.
+
+29
+03:10:00,000 --> 03:10:06,000
+service type is ClusterIP, port is 8000.
+ingress is disabled by default.
+
+30
+03:10:06,000 --> 03:10:12,000
+env sets LOG_LEVEL to info and WORKERS to 2.
+envFrom references a secret called financial-rag-secrets.
+
+31
+03:10:12,000 --> 03:10:18,000
+livenessProbe and readinessProbe both check /health on port 8000.
+liveness has initialDelaySeconds 15, readiness has 10.
+
+32
+03:10:18,000 --> 03:10:24,000
+HPA is enabled with minReplicas 2, maxReplicas 6.
+targetCPUUtilizationPercentage is 70, targetMemoryUtilizationPercentage is 80.
+
+33
+03:10:24,000 --> 03:10:30,000
+Now the agentPool section.
+enabled is true. image repository is financial-rag-agent/agent. tag is latest.
+
+34
+03:10:30,000 --> 03:10:36,000
+replicaCount is 2. resources requests are 500 millicpu and 1 gigabyte.
+limits are 2000 millicpu and 2 gigabytes.
+
+35
+03:10:36,000 --> 03:10:42,000
+env sets AGENT_CONCURRENCY to 4 and LOG_LEVEL to info.
+livenessProbe checks /health on port 8001.
+
+36
+03:10:42,000 --> 03:10:48,000
+HPA is enabled with minReplicas 2, maxReplicas 8.
+targetCPUUtilizationPercentage is 65, targetMemoryUtilizationPercentage is 75.
+
+37
+03:10:48,000 --> 03:10:54,000
+Now the ingestion CronJob.
+enabled is true. image repository is financial-rag-agent/ingestion. tag is latest.
+
+38
+03:10:54,000 --> 03:11:00,000
+schedule is 0 2 asterisk asterisk asterisk, which is 2 AM UTC daily.
+concurrencyPolicy is Forbid to prevent overlapping runs.
+
+39
+03:11:00,000 --> 03:11:06,000
+successfulJobsHistoryLimit and failedJobsHistoryLimit are both 3.
+restartPolicy is OnFailure.
+
+40
+03:11:06,000 --> 03:11:12,000
+resources requests are 250 millicpu and 512 megabytes.
+limits are 1000 millicpu and 1 gigabyte.
+
+41
+03:11:12,000 --> 03:11:18,000
+env sets INGESTION_BATCH_SIZE to 50 and LOG_LEVEL to info.
+
+42
+03:11:18,000 --> 03:11:24,000
+Now the pgvector StatefulSet.
+enabled is true. image repository is pgvector/pgvector. tag is pg16.
+
+43
+03:11:24,000 --> 03:11:30,000
+replicaCount is 1. resources requests are 500 millicpu and 1 gigabyte.
+limits are 2000 millicpu and 4 gigabytes.
+
+44
+03:11:30,000 --> 03:11:36,000
+storage uses storageClassName gp3 and size 50 gigabytes.
+service port is 5432.
+
+45
+03:11:36,000 --> 03:11:42,000
+env sets POSTGRES_DB to financial_rag and POSTGRES_USER to raguser.
+envFrom references the financial-rag-secrets secret.
+
+46
+03:11:42,000 --> 03:11:48,000
+persistence is enabled.
+livenessProbe and readinessProbe use pg_isready.
+
+47
+03:11:48,000 --> 03:11:54,000
+Now the Redis StatefulSet.
+enabled is true. image repository is redis. tag is 7-alpine.
+
+48
+03:11:54,000 --> 03:12:00,000
+replicaCount is 1. resources requests are 100 millicpu and 256 megabytes.
+limits are 500 millicpu and 512 megabytes.
+
+49
+03:12:00,000 --> 03:12:06,000
+storage uses storageClassName gp3 and size 10 gigabytes.
+service port is 6379.
+
+50
+03:12:06,000 --> 03:12:12,000
+args enable appendonly, set maxmemory to 400 megabytes, and maxmemory-policy to allkeys-lru.
+livenessProbe and readinessProbe use redis-cli ping.
+
+51
+03:12:12,000 --> 03:12:18,000
+Finally, the serviceMonitor.
+enabled is false by default. namespace is monitoring.
+interval is 30 seconds. path is slash metrics.
+
+52
+03:12:18,000 --> 03:12:24,000
+Our base values are complete.
+Every workload follows a consistent pattern.
+
+
+#[## [SECTION: Step 4 — Production Values Override (Component #99)]]
+
+
+53
+03:12:24,000 --> 03:12:30,000
+Now let's create the production values override file.
+We'll put it in infrastructure/helm/values.prod.yaml
+
+54
+03:12:30,000 --> 03:12:36,000
+These override only the keys that differ from base values.
+Helm merges the two files when deploying.
+
+55
+03:12:36,000 --> 03:12:42,000
+First, global section.
+image registry is set to your ECR registry URL. pullPolicy becomes Always.
+
+56
+03:12:42,000 --> 03:12:48,000
+nodeSelector sets role to application.
+tolerations for dedicated application nodes.
+
+57
+03:12:48,000 --> 03:12:54,000
+podAnnotations enable prometheus.io/scrape and set the port to 8000.
+
+58
+03:12:54,000 --> 03:13:00,000
+Now the API production overrides.
+replicaCount is 5. image tag is pinned to 1.0.0, never latest in production.
+
+59
+03:13:00,000 --> 03:13:06,000
+resources requests are 1000 millicpu and 1 gigabyte.
+limits are 2000 millicpu and 2 gigabytes.
+
+60
+03:13:06,000 --> 03:13:12,000
+env sets LOG_LEVEL to warning and WORKERS to 4.
+
+61
+03:13:12,000 --> 03:13:18,000
+ingress is enabled. className is alb.
+annotations configure the AWS ALB for internet-facing traffic.
+
+62
+03:13:18,000 --> 03:13:24,000
+target-type is ip. listen-ports is HTTPS 443.
+ssl-redirect is enabled. certificate-arn must be set.
+
+63
+03:13:24,000 --> 03:13:30,000
+healthcheck-path is slash health.
+group.name is financial-rag-prod.
+
+64
+03:13:30,000 --> 03:13:36,000
+host is api.financial-rag.cloudfrugal.com.
+tls secretName is financial-rag-tls.
+
+65
+03:13:36,000 --> 03:13:42,000
+HPA minReplicas is 5, maxReplicas is 20.
+targetCPUUtilizationPercentage is 60, targetMemoryUtilizationPercentage is 70.
+
+66
+03:13:42,000 --> 03:13:48,000
+Now the agentPool production overrides.
+replicaCount is 5. image tag is 1.0.0.
+
+67
+03:13:48,000 --> 03:13:54,000
+resources requests are 2000 millicpu and 4 gigabytes.
+limits are 4000 millicpu and 8 gigabytes.
+
+68
+03:13:54,000 --> 03:14:00,000
+env sets AGENT_CONCURRENCY to 8 and LOG_LEVEL to warning.
+
+69
+03:14:00,000 --> 03:14:06,000
+HPA minReplicas is 5, maxReplicas is 25.
+targetCPUUtilizationPercentage is 55, targetMemoryUtilizationPercentage is 65.
+
+70
+03:14:06,000 --> 03:14:12,000
+Now the ingestion production overrides.
+image tag is 1.0.0. schedule is 0 1 asterisk asterisk asterisk, which is 1 AM UTC.
+
+71
+03:14:12,000 --> 03:14:18,000
+resources requests are 1000 millicpu and 2 gigabytes.
+limits are 2000 millicpu and 4 gigabytes.
+
+72
+03:14:18,000 --> 03:14:24,000
+env sets INGESTION_BATCH_SIZE to 200 and LOG_LEVEL to warning.
+
+73
+03:14:24,000 --> 03:14:30,000
+Now the pgvector production overrides.
+resources requests are 2000 millicpu and 8 gigabytes.
+limits are 4000 millicpu and 16 gigabytes.
+
+74
+03:14:30,000 --> 03:14:36,000
+storage size is 500 gigabytes, storageClassName is gp3-iops.
+
+75
+03:14:36,000 --> 03:14:42,000
+Now the Redis production overrides.
+resources requests are 500 millicpu and 2 gigabytes.
+limits are 1000 millicpu and 4 gigabytes.
+
+76
+03:14:42,000 --> 03:14:48,000
+storage size is 50 gigabytes.
+maxmemory is 3500 megabytes.
+
+77
+03:14:48,000 --> 03:14:54,000
+Finally, the serviceMonitor is enabled.
+namespace is monitoring. interval is 15 seconds.
+
+78
+03:14:54,000 --> 03:15:00,000
+Key production differences.
+Never use latest tag in production. If a pod restarts and pulls a new latest image, your production environment silently changes.
+
+79
+03:15:00,000 --> 03:15:06,000
+Always pin to a specific semver tag or git SHA in production.
+Our production values override is complete.
+
+
+#[## [SECTION: Step 5 — StatefulSets: pgvector and Redis (Components #78–80)]]
+
+
+80
+03:15:06,000 --> 03:15:12,000
+Now let's understand StatefulSets for pgvector and Redis.
+Why StatefulSet, not Deployment?
+
+81
+03:15:12,000 --> 03:15:18,000
+Deployments are for stateless workloads. Pods are interchangeable.
+If a pod is replaced, local storage is lost.
+
+82
+03:15:18,000 --> 03:15:24,000
+That's fine for the API. State lives in PostgreSQL.
+But catastrophic for PostgreSQL itself.
+
+83
+03:15:24,000 --> 03:15:30,000
+StatefulSets provide stable pod names.
+fra-pgvector-0, not fra-pgvector-abc123.
+
+84
+03:15:30,000 --> 03:15:36,000
+They provide stable DNS for pod-to-pod communication.
+And ordered startup and shutdown.
+
+85
+03:15:36,000 --> 03:15:42,000
+Most importantly, volumeClaimTemplates create a dedicated PVC per pod.
+Each replica has its own persistent storage.
+
+86
+03:15:42,000 --> 03:15:48,000
+The pgvector StatefulSet defines the image, ports, and environment variables.
+It mounts pgdata from a volumeClaimTemplate.
+
+87
+03:15:48,000 --> 03:15:54,000
+If persistence is enabled, it creates a PVC named pgdata.
+With storageClassName and size from values.
+
+88
+03:15:54,000 --> 03:16:00,000
+Two services for pgvector.
+A headless service with clusterIP None for stable DNS.
+
+89
+03:16:00,000 --> 03:16:06,000
+And a regular ClusterIP service that load-balances.
+The API uses the regular service for read-write operations.
+
+90
+03:16:06,000 --> 03:16:12,000
+The Redis StatefulSet follows the same pattern.
+Stable pod names, persistent storage, headless service.
+
+91
+03:16:12,000 --> 03:16:18,000
+Redis args enable appendonly persistence and set maxmemory-policy to allkeys-lru.
+This is the correct eviction policy for a cache.
+
+92
+03:16:18,000 --> 03:16:24,000
+Our StatefulSets are complete.
+pgvector and Redis now have persistent storage.
+
+
+#[## [SECTION: Step 6 — API and Agent Deployments (Components #81, #84)]]
+
+
+93
+03:16:24,000 --> 03:16:30,000
+Now let's create the API and Agent Deployments.
+
+94
+03:16:30,000 --> 03:16:36,000
+First, the security context applied to every workload.
+runAsNonRoot true prevents running as user ID zero.
+
+95
+03:16:36,000 --> 03:16:42,000
+allowPrivilegeEscalation false prevents setuid binaries from gaining root.
+readOnlyRootFilesystem true prevents writing to the container filesystem.
+
+96
+03:16:42,000 --> 03:16:48,000
+capabilities drop ALL removes all Linux kernel capabilities.
+This is defense in depth.
+
+97
+03:16:48,000 --> 03:16:54,000
+readOnlyRootFilesystem requires a tmp volume mounted at slash tmp.
+We add an emptyDir volume for temporary files.
+
+98
+03:16:54,000 --> 03:17:00,000
+The rolling update strategy controls how pods are replaced.
+maxUnavailable one means at most one pod is down during upgrade.
+
+99
+03:17:00,000 --> 03:17:06,000
+maxSurge two means at most two extra pods can run during upgrade.
+With five replicas in production, you have fast rollouts without interruption.
+
+100
+03:17:06,000 --> 03:17:12,000
+The API Deployment includes livenessProbe and readinessProbe on port 8000.
+ServiceAccountName is set to the API service account.
+
+101
+03:17:12,000 --> 03:17:18,000
+The Agent Deployment has an in-memory model cache.
+emptyDir with medium Memory, size limit 500 megabytes.
+
+102
+03:17:18,000 --> 03:17:24,000
+This is a tmpfs filesystem stored in RAM.
+The local embedding model stays in memory between requests.
+
+103
+03:17:24,000 --> 03:17:30,000
+Both Deployments have a ClusterIP service for internal communication.
+The API service is used by the ALB Ingress.
+
+104
+03:17:30,000 --> 03:17:36,000
+The Agent service is only for health checks, not external traffic.
+Our Deployments are complete.
+
+
+#[## [SECTION: Step 7 — HPAs (Components #83, #85)]]
+
+
+105
+03:17:36,000 --> 03:17:42,000
+Now let's configure HorizontalPodAutoscalers.
+The API HPA scales on CPU and memory utilization.
+
+106
+03:17:42,000 --> 03:17:48,000
+Target CPU utilization is 70 percent, memory is 80 percent.
+Minimum replicas 2, maximum 20 in production.
+
+107
+03:17:48,000 --> 03:17:54,000
+The Agent HPA has lower thresholds, 55 percent CPU and 65 percent memory.
+Agent loops are CPU-spiky during embedding and LLM inference.
+
+108
+03:17:54,000 --> 03:18:00,000
+Both HPAs have asymmetric scale-up and scale-down behavior.
+Scale up fast, scale down slow.
+
+109
+03:18:00,000 --> 03:18:06,000
+The API scales up 4 pods per minute after a 60 second stabilization window.
+It scales down 2 pods per 2 minutes after a 5 minute window.
+
+110
+03:18:06,000 --> 03:18:12,000
+The Agent scales up 5 pods per minute after just 30 seconds.
+But it scales down only 1 pod per 3 minutes after a 10 minute window.
+
+111
+03:18:12,000 --> 03:18:18,000
+Why the difference? Agent reasoning loops can run for 30 to 60 seconds.
+Removing a pod mid-loop drops the request.
+
+112
+03:18:18,000 --> 03:18:24,000
+Our HPAs are complete.
+The API and Agent will scale automatically based on load.
+
+
+#[## [SECTION: Step 8 — Ingestion CronJob (Component #86)]]
+
+
+113
+03:18:24,000 --> 03:18:30,000
+Now let's create the Ingestion CronJob.
+
+114
+03:18:30,000 --> 03:18:36,000
+schedule is set from values, default 2 AM UTC.
+concurrencyPolicy Forbid is critical.
+
+115
+03:18:36,000 --> 03:18:42,000
+Without it, if one job runs longer than expected, the next starts concurrently.
+Two concurrent ingestion jobs would exceed EDGAR's rate limit.
+
+116
+03:18:42,000 --> 03:18:48,000
+And could corrupt the deduplication logic.
+activeDeadlineSeconds is a 3 hour hard cap.
+
+117
+03:18:48,000 --> 03:18:54,000
+If the job runs longer than that, Kubernetes kills it.
+backoffLimit 2 means it retries at most twice on failure.
+
+118
+03:18:54,000 --> 03:19:00,000
+The job uses a service account with IRSA annotations.
+Same security context as other workloads.
+
+119
+03:19:00,000 --> 03:19:06,000
+readOnlyRootFilesystem true with a tmp emptyDir.
+Our ingestion CronJob is complete.
+
+
+#[## [SECTION: Step 9 — ALB Ingress (Component #87)]]
+
+
+120
+03:19:06,000 --> 03:19:12,000
+Now let's create the ALB Ingress.
+
+121
+03:19:12,000 --> 03:19:18,000
+This creates an AWS Application Load Balancer for external traffic.
+target-type ip routes traffic directly to pod IPs.
+
+122
+03:19:18,000 --> 03:19:24,000
+Avoids the double-hop through kube-proxy.
+ip mode requires pods to be in subnets the ALB can reach.
+
+123
+03:19:24,000 --> 03:19:30,000
+Use private subnets with the ALB in public subnets.
+group.name allows multiple Ingress objects to share one ALB.
+
+124
+03:19:30,000 --> 03:19:36,000
+Without grouping, each Ingress creates a new ALB.
+That would cost about $0.008 per hour, per ALB.
+
+125
+03:19:36,000 --> 03:19:42,000
+Grouping saves money and management overhead.
+The Ingress routes all traffic to the API service.
+
+126
+03:19:42,000 --> 03:19:48,000
+TLS is terminated at the ALB using an ACM certificate.
+Our ALB Ingress is complete.
+
+
+#[## [SECTION: Step 10 — ServiceMonitor (Component #88)]]
+
+
+127
+03:19:48,000 --> 03:19:54,000
+Now let's create the Prometheus ServiceMonitor.
+
+128
+03:19:54,000 --> 03:20:00,000
+This tells Prometheus to scrape metrics from the API.
+The label release equals kube-prometheus-stack is not arbitrary.
+
+129
+03:20:00,000 --> 03:20:06,000
+The Prometheus operator only picks up ServiceMonitors that match its label selector.
+If you installed kube-prometheus-stack with a different release name, change this label.
+
+130
+03:20:06,000 --> 03:20:12,000
+namespaceSelector matches the financial-rag namespace.
+selector matches pods with component api.
+
+131
+03:20:12,000 --> 03:20:18,000
+endpoints specify port http, path slash metrics, interval 30 seconds.
+honorLabels true preserves existing metric labels.
+
+132
+03:20:18,000 --> 03:20:24,000
+Our ServiceMonitor is complete.
+Prometheus will now scrape API metrics.
+
+
+[## [SECTION: PART 2 — KARPENTER NODE PROVISIONING]]
+
+#[## [SECTION: Step 11 — Karpenter IAM Role (Component #89)]]
+
+
+133
+03:20:24,000 --> 03:20:30,000
+Now let's configure Karpenter for node provisioning.
+Karpenter is AWS's modern node autoscaler for Kubernetes.
+
+134
+03:20:30,000 --> 03:20:36,000
+Unlike the Cluster Autoscaler, Karpenter launches nodes directly.
+It is much faster and more efficient.
+
+135
+03:20:36,000 --> 03:20:42,000
+First, create the Karpenter IAM role.
+We use eksctl to create the service account.
+
+136
+03:20:42,000 --> 03:20:48,000
+The role needs permissions to run and terminate EC2 instances.
+Describe instances and instance types.
+
+137
+03:20:48,000 --> 03:20:54,000
+iam PassRole to pass the node IAM role to new instances.
+And SSM GetParameter for AMI discovery.
+
+
+#[## [SECTION: Step 12 — Karpenter Installation (Component #90)]]
+
+
+138
+03:20:54,000 --> 03:21:00,000
+Now install Karpenter using the Helm chart.
+Version 0.37.0 is stable.
+
+139
+03:21:00,000 --> 03:21:06,000
+The service account annotation sets the IAM role.
+Cluster name and interruption queue are required settings.
+
+140
+03:21:06,000 --> 03:21:12,000
+Karpenter will now manage node scaling.
+It launches nodes when pods are pending and consolidates when nodes are underutilized.
+
+
+#[## [SECTION: Step 13 — EC2NodeClass and NodePools (Components #91–93)]]
+
+
+141
+03:21:12,000 --> 03:21:18,000
+Now create the EC2NodeClass.
+This defines what kind of EC2 instances Karpenter can launch.
+
+142
+03:21:18,000 --> 03:21:24,000
+amiFamily is Amazon Linux 2.
+The role is KarpenterNodeRole, which we create separately.
+
+143
+03:21:24,000 --> 03:21:30,000
+Subnet selector terms look for tags.
+karpenter.sh slash discovery equals the cluster name.
+
+144
+03:21:30,000 --> 03:21:36,000
+Security group selector terms use the same tag.
+Block device mapping uses gp3 with 50 gigabytes, encrypted.
+
+145
+03:21:36,000 --> 03:21:42,000
+User data runs the EKS bootstrap script.
+This joins the node to the cluster.
+
+146
+03:21:42,000 --> 03:21:48,000
+Now create the first NodePool for the API.
+This uses on-demand instances.
+
+147
+03:21:48,000 --> 03:21:54,000
+On-demand nodes have consistent latency and no interruption risk.
+Perfect for the API service.
+
+148
+03:21:54,000 --> 03:22:00,000
+Instance families are m5, m6i, and m6a.
+General purpose, consistent performance.
+
+149
+03:22:00,000 --> 03:22:06,000
+Instance sizes are xlarge and 2xlarge.
+A taint prevents pods that don't tolerate it from scheduling here.
+
+150
+03:22:06,000 --> 03:22:12,000
+Disruption policy is WhenUnderutilized.
+It consolidates after 5 minutes.
+
+151
+03:22:12,000 --> 03:22:18,000
+Now create the second NodePool for ingestion.
+This uses spot instances.
+
+152
+03:22:18,000 --> 03:22:24,000
+Spot instances are up to 70 percent cheaper than on-demand.
+But they can be interrupted at any time.
+
+153
+03:22:24,000 --> 03:22:30,000
+Ingestion is idempotent. SHA-256 deduplication prevents duplicates.
+If a spot instance is interrupted, the job just retries.
+
+154
+03:22:30,000 --> 03:22:36,000
+Diverse instance families like m5, m6i, c5, and c6i.
+Better spot availability across different types.
+
+155
+03:22:36,000 --> 03:22:42,000
+Disruption policy is WhenEmpty, not WhenUnderutilized.
+It consolidates after just 30 seconds.
+
+156
+03:22:42,000 --> 03:22:48,000
+Why the difference? Spot nodes are ephemeral.
+Don't keep expensive nodes idle longer than necessary.
+
+157
+03:22:48,000 --> 03:22:54,000
+Apply all three resources with kubectl apply.
+EC2NodeClass, api-ondemand NodePool, and ingestion-spot NodePool.
+
+158
+03:22:54,000 --> 03:23:00,000
+Karpenter node provisioning is complete.
+The cluster can now scale dynamically and cost-effectively.
+
+
+[## [SECTION: PART 3 — TERRAGRUNT INFRASTRUCTURE]]
+
+#[## [SECTION: Step 14 — Terragrunt Root Config (Component #94)]]
+
+
+159
+03:23:00,000 --> 03:23:06,000
+Now let's set up Terragrunt for infrastructure provisioning.
+Terragrunt wraps Terraform to provide DRY infrastructure code.
+
+160
+03:23:06,000 --> 03:23:12,000
+One module definition, multiple environment instantiations.
+Dev, staging, and prod each get their own configuration.
+
+161
+03:23:12,000 --> 03:23:18,000
+First, create the root terragrunt.hcl file.
+This is inherited by every environment module.
+
+162
+03:23:18,000 --> 03:23:24,000
+The locals block reads the environment configuration.
+It finds env.hcl in the parent folder.
+
+163
+03:23:24,000 --> 03:23:30,000
+We extract the aws region, account ID, project name, and environment name.
+The env name comes from the directory name.
+
+164
+03:23:30,000 --> 03:23:36,000
+Next, remote state configuration.
+State is stored in S3 with DynamoDB for locking.
+
+165
+03:23:36,000 --> 03:23:42,000
+The bucket name combines project, account ID, and region.
+The key includes environment and module path.
+
+166
+03:23:42,000 --> 03:23:48,000
+DynamoDB table prevents concurrent state modifications.
+This is critical for team workflows.
+
+167
+03:23:48,000 --> 03:23:54,000
+Terragrunt generates the provider configuration at plan time.
+It writes a provider.tf file into each module directory.
+
+168
+03:23:54,000 --> 03:24:00,000
+We define required providers. AWS, Kubernetes, Helm, TLS, and Random.
+All with specific version constraints.
+
+169
+03:24:00,000 --> 03:24:06,000
+The AWS provider has default tags.
+Project, environment, managed by, owner, and repo.
+
+170
+03:24:06,000 --> 03:24:12,000
+This tags every AWS resource automatically.
+No need to add tags manually to each resource.
+
+171
+03:24:12,000 --> 03:24:18,000
+Finally, common inputs are passed to every module.
+Project name, environment, AWS region, and account ID.
+
+172
+03:24:18,000 --> 03:24:24,000
+Each module can access these without re-declaring them.
+Our root Terragrunt config is complete.
+
+
+#[## [SECTION: Step 15 — Environment Configs (Component #99)]]
+
+
+173
+03:24:24,000 --> 03:24:30,000
+Now let's create the environment configurations.
+
+174
+03:24:30,000 --> 03:24:36,000
+First, dev environment in env.hcl.
+Development uses smaller, cheaper resources.
+
+175
+03:24:36,000 --> 03:24:42,000
+VPC CIDR is 10.2.0.0 slash 16.
+Two private subnets, two public subnets, two availability zones.
+
+176
+03:24:42,000 --> 03:24:48,000
+EKS cluster version 1.29.
+Node groups are t3 dot large for application, t3 dot medium for ingestion.
+
+177
+03:24:48,000 --> 03:24:54,000
+Minimal sizes to keep costs low.
+RDS uses db.t3.medium with 20 gigabytes of storage.
+
+178
+03:24:54,000 --> 03:25:00,000
+Backup retention is just 1 day. Multi-AZ is false.
+ElastiCache uses cache.t3.micro with one node.
+
+179
+03:25:00,000 --> 03:25:06,000
+Now staging environment.
+Staging should mirror production as closely as possible.
+
+180
+03:25:06,000 --> 03:25:12,000
+VPC CIDR is 10.1.0.0 slash 16.
+EKS version is still 1.29.
+
+181
+03:25:12,000 --> 03:25:18,000
+Node groups use m5 dot xlarge for application, c5 dot large for ingestion.
+Larger instances than dev.
+
+182
+03:25:18,000 --> 03:25:24,000
+RDS uses db.r6g.large with 100 gigabytes of storage.
+Backup retention is 7 days.
+
+183
+03:25:24,000 --> 03:25:30,000
+ElastiCache uses cache.r6g.large.
+Still single node to save cost.
+
+184
+03:25:30,000 --> 03:25:36,000
+Finally, production environment.
+This is where the actual costs run.
+
+185
+03:25:36,000 --> 03:25:42,000
+VPC CIDR is 10.30.0.0 slash 16.
+Three private subnets, three public subnets, three availability zones.
+
+186
+03:25:42,000 --> 03:25:48,000
+EKS cluster version 1.30, the latest stable.
+Node groups are for system workloads only.
+
+187
+03:25:48,000 --> 03:25:54,000
+Note that Karpenter handles application and ingestion nodes.
+The managed node group only runs system components.
+
+188
+03:25:54,000 --> 03:26:00,000
+RDS uses db.r6g.xlarge with 500 gigabytes of storage.
+Backup retention is 30 days. Multi-AZ is true for high availability.
+
+189
+03:26:00,000 --> 03:26:06,000
+ElastiCache uses cache.r6g.large with two nodes.
+Multi-AZ is true. Redis replicates across availability zones.
+
+190
+03:26:06,000 --> 03:26:12,000
+Our environment configs are complete.
+Each environment has its own isolated state and resources.
+
+
+#[## [SECTION: Step 16 — Terragrunt Module Configs (Component #100)]]
+
+
+191
+03:26:12,000 --> 03:26:18,000
+Now let's configure the Terragrunt child modules.
+Each module handles one piece of infrastructure.
+
+192
+03:26:18,000 --> 03:26:24,000
+Every module includes the root configuration and the environment configuration.
+The terraform source points to the module directory.
+
+193
+03:26:24,000 --> 03:26:30,000
+Inputs come from the environment locals.
+Modules declare dependencies on other modules.
+
+194
+03:26:30,000 --> 03:26:36,000
+The EKS module depends on the VPC module.
+The RDS module depends on VPC and EKS.
+
+195
+03:26:36,000 --> 03:26:42,000
+ElastiCache depends on VPC and EKS.
+IAM depends on EKS and RDS for OIDC and secret ARNs.
+
+196
+03:26:42,000 --> 03:26:48,000
+Terragrunt automatically orders applies based on these dependencies.
+Notice the mock_outputs in each dependency block.
+
+197
+03:26:48,000 --> 03:26:54,000
+These are used during terragrunt plan.
+If the dependency hasn't been applied yet, mock outputs stand in.
+
+198
+03:26:54,000 --> 03:27:00,000
+This allows planning the entire stack at once.
+The ECR module is account-level, no VPC or EKS dependency.
+
+199
+03:27:00,000 --> 03:27:06,000
+The S3 module is special. It creates the state bucket itself.
+It has a chicken-and-egg problem.
+
+200
+03:27:06,000 --> 03:27:12,000
+You need S3 for remote state, but you need Terraform to create S3.
+The solution is to apply the S3 module first with a local backend.
+
+201
+03:27:12,000 --> 03:27:18,000
+After the bucket exists, all other modules use it as remote state.
+Our Terragrunt module configs are complete.
+
+
+#[## [SECTION: Step 17 — Apply Order]]
+
+
+202
+03:27:18,000 --> 03:27:24,000
+Now let's talk about apply order.
+
+203
+03:27:24,000 --> 03:27:30,000
+Terragrunt automatically orders applies based on dependencies.
+VPC first, then EKS, then RDS and ElastiCache in parallel, then IAM.
+
+204
+03:27:30,000 --> 03:27:36,000
+To apply a full environment, go to the environment directory.
+Run terragrunt run-all apply with non-interactive flag.
+
+205
+03:27:36,000 --> 03:27:42,000
+To apply a single module, cd into its directory.
+Then run terragrunt apply.
+
+206
+03:27:42,000 --> 03:27:48,000
+The bootstrap sequence for a new environment is.
+First, cd into the S3 module and apply it.
+
+207
+03:27:48,000 --> 03:27:54,000
+Then you can apply all other modules.
+The state backend is now configured.
+
+208
+03:27:54,000 --> 03:28:00,000
+Our Terragrunt infrastructure is complete.
+The entire AWS stack is now codified and repeatable.
+
+
+#[## [SECTION: Step 18 — Deploy the Helm Chart]]
+
+
+209
+03:28:00,000 --> 03:28:06,000
+Now that infrastructure is provisioned, let's deploy the Helm chart.
+This installs the entire application on Kubernetes.
+
+210
+03:28:06,000 --> 03:28:12,000
+First, create the namespace.
+kubectl create namespace financial-rag.
+
+211
+03:28:12,000 --> 03:28:18,000
+Then create the secrets. For production, these come from Vault.
+For first deployment, you can create them manually.
+
+212
+03:28:18,000 --> 03:28:24,000
+Always do a dry-run before deploying.
+helm upgrade with dash dry-run and dash debug.
+
+213
+03:28:24,000 --> 03:28:30,000
+This renders all templates and validates against the Kubernetes API.
+It catches syntax errors before anything changes.
+
+214
+03:28:30,000 --> 03:28:36,000
+Then deploy with dash wait and dash timeout 10 minutes.
+Helm waits for all pods to become ready before completing.
+
+215
+03:28:36,000 --> 03:28:42,000
+Verify with kubectl get pods.
+You should see five pods running.
+
+216
+03:28:42,000 --> 03:28:48,000
+API pods, agent pods, pgvector statefulset, and redis statefulset.
+All with status Running.
+
+217
+03:28:48,000 --> 03:28:54,000
+Our Helm deployment is complete.
+The application is now running on Kubernetes.
+
+
+#[## [SECTION: Common Errors and Fixes — Phase 8]]
+
+
+218
+03:28:54,000 --> 03:29:00,000
+Let me walk through common errors in Phase 8.
+And how to fix them.
+
+219
+03:29:00,000 --> 03:29:06,000
+Error one. field is immutable on upgrade.
+The cause is helm.sh/chart in matchLabels.
+
+220
+03:29:06,000 --> 03:29:12,000
+The fix is to use selectorLabels in matchLabels.
+And put helm.sh/chart only in metadata labels.
+
+221
+03:29:12,000 --> 03:29:18,000
+Error two. ImagePullBackOff.
+ECR is not authenticated.
+
+222
+03:29:18,000 --> 03:29:24,000
+Run aws ecr get-login-password and pipe to docker login.
+Or verify your IRSA role has ECR pull permissions.
+
+223
+03:29:24,000 --> 03:29:30,000
+Error three. PVC stuck in Pending.
+The gp3 storage class is not installed.
+
+224
+03:29:30,000 --> 03:29:36,000
+Install the EBS CSI driver.
+eksctl utils install-ebs-csi-driver.
+
+225
+03:29:36,000 --> 03:29:42,000
+Error four. no nodes available.
+Karpenter is not provisioning nodes.
+
+226
+03:29:42,000 --> 03:29:48,000
+Check the Karpenter controller logs.
+kubectl logs dash n karpenter deployment slash karpenter.
+
+227
+03:29:48,000 --> 03:29:54,000
+Error five. HPA not scaling.
+The metrics server is not installed.
+
+228
+03:29:54,000 --> 03:30:00,000
+Apply the metrics server components from GitHub.
+This provides the CPU and memory metrics that HPAs need.
+
+229
+03:30:00,000 --> 03:30:06,000
+Error six. terragrunt S3 bucket not found.
+The state bucket hasn't been created yet.
+
+230
+03:30:06,000 --> 03:30:12,000
+Apply the S3 module first with local backend.
+Then all other modules use it as remote state.
+
+231
+03:30:12,000 --> 03:30:18,000
+Error seven. dependency cycle between modules.
+Your dependencies form a circle.
+
+232
+03:30:18,000 --> 03:30:24,000
+Check each dependency.config_path.
+The graph must be a directed acyclic graph, or DAG.
+
+233
+03:30:24,000 --> 03:30:30,000
+Error eight. ingestion pod not scheduled.
+Missing spot capacity in your region.
+
+234
+03:30:30,000 --> 03:30:36,000
+Add more instance families to the spot nodepool.
+Diverse families have better spot availability.
+
+235
+03:30:36,000 --> 03:30:42,000
+Error nine. connection refused to pgvector.
+The pod is not yet ready.
+
+236
+03:30:42,000 --> 03:30:48,000
+Check the readiness probe. pg_isready must pass before traffic is sent.
+The pod may still be initializing.
+
+237
+03:30:48,000 --> 03:30:54,000
+Bookmark this section.
+When you hit an error, you'll know exactly where to look.
+
+
+#[## [SECTION: What's Next — Phase 9]]
+
+
+238
+03:30:54,000 --> 03:31:00,000
+Now let me preview Phase 9.
+
+239
+03:31:00,000 --> 03:31:06,000
+In Phase 9, we implement GitOps and zero-trust networking.
+ArgoCD for continuous delivery and Cilium eBPF networking.
+
+240
+03:31:06,000 --> 03:31:12,000
+You'll learn the App of Apps pattern.
+One root ApplicationSet manages all environments.
+
+241
+03:31:12,000 --> 03:31:18,000
+Three-environment promotion pipeline.
+Dev auto-syncs, staging auto-syncs, prod manual sync only.
+
+242
+03:31:18,000 --> 03:31:24,000
+ArgoCD Project with RBAC roles and sync windows.
+No prod deploys during business hours.
+
+243
+03:31:24,000 --> 03:31:30,000
+Cilium replacing kube-proxy with eBPF.
+Deny-all NetworkPolicy with DNS egress exception.
+
+244
+03:31:30,000 --> 03:31:36,000
+L7 HTTP policies. Cilium enforces allowed HTTP methods and paths at the kernel level.
+Istio service mesh for mTLS between services.
+
+245
+03:31:36,000 --> 03:31:42,000
+Hubble and Cilium ServiceMonitors for Prometheus.
+Full network observability.
+
+246
+03:31:42,000 --> 03:31:48,000
+The file tree for Phase 9 will include.
+argocd/bootstrap/bootstrap.sh.
+
+247
+03:31:48,000 --> 03:31:54,000
+argocd/projects/financial-rag-project.yaml.
+argocd/appsets/apps-appset.yaml.
+
+248
+03:31:54,000 --> 03:32:00,000
+cilium/network-policies/default-deny-all.yaml.
+cilium/network-policies/api-l7-policy.yaml.
+
+249
+03:32:00,000 --> 03:32:06,000
+istio-mesh/authorization-policies.yaml.
+istio-mesh/destination-rules.yaml.
+
+250
+03:32:06,000 --> 03:32:12,000
+Phase 8 is complete.
+Your Kubernetes infrastructure is production-ready.
+
+251
+03:32:12,000 --> 03:32:18,000
+In Phase 9, we add GitOps and zero-trust networking.
+The cluster becomes fully automated and secure.
+
+252
+03:32:18,000 --> 03:32:24,000
+Ready to proceed to Phase 9?
+
+---
+
+**End of Phase 8. Phase 9 covers GitOps and Zero-Trust Networking. Shall I continue?**
+

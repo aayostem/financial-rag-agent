@@ -1,0 +1,765 @@
+
+
+# SOC 2 DEMYSTIFIED: TRUST SERVICE CRITERIA
+[## PHASE 7 — CHANGE MANAGEMENT & DEPLOYMENT CONTROLS
+]### Complete SRT Audio Script
+
+---
+
+[## LECTURE 7.1 — GITHUB BRANCH PROTECTION: NO DIRECT PUSHES TO MAIN]
+
+1
+00:00:00,000 --> 00:00:30,000
+You have the most secure, available, perfectly logged system in the world.
+But what happens when a developer pushes directly to main?
+Or merges a PR without review?
+
+2
+00:00:30,000 --> 00:01:00,000
+One bad merge and your compliance is gone.
+Change management, CC8.1, requires that all changes follow a controlled process.
+No exceptions. Not for emergencies. Not for small fixes.
+
+3
+00:01:00,000 --> 00:01:30,000
+Hi there, and welcome to Phase 7 of our SOC 2 journey.
+In this phase, we are building a complete change management system
+that auditors love.
+
+4
+00:01:30,000 --> 00:02:00,000
+GitHub branch protection, PR requirements, pre-merge validation,
+ArgoCD GitOps, rollback procedures, database migrations,
+canary deployments, and complete change audit trails.
+
+5
+00:02:00,000 --> 00:02:30,000
+By the end of these two hours, every change to your system
+will be reviewed, tested, approved, and traceable.
+From commit to production.
+
+6
+00:02:30,000 --> 00:03:00,000
+Let me start with the foundation. Branch protection.
+
+7
+00:03:00,000 --> 00:03:30,000
+Apply branch protection via the GitHub CLI.
+Required status checks must be strict.
+The branch must be up to date with main before merging.
+
+8
+00:03:30,000 --> 00:04:00,000
+The required status checks include secret scan, Trivy filesystem scan,
+dependency scan, Ruff, MyPy, unit tests, and Conftest validation.
+All must pass before a PR can merge.
+
+9
+00:04:00,000 --> 00:04:30,000
+Required pull request reviews. Set required approving review count to two.
+Two people must approve. One can miss something. Two is harder.
+
+10
+00:04:30,000 --> 00:05:00,000
+Dismiss stale reviews. If you push new code after approval,
+approvals are dismissed. No sneaking in changes.
+
+11
+00:05:00,000 --> 00:05:30,000
+Require code owner reviews. If you change security code,
+the security team must approve.
+Require last push approval. The reviewer who approved
+must have approved the most recent commit.
+
+12
+00:05:30,000 --> 00:06:00,000
+Enforce admins. Even administrators cannot bypass branch protection.
+Require linear history. No merge commits. Only rebase or squash.
+Clean audit trail.
+
+13
+00:06:00,000 --> 00:06:30,000
+Allow force pushes false. Force pushing overwrites history.
+That is not allowed.
+Allow deletions false. Branches cannot be deleted through the API.
+
+14
+00:06:30,000 --> 00:07:00,000
+Now verify the protection.
+gh api to get the branch protection settings.
+Extract required reviews count, dismiss stale, code owners required,
+force push allowed, and admin enforced.
+
+15
+00:07:00,000 --> 00:07:30,000
+Save the branch protection configuration as evidence.
+Save it to soc2-evidence under today's date in CC8.1.
+Call it branch-protection dot json.
+
+16
+00:07:30,000 --> 00:08:00,000
+Test that protection works.
+Attempt a direct push to main. It should fail.
+The error says protected branch update failed.
+At least two approving reviews are required.
+
+17
+00:08:00,000 --> 00:08:30,000
+Attempt a force push to main. It should also fail.
+The error says cannot force push to a protected branch.
+
+18
+00:08:30,000 --> 00:09:00,000
+Your lab exercise is to configure branch protection on your main branch.
+Verify you cannot push directly.
+Create a PR and verify it requires approval.
+Test that force pushes are blocked.
+
+19
+00:09:00,000 --> 00:09:30,000
+In the next lecture, we will configure CODEOWNERS.
+To automatically request review from the right teams.
+
+
+---
+
+[## LECTURE 7.2 — CODEOWNERS: AUTOMATIC REVIEW ASSIGNMENT]
+
+20
+00:00:00,000 --> 00:00:30,000
+Branch protection enforces the process.
+But what about the quality of reviews?
+CODEOWNERS ensures the right people review the right files.
+
+21
+00:00:30,000 --> 00:01:00,000
+Create a dot github forward slash CODEOWNERS file.
+For security-critical paths, assign the security team.
+src forward slash financial_rag forward slash security forward slash asterisk.
+
+22
+00:01:00,000 --> 00:01:30,000
+Falco forward slash asterisk. Cilium forward slash asterisk.
+Dot gitleaks dot toml. Security forward slash asterisk.
+Policies forward slash asterisk.
+
+23
+00:01:30,000 --> 00:02:00,000
+For infrastructure paths, assign the platform team.
+Infrastructure forward slash asterisk. Helm forward slash asterisk.
+Terraform forward slash asterisk. Karpenter forward slash asterisk.
+ArgoCD forward slash asterisk.
+
+24
+00:02:00,000 --> 00:02:30,000
+For database migrations, assign database owners.
+Migrations forward slash asterisk.
+Src forward slash financial_rag forward slash storage forward slash asterisk.
+
+25
+00:02:30,000 --> 00:03:00,000
+For CI slash CD configuration, assign the platform team.
+Dot github forward slash workflows forward slash asterisk.
+Dot github forward slash CODEOWNERS itself.
+
+26
+00:03:00,000 --> 00:03:30,000
+For SOC 2 evidence and compliance, assign the compliance team.
+Soc2 forward slash asterisk. Runbooks forward slash asterisk.
+
+27
+00:03:30,000 --> 00:04:00,000
+For root config files, assign all senior engineers.
+Pyproject dot toml. Dockerfile.
+
+28
+00:04:00,000 --> 00:04:30,000
+Commit the CODEOWNERS file and push to main.
+Now when a developer opens a PR that changes a security file,
+GitHub automatically requests review from the security team.
+No way to bypass.
+
+29
+00:04:30,000 --> 00:05:00,000
+Test that CODEOWNERS works.
+Create a test branch. Touch a security file.
+Open a PR. Check that the security team was auto-requested.
+
+30
+00:05:00,000 --> 00:05:30,000
+Then close the PR and clean up the branch.
+Save the CODEOWNERS file as evidence.
+Copy it to the evidence directory.
+
+31
+00:05:30,000 --> 00:06:00,000
+Your lab exercise is to create a PR that modifies a security file.
+Verify the security label is added.
+Verify the security team is automatically requested for review.
+
+32
+00:06:00,000 --> 00:06:30,000
+In the next lecture, we will add pre-merge validation.
+Required status checks that run on every PR.
+
+
+---
+
+[## LECTURE 7.3 — PRE-MERGE VALIDATION: REQUIRED STATUS CHECKS]
+
+33
+00:00:00,000 --> 00:00:30,000
+Reviews catch logic errors.
+But what about code that passes review but fails tests?
+Or introduces a vulnerability? Or breaks the build?
+
+34
+00:00:30,000 --> 00:01:00,000
+You need automated validation that runs on every PR
+and blocks merge if anything fails.
+Required status checks are the answer.
+
+35
+00:01:00,000 --> 00:01:30,000
+Let me walk through the complete pre-merge validation pipeline.
+
+36
+00:01:30,000 --> 00:02:00,000
+First, secret scan with Gitleaks.
+Checks for hardcoded secrets in the entire Git history.
+Uses the dot gitleaks dot toml configuration.
+
+37
+00:02:00,000 --> 00:02:30,000
+Second, Trivy filesystem scan.
+Scans the codebase, Dockerfile, and configuration files.
+Fails on CRITICAL and HIGH vulnerabilities.
+
+38
+00:02:30,000 --> 00:03:00,000
+Third, dependency scan with pip-audit.
+Scans pyproject dot toml for vulnerable Python packages.
+Fails on CRITICAL and HIGH severity findings.
+
+39
+00:03:00,000 --> 00:03:30,000
+Fourth, code quality with Ruff and MyPy.
+Ruff checks linting and formatting.
+MyPy performs static type checking with strict mode.
+
+40
+00:03:30,000 --> 00:04:00,000
+Fifth, unit tests with coverage.
+Runs all unit tests. Fails if coverage drops below sixty percent.
+Outputs coverage XML for upload to Codecov.
+
+41
+00:04:00,000 --> 00:04:30,000
+Sixth, Conftest validation for infrastructure changes.
+Only runs if the PR has the infrastructure label.
+Renders Helm templates and validates them against Rego policies.
+
+42
+00:04:30,000 --> 00:05:00,000
+Seventh, migration test for database changes.
+Only runs if the PR has the database label.
+Starts a PostgreSQL test container.
+Tests upgrade, downgrade, and re-upgrade.
+
+43
+00:05:00,000 --> 00:05:30,000
+Now add these as required status checks in branch protection.
+Update the branch protection configuration.
+Add the context names to the required status checks list.
+
+44
+00:05:30,000 --> 00:06:00,000
+Now every PR must pass all these checks before merge.
+If any fails, the merge button is disabled.
+
+45
+00:06:00,000 --> 00:06:30,000
+What does a developer see when they forget to run tests?
+Required checks pending. Unit tests pending. Integration tests pending.
+And required checks failing. A secret scan failure or a type error.
+
+46
+00:06:30,000 --> 00:07:00,000
+Merge is blocked until all checks pass.
+Your lab exercise is to create a PR that intentionally breaks a test.
+Verify the merge is blocked. Fix the test and verify the merge becomes available.
+
+47
+00:07:00,000 --> 00:07:30,000
+In the next lecture, we will deploy ArgoCD GitOps.
+And enable self-heal to revert manual changes.
+
+
+---
+
+[## LECTURE 7.4 — ARGOCD GITOPS: SELF-HEALING AND DRIFT DETECTION]
+
+48
+00:00:00,000 --> 00:00:30,000
+GitHub protects your code.
+But what about your Kubernetes configuration?
+Someone with kubectl access could change a deployment directly,
+bypassing all your controls.
+
+49
+00:00:30,000 --> 00:01:00,000
+That is configuration drift.
+ArgoCD implements GitOps. Your cluster state is always synced to what is in Git.
+If someone changes something directly, ArgoCD reverts it automatically.
+
+50
+00:01:00,000 --> 00:01:30,000
+Create the ArgoCD application manifest.
+Source repo URL is your GitHub repository.
+Target revision is main. Path is infrastructure forward slash helm.
+
+51
+00:01:30,000 --> 00:02:00,000
+Destination server is the Kubernetes API.
+Namespace is financial-rag.
+Sync policy automated. Prune true. Delete resources not in Git.
+
+52
+00:02:00,000 --> 00:02:30,000
+Self-heal true. Revert any manual changes.
+Allow empty false.
+Sync options include CreateNamespace, ApplyOutOfSyncOnly, and PruneLast.
+
+53
+00:02:30,000 --> 00:03:00,000
+Retry limit five. Backoff duration five seconds.
+Factor two. Max duration three minutes.
+
+54
+00:03:00,000 --> 00:03:30,000
+Apply the ArgoCD application.
+Now let us see drift detection in action.
+Check sync status. argocd app get financial-rag.
+Sync Status should be Synced. Health Status Healthy.
+
+55
+00:03:30,000 --> 00:04:00,000
+Now manually change a deployment.
+kubectl scale deployment financial-rag-agent-api to ten replicas.
+Wait thirty seconds. Check sync status again.
+It will be OutOfSync.
+
+56
+00:04:00,000 --> 00:04:30,000
+View the drift. argocd app diff.
+It shows the live replicas ten and the desired replicas six.
+ArgoCD self-heals within seconds. The sync status returns to Synced.
+
+57
+00:04:30,000 --> 00:05:00,000
+Integrate ArgoCD with GitHub Actions for automated sync after merges.
+When you push to main, the deploy workflow runs.
+Install ArgoCD CLI. Login to ArgoCD.
+
+58
+00:05:00,000 --> 00:05:30,000
+Run argocd app sync. Wait for sync to complete.
+Verify the health status is Healthy.
+Save the deployment evidence to S3.
+
+59
+00:05:30,000 --> 00:06:00,000
+Save ArgoCD sync history as evidence.
+argocd app history financial-rag.
+Save the sync status as JSON.
+
+60
+00:06:00,000 --> 00:06:30,000
+Your lab exercise is to make a change to your Helm chart and push to Git.
+Watch ArgoCD auto-sync.
+Then manually change a resource in Kubernetes.
+Watch ArgoCD revert it.
+
+61
+00:06:30,000 --> 00:07:00,000
+In the next lecture, we will implement canary deployments.
+And automated rollback on error rate spikes.
+
+
+---
+
+[## LECTURE 7.5 — CANARY DEPLOYMENTS: AUTOMATED ROLLBACK ON ERROR RATE SPIKE]
+
+62
+00:00:00,000 --> 00:00:30,000
+Rolling back is good.
+Not needing to roll back is better.
+Canary deployments let you test changes on a small percentage of traffic
+before full rollout.
+
+63
+00:00:30,000 --> 00:01:00,000
+If something breaks, only ten percent of users are affected.
+Argo Rollouts provides canary deployment capabilities.
+
+64
+00:01:00,000 --> 00:01:30,000
+First, install Argo Rollouts.
+Create the namespace. Apply the install manifest.
+Wait for all pods to be ready.
+
+65
+00:01:30,000 --> 00:02:00,000
+Now create a Rollout resource instead of a Deployment.
+The spec is similar to a Deployment.
+But the strategy is canary.
+
+66
+00:02:00,000 --> 00:02:30,000
+Canary steps. Step one, set weight ten percent.
+Step two, pause for five minutes.
+Step three, set weight twenty-five percent.
+Step four, pause for five minutes.
+
+67
+00:02:30,000 --> 00:03:00,000
+Step five, set weight fifty percent.
+Step six, pause for ten minutes.
+Step seven, set weight one hundred percent. Full rollout.
+
+68
+00:03:00,000 --> 00:03:30,000
+Now add analysis during canary.
+Analysis starts at step one. Step one is after the first ten percent weight.
+The analysis template is called api-success-rate.
+
+69
+00:03:30,000 --> 00:04:00,000
+Create the analysis template.
+Metrics include success rate and p95 latency.
+Interval is thirty seconds. Query Prometheus.
+
+70
+00:04:00,000 --> 00:04:30,000
+For success rate, success condition is result greater than or equal to zero point nine five.
+Failure condition is result less than or equal to zero point nine zero.
+Failure limit is three. Three failures before abort.
+
+71
+00:04:30,000 --> 00:05:00,000
+For p95 latency, success condition is result less than two seconds.
+Failure condition is result greater than three seconds.
+
+72
+00:05:00,000 --> 00:05:30,000
+Now monitor a canary rollout.
+kubectl argo rollouts get rollout with watch.
+It shows the current step, set weight, and actual weight.
+
+73
+00:05:30,000 --> 00:06:00,000
+The output shows two sets of pods.
+Stable pods handling ninety percent of traffic.
+Canary pods handling ten percent of traffic.
+
+74
+00:06:00,000 --> 00:06:30,000
+If analysis passes, you can promote manually.
+kubectl argo rollouts promote.
+If something is wrong, you can abort.
+kubectl argo rollouts abort.
+
+75
+00:06:30,000 --> 00:07:00,000
+Save the rollout history as evidence.
+kubectl argo rollouts get rollout with output JSON.
+Save to the evidence directory.
+
+76
+00:07:00,000 --> 00:07:30,000
+Your lab exercise is to deploy a change using canary strategy.
+Monitor the rollout progress.
+Verify analysis pauses if success rate drops.
+
+77
+00:07:30,000 --> 00:08:00,000
+In the next lecture, we will implement database migrations.
+With downgrade testing in CI.
+
+
+---
+
+[## LECTURE 7.6 — DATABASE MIGRATIONS: REVERSIBLE ALEMBIC WITH DOWNGRADE TESTING]
+
+78
+00:00:00,000 --> 00:00:30,000
+Application rollbacks are easy.
+Database migrations are hard.
+If you add a column and then roll back,
+you cannot just undo the application. The column still exists.
+
+79
+00:00:30,000 --> 00:01:00,000
+You need migrations that are reversible.
+Alembic supports downgrade migrations.
+Every upgrade must have a corresponding downgrade.
+
+80
+00:01:00,000 --> 00:01:30,000
+Here is a reversible migration.
+Add a column called query_classification to analysis_history.
+
+81
+00:01:30,000 --> 00:02:00,000
+In the upgrade, first add the column as nullable.
+Add an index on the new column.
+Then backfill existing rows. Set query_classification to general for all nulls.
+
+82
+00:02:00,000 --> 00:02:30,000
+After backfill, alter the column to be not nullable.
+This avoids locking the table for a long time.
+
+83
+00:02:30,000 --> 00:03:00,000
+In the downgrade, reverse the order.
+First, alter the column to be nullable again.
+Then drop the index. Then drop the column.
+
+84
+00:03:00,000 --> 00:03:30,000
+Now test the migration locally.
+alembic upgrade head. Upgrade succeeds.
+alembic downgrade minus one. Downgrade succeeds.
+alembic upgrade head again. Re-upgrade succeeds.
+
+85
+00:03:30,000 --> 00:04:00,000
+Verify the column exists after upgrade.
+psql backslash d analysis_history. Look for query_classification.
+Verify it is gone after downgrade.
+
+86
+00:04:00,000 --> 00:04:30,000
+The CI migration test runs on every PR that touches migrations.
+It starts a PostgreSQL test container.
+It applies all migrations. It tests downgrade. It tests upgrade again.
+
+87
+00:04:30,000 --> 00:05:00,000
+This ensures every migration is reversible.
+If a migration breaks the downgrade path, the PR is blocked.
+Your lab exercise is to create a reversible migration.
+
+88
+00:05:00,000 --> 00:05:30,000
+Test upgrade and downgrade locally.
+Push to PR and verify CI passes.
+
+89
+00:05:30,000 --> 00:06:00,000
+In the next lecture, we will generate a monthly change audit report.
+Complete traceability from commit to production.
+
+
+---
+
+[## LECTURE 7.7 — CHANGE AUDIT REPORT: COMPLETE TRACEABILITY]
+
+90
+00:00:00,000 --> 00:00:30,000
+Your auditor will ask. Who changed what, when, and why?
+You need a complete audit trail of every change.
+From Git commit to production deployment.
+
+91
+00:00:30,000 --> 00:01:00,000
+Create a monthly change audit report generator.
+The script takes year and month as arguments.
+Defaults to the current month.
+
+92
+00:01:00,000 --> 00:01:30,000
+First, query GitHub API for all PRs merged in the month.
+Filter by merged date between month start and month end.
+Extract number, title, author, merged at, approvers, and labels.
+
+93
+00:01:30,000 --> 00:02:00,000
+Print a markdown table of all merged PRs.
+Total count. Number, title, author, merged date, labels.
+
+94
+00:02:00,000 --> 00:02:30,000
+Second, query ArgoCD for deployment history.
+argocd app history financial-rag in JSON format.
+Filter by deployedAt within the month.
+
+95
+00:02:30,000 --> 00:03:00,000
+Print a table of all deployments.
+Revision, deployed at time, message, and status.
+
+96
+00:03:00,000 --> 00:03:30,000
+Third, verify change control.
+Check branch protection status. Check that all PRs required two reviewers.
+Check no direct pushes to main. Check ArgoCD self-heal active.
+
+97
+00:03:30,000 --> 00:04:00,000
+Add a certification section.
+All changes were submitted as pull requests.
+Approved by at least two reviewers.
+Passed all CI checks before merge.
+Deployed via ArgoCD GitOps. No direct kubectl changes.
+
+98
+00:04:00,000 --> 00:04:30,000
+Save the report to soc2-evidence forward slash change-audits.
+Upload the report to the immutable S3 bucket.
+
+99
+00:04:30,000 --> 00:05:00,000
+Schedule this as a monthly CronJob.
+Run at 2 AM on the first day of every month.
+The CronJob uses the compliance-runner service account.
+
+100
+00:05:00,000 --> 00:05:30,000
+Your lab exercise is to generate a change audit report.
+Verify that every deployment is traceable to a Git commit and PR.
+Review the report for any untracked changes.
+
+101
+00:05:30,000 --> 00:06:00,000
+In the final lecture of Phase 7, we will assemble the complete CC8.1 evidence package.
+And collect change management evidence daily.
+
+
+---
+
+[## LECTURE 7.8 — CC8.1 EVIDENCE PACKAGE]
+
+102
+00:00:00,000 --> 00:00:30,000
+You need to collect CC8.1 evidence every day.
+Not just once. Every day.
+So when the auditor asks for evidence from six months ago, you have it.
+
+103
+00:00:30,000 --> 00:01:00,000
+Create a script called collect-change-management-evidence dot sh.
+Create an evidence directory for CC8.1 under today's date.
+
+104
+00:01:00,000 --> 00:01:30,000
+First, save the branch protection configuration.
+gh api to get the branch protection.
+Save as branch-protection dot json.
+
+105
+00:01:30,000 --> 00:02:00,000
+Second, save PRs merged today.
+gh api to get closed PRs. Filter by merged date equals today.
+Save as merged-prs-today dot json.
+
+106
+00:02:00,000 --> 00:02:30,000
+Third, save ArgoCD app status.
+argocd app get financial-rag with output JSON.
+Save as argocd-app-status dot json.
+
+107
+00:02:30,000 --> 00:03:00,000
+Fourth, save ArgoCD sync history.
+argocd app history financial-rag with output JSON.
+Save as argocd-sync-history dot json.
+
+108
+00:03:00,000 --> 00:03:30,000
+Fifth, check for drift.
+Extract the sync status from ArgoCD app status.
+If the status is OutOfSync, drift is detected.
+Create a drift status JSON file.
+
+109
+00:03:30,000 --> 00:04:00,000
+Sixth, save deployment rollout history.
+kubectl rollout history for the API deployment.
+Save as deployment-rollout-history dot txt.
+
+110
+00:04:00,000 --> 00:04:30,000
+Seventh, save the CODEOWNERS file.
+Copy dot github forward slash CODEOWNERS to the evidence directory.
+
+111
+00:04:30,000 --> 00:05:00,000
+Generate a summary JSON file.
+Branch protection enabled. Required reviews count.
+Force push disabled. Admin enforced.
+PRs merged today count. ArgoCD sync status.
+Drift detected boolean. CODEOWNERS configured.
+
+112
+00:05:00,000 --> 00:05:30,000
+Sync all evidence to S3 with SSE KMS.
+Add this step to your daily evidence collection workflow.
+
+113
+00:05:30,000 --> 00:06:00,000
+Key takeaways for Phase 7.
+GitHub branch protection with required reviews and status checks.
+CODEOWNERS for security and infrastructure ownership.
+
+114
+00:06:00,000 --> 00:06:30,000
+Pre-merge validation including security scans, tests, and policy checks.
+ArgoCD GitOps with auto-sync and drift detection.
+Rollback procedures automated and documented.
+
+115
+00:06:30,000 --> 00:07:00,000
+Reversible database migrations with downgrade paths.
+Canary deployments with automated analysis.
+Complete change audit trail from commit to production.
+
+116
+00:07:00,000 --> 00:07:30,000
+What is ready for your auditor.
+No direct pushes to main allowed.
+Two-person approval for all changes.
+Security team review for sensitive changes.
+
+117
+00:07:30,000 --> 00:08:00,000
+All changes tested before merge.
+Cluster state matches Git. No drift.
+Rollback procedures tested.
+Database migrations reversible.
+
+118
+00:08:00,000 --> 00:08:30,000
+Canary deployments minimize blast radius.
+Every change traceable to PR and author.
+
+119
+00:08:30,000 --> 00:09:00,000
+In Phase 8, we will cover Vendor and Third-Party Risk.
+BAA requirements, vendor assessment framework,
+AWS Shared Responsibility Model, and image provenance.
+
+120
+00:09:00,000 --> 00:09:30,000
+Continue to Phase 8 when you are ready.
+
+
+---
+
+**End of Phase 7 SRT**
+
+**Total lines:** 120
+**Duration:** ~1 hour 40 minutes
+
+Shall I continue with **Phase 8 — Vendor & Third-Party Risk**?

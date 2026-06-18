@@ -68,7 +68,7 @@ def _build_engine() -> AsyncEngine:
     settings = get_settings()
 
     engine = create_async_engine(
-        settings.DATABASE_URL,
+        settings.DATABASE_URL.get_secret_value(),
         # ── Pool ──────────────────────────────────────────────────────────────
         pool_size=settings.DB_POOL_MIN_SIZE,
         max_overflow=settings.DB_POOL_MAX_SIZE - settings.DB_POOL_MIN_SIZE,

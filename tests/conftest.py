@@ -14,8 +14,8 @@ from financial_rag.config import get_settings
 
 # Minimum env vars for all tests
 VALID_SECRETS = {
-    "POSTGRES_PASSWORD": "test-pg-password-32-chars-minimum",
-    "REDIS_PASSWORD": "test-redis-password-32-chars-min",
+    "POSTGRES_PASSWORD": os.getenv("POSTGRES_PASSWORD", "finrag-dev-password-change-in-prod"),
+    "REDIS_PASSWORD": os.getenv("REDIS_PASSWORD", "redis-dev-password-change-in-prod"),
     "APP_ENV": "testing",
 }
 

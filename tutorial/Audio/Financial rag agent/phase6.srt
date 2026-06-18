@@ -1,0 +1,944 @@
+# PHASE 6 — ZERO-TRUST SECRETS MANAGEMENT WITH VAULT
+
+[## [SECTION: The Problem Vault Solves]]
+
+
+1
+02:32:06,000 --> 02:32:12,000
+Now let's move to Phase 6. Zero-trust secrets management with HashiCorp Vault.
+This is how production systems handle secrets safely.
+
+2
+02:32:12,000 --> 02:32:18,000
+In Phases 1 through 5, secrets live in .env and are injected as environment variables.
+This has three problems at production scale.
+
+3
+02:32:18,000 --> 02:32:24,000
+First, static credentials. If POSTGRES_PASSWORD leaks, it works forever.
+Until someone manually rotates it, the attacker has access.
+
+4
+02:32:24,000 --> 02:32:30,000
+Second, shared credentials. Every pod uses the same password.
+If the ingestion service is compromised, the attacker has database access identical to the API service.
+
+5
+02:32:30,000 --> 02:32:36,000
+Third, environment variable exposure. Any process in the container can read os.environ.
+Secrets in files with restricted permissions are harder to exfiltrate.
+
+6
+02:32:36,000 --> 02:32:42,000
+Vault solves all three.
+Dynamic credentials rotate automatically every hour.
+
+7
+02:32:42,000 --> 02:32:48,000
+Per-role credentials. API, agent, and ingestion each get different database users.
+With different privileges for each workload.
+
+8
+02:32:48,000 --> 02:32:54,000
+File-based injection. Vault Agent writes secrets to files that only the application process can read.
+
+9
+02:32:54,000 --> 02:33:00,000
+Imagine you have a big, yummy box of cookies. Those are your secrets.
+
+10
+02:33:00,000 --> 02:33:06,000
+Right now, you have one giant jar of cookies that stays on the counter all day.
+That's your .env file with all your secrets in one place.
+
+11
+02:33:06,000 --> 02:33:12,000
+If a naughty monkey comes into your kitchen, he can just walk up.
+Grab the whole jar, and eat all the cookies at once.
+
+12
+02:33:12,000 --> 02:33:18,000
+That's the problem with static credentials in environment variables.
+One leak exposes everything, and the credentials work forever.
+
+13
+02:33:18,000 --> 02:33:24,000
+Vault is like having a special cookie guard.
+It completely changes how secrets are managed.
+
+14
+02:33:24,000 --> 02:33:30,000
+First, the guard has a magic key. Only you get to wear the magic key.
+That's your Kubernetes service account.
+
+15
+02:33:30,000 --> 02:33:36,000
+Second, no more jar. Instead of leaving the big jar out,
+the guard keeps it locked away in a tall, tall cupboard.
+
+16
+02:33:36,000 --> 02:33:42,000
+Third, one tiny cookie at a time. When you are hungry, you show the guard your magic key.
+
+17
+02:33:42,000 --> 02:33:48,000
+He nods and says okay. He goes to the cupboard.
+Takes out just one tiny cookie, and puts it on your plate.
+
+18
+02:33:48,000 --> 02:33:54,000
+That's the Vault Agent. It puts the secret in a file.
+Not in an environment variable where any process can read it.
+
+19
+02:33:54,000 --> 02:34:00,000
+Fourth, the cookie disappears. After a little while, that cookie vanishes.
+If you want another, you show the magic key again.
+
+20
+02:34:00,000 --> 02:34:06,000
+That's dynamic credentials. They rotate automatically.
+If a secret leaks, it only works for a short time.
+
+21
+02:34:06,000 --> 02:34:12,000
+So, if that naughty monkey comes into the kitchen,
+he can't find any cookies. The jar is locked away.
+
+22
+02:34:12,000 --> 02:34:18,000
+Even if he does find one tiny cookie on your plate,
+it disappears so fast he can't steal the whole jar.
+
+23
+02:34:18,000 --> 02:34:24,000
+That's the zero-trust model. No standing privileges.
+Every request re-authenticates. Every secret has a short lifespan.
+
+
+[## [SECTION: New Files in This Phase]]
+
+
+24
+02:34:24,000 --> 02:34:30,000
+Here are the new files we'll create in Phase 6.
+
+25
+02:34:30,000 --> 02:34:36,000
+infrastructure/vault/vault-bootstrap.sh
+Automates the entire Vault configuration.
+
+26
+02:34:36,000 --> 02:34:42,000
+infrastructure/vault/policies/api-policy.hcl
+Least-privilege policy for the API service.
+
+27
+02:34:42,000 --> 02:34:48,000
+infrastructure/vault/policies/agent-policy.hcl
+Policy for the agent service.
+
+28
+02:34:48,000 --> 02:34:54,000
+infrastructure/vault/policies/ingestion-policy.hcl
+Policy for the ingestion service.
+
+29
+02:34:54,000 --> 02:35:00,000
+infrastructure/k8s/service-accounts.yaml
+Kubernetes service accounts for each workload.
+
+30
+02:35:00,000 --> 02:35:06,000
+infrastructure/vault/vault-agent-config.hcl
+Vault Agent sidecar configuration.
+
+31
+02:35:06,000 --> 02:35:12,000
+src/financial_rag/security/vault.py
+Python Vault client for runtime secret retrieval.
+
+32
+02:35:12,000 --> 02:35:18,000
+src/financial_rag/security/__init__.py
+Exports the Vault client.
+
+33
+02:35:18,000 --> 02:35:24,000
+policies/rego/vault_policy.rego
+OPA Rego policy for validating Vault policies.
+
+
+[## [SECTION: Step 1 — Understand the Vault Architecture]]
+
+
+34
+02:35:24,000 --> 02:35:30,000
+Before writing any code, understand how the components connect.
+
+35
+02:35:30,000 --> 02:35:36,000
+At the center is HashiCorp Vault.
+It runs three engines. The database engine for PostgreSQL credentials.
+
+36
+02:35:36,000 --> 02:35:42,000
+The PKI engine for short-lived TLS certificates.
+And the Kubernetes auth method for pod authentication.
+
+37
+02:35:42,000 --> 02:35:48,000
+Next is the Vault Agent sidecar.
+It runs in the same pod as your application container.
+
+38
+02:35:48,000 --> 02:35:54,000
+The sidecar reads the Kubernetes service account JWT token.
+It authenticates to Vault using that token.
+
+39
+02:35:54,000 --> 02:36:00,000
+Then it writes secrets to a shared volume.
+The volume is mounted at slash vault slash secrets.
+
+40
+02:36:00,000 --> 02:36:06,000
+Your application container reads from that file.
+It never talks to Vault directly in normal operation.
+
+41
+02:36:06,000 --> 02:36:12,000
+Here is the key insight.
+The application never talks to Vault directly in normal operation.
+
+42
+02:36:12,000 --> 02:36:18,000
+Vault Agent handles all authentication and secret renewal.
+The app just reads files from disk.
+
+43
+02:36:18,000 --> 02:36:24,000
+This is much simpler and more secure.
+No Vault client code in your application at all.
+
+
+[## [SECTION: Step 2 — Install Vault on Kubernetes (Component #52)]]
+
+
+44
+02:36:24,000 --> 02:36:30,000
+Now let's install Vault on Kubernetes.
+We'll use the official HashiCorp Helm chart.
+
+45
+02:36:30,000 --> 02:36:36,000
+First, add the HashiCorp Helm repository and update it.
+Then install Vault in dev mode.
+
+46
+02:36:36,000 --> 02:36:42,000
+Dev mode starts a single Vault pod with no high availability.
+It uses in-memory storage, which loses all data on restart.
+
+47
+02:36:42,000 --> 02:36:48,000
+This is only for learning the workflow.
+Production requires HA mode with Raft storage and auto-unseal.
+
+48
+02:36:48,000 --> 02:36:54,000
+Wait for Vault to be ready with kubectl wait.
+Then verify the status with vault status.
+
+49
+02:36:54,000 --> 02:37:00,000
+Expected output shows Seal Type shamir, Initialized true, Sealed false.
+If it says Sealed true, something went wrong.
+
+
+[## [SECTION: Step 3 — Vault Bootstrap Script (Components #53–63)]]
+
+
+50
+02:37:00,000 --> 02:37:06,000
+Now let's create the Vault bootstrap script.
+This script automates the entire Vault configuration.
+
+51
+02:37:06,000 --> 02:37:12,000
+It's idempotent, meaning you can run it multiple times safely.
+Each command checks for existing configuration before creating it.
+
+52
+02:37:12,000 --> 02:37:18,000
+Create infrastructure slash vault slash vault-bootstrap.sh.
+Make it executable with chmod plus x.
+
+53
+02:37:18,000 --> 02:37:24,000
+The script does ten things in order.
+Let me walk through each component.
+
+54
+02:37:24,000 --> 02:37:30,000
+First, it enables the database secrets engine.
+This tells Vault to manage PostgreSQL credentials.
+
+55
+02:37:30,000 --> 02:37:36,000
+Second, it configures the PostgreSQL connection.
+Vault needs admin credentials to create and revoke database users.
+
+56
+02:37:36,000 --> 02:37:42,000
+Third, it creates three database roles.
+One for each service. API, agent, and ingestion.
+
+57
+02:37:42,000 --> 02:37:48,000
+The API role gets read-only access to filings and financial chunks.
+Plus insert on analysis_history for the audit trail.
+
+58
+02:37:48,000 --> 02:37:54,000
+The agent role gets read access to filings and financial chunks.
+And read-write on analysis_history.
+
+59
+02:37:54,000 --> 02:38:00,000
+The ingestion role gets select, insert, and update on filings and financial chunks.
+And usage on all sequences in the public schema.
+
+60
+02:38:00,000 --> 02:38:06,000
+Fourth, it enables the PKI secrets engine.
+PKI stands for Public Key Infrastructure. It handles certificates.
+
+61
+02:38:06,000 --> 02:38:12,000
+Fifth, it generates a root certificate for the internal certificate authority.
+This root CA signs all service certificates.
+
+62
+02:38:12,000 --> 02:38:18,000
+Sixth, it creates a PKI role for financial rag.
+This role defines which domains are allowed and the certificate lifespan.
+
+63
+02:38:18,000 --> 02:38:24,000
+Seventh, it enables the Kubernetes auth method.
+This allows pods to authenticate using their service account.
+
+64
+02:38:24,000 --> 02:38:30,000
+Eighth, it configures Kubernetes auth.
+It reads the cluster's API server address and CA certificate.
+
+65
+02:38:30,000 --> 02:38:36,000
+Ninth, it writes three Vault policies.
+One for each service with least-privilege access.
+
+66
+02:38:36,000 --> 02:38:42,000
+The API policy can read LLM keys, Redis password, and database credentials.
+It can also issue PKI certificates.
+
+67
+02:38:42,000 --> 02:38:48,000
+The agent policy can read LLM keys, Redis password, and database credentials.
+But no PKI access.
+
+68
+02:38:48,000 --> 02:38:54,000
+The ingestion policy can read Edgar credentials, Redis password, and database credentials.
+No LLM or PKI access.
+
+69
+02:38:54,000 --> 02:39:00,000
+Tenth, it creates Kubernetes auth roles.
+Each role binds a service account to a Vault policy.
+
+70
+02:39:00,000 --> 02:39:06,000
+The API service account gets the API policy.
+The agent service account gets the agent policy.
+
+71
+02:39:06,000 --> 02:39:12,000
+The ingestion service account gets the ingestion policy.
+Each with different TTLs.
+
+72
+02:39:12,000 --> 02:39:18,000
+Finally, the script seeds static secrets.
+These are the secrets that aren't dynamically generated.
+
+73
+02:39:18,000 --> 02:39:24,000
+LLM API keys, Redis password, Edgar user agent, and config values.
+You must replace the placeholders before production use.
+
+74
+02:39:24,000 --> 02:39:30,000
+To run the script, set your PostgreSQL admin password.
+Then execute vault-bootstrap.sh from within the Vault pod.
+
+75
+02:39:30,000 --> 02:39:36,000
+kubectl exec dash it vault dash 0 dash n vault
+Then bash dash c, then the script path.
+
+76
+02:39:36,000 --> 02:39:42,000
+After it completes, verify with vault read database slash creds slash api dash role.
+You should see dynamic credentials generated.
+
+77
+02:39:42,000 --> 02:39:48,000
+Let me summarize the bootstrap workflow.
+
+78
+02:39:48,000 --> 02:39:54,000
+Enable database engine. Configure PostgreSQL. Create database roles.
+Enable PKI. Generate root CA. Create PKI role.
+
+79
+02:39:54,000 --> 02:40:00,000
+Enable Kubernetes auth. Configure Kubernetes. Create policies.
+Create auth roles. Seed static secrets.
+
+80
+02:40:00,000 --> 02:40:06,000
+Our Vault bootstrap is complete.
+Now Vault is ready to provide dynamic credentials to our services.
+
+
+[## [SECTION: Step 4 — Vault Policies (Component #62)]]
+
+
+81
+02:40:06,000 --> 02:40:12,000
+Now let's create the Vault policies as separate files.
+For audit and GitOps tracking, we store them in infrastructure/vault/policies.
+
+82
+02:40:12,000 --> 02:40:18,000
+First, api-policy.hcl.
+This is the least-privilege policy for the API service.
+
+83
+02:40:18,000 --> 02:40:24,000
+It can read LLM secrets, Redis secrets, and config secrets.
+It can read dynamic database credentials for the API role.
+
+84
+02:40:24,000 --> 02:40:30,000
+And it can create and update PKI certificates.
+For mTLS between services.
+
+85
+02:40:30,000 --> 02:40:36,000
+Second, agent-policy.hcl.
+The agent service needs LLM access and Redis.
+
+86
+02:40:36,000 --> 02:40:42,000
+It can read database credentials for the agent role.
+But it cannot issue PKI certificates.
+
+87
+02:40:42,000 --> 02:40:48,000
+Third, ingestion-policy.hcl.
+The ingestion service only needs EDGAR config and Redis.
+
+88
+02:40:48,000 --> 02:40:54,000
+Notice what's missing. No LLM API key access.
+Ingestion does not call the LLM.
+
+89
+02:40:54,000 --> 02:41:00,000
+Why three separate policies?
+This is the principle of least privilege per workload.
+
+90
+02:41:00,000 --> 02:41:06,000
+If the ingestion service is compromised, the attacker cannot call the LLM.
+The API service does not need EDGAR credentials.
+
+91
+02:41:06,000 --> 02:41:12,000
+Compartmentalisation limits the blast radius.
+Each service gets exactly what it needs, nothing more.
+
+
+[## [SECTION: Step 5 — Kubernetes Service Accounts (Component #64)]]
+
+
+92
+02:41:12,000 --> 02:41:18,000
+Now let's create the Kubernetes service accounts.
+One per workload.
+
+93
+02:41:18,000 --> 02:41:24,000
+Create infrastructure slash k8s slash service-accounts.yaml.
+We define three service accounts.
+
+94
+02:41:24,000 --> 02:41:30,000
+financial-rag-agent-api for the API service.
+financial-rag-agent-agent for the agent service.
+
+95
+02:41:30,000 --> 02:41:36,000
+And financial-rag-agent-ingestion for the ingestion service.
+Each in the financial-rag namespace.
+
+96
+02:41:36,000 --> 02:41:42,000
+Apply them with kubectl create namespace if it doesn't exist.
+Then kubectl apply dash f.
+
+97
+02:41:42,000 --> 02:41:48,000
+These service accounts will be used by the Vault Agent sidecar.
+Each maps to a different Vault policy.
+
+
+[## [SECTION: Step 6 — Vault Agent Sidecar Config (Component #65)]]
+
+
+98
+02:41:48,000 --> 02:41:54,000
+Now let's configure the Vault Agent sidecar.
+This runs as a second container in each pod.
+
+99
+02:41:54,000 --> 02:42:00,000
+Create infrastructure slash vault slash vault-agent-config.hcl.
+Let me explain what this configuration does.
+
+100
+02:42:00,000 --> 02:42:06,000
+First, the vault block sets the Vault address.
+http colon slash slash vault dot vault dot svc dot cluster dot local colon 8200.
+
+101
+02:42:06,000 --> 02:42:12,000
+This is the Kubernetes internal DNS name for Vault.
+All pods in the cluster can reach it.
+
+102
+02:42:12,000 --> 02:42:18,000
+Next, auto_auth tells Vault how to authenticate.
+We use the Kubernetes auth method.
+
+103
+02:42:18,000 --> 02:42:24,000
+The sidecar reads the pod's service account JWT.
+It presents this token to Vault.
+
+104
+02:42:24,000 --> 02:42:30,000
+The role must match the service account.
+We set it via an environment variable on the sidecar.
+
+105
+02:42:30,000 --> 02:42:36,000
+Now the template blocks.
+These render secrets into files.
+
+106
+02:42:36,000 --> 02:42:42,000
+The first template renders database credentials.
+It calls the secret command to get dynamic credentials.
+
+107
+02:42:42,000 --> 02:42:48,000
+The output goes to slash vault slash secrets slash database.env.
+The format is environment variables.
+
+108
+02:42:48,000 --> 02:42:54,000
+When credentials rotate, the command runs kill dash HUP.
+This sends a signal to the application to reload.
+
+109
+02:42:54,000 --> 02:43:00,000
+The annotation approach uses Vault's mutating admission webhook.
+It automatically injects the sidecar without changing the deployment spec.
+
+110
+02:43:00,000 --> 02:43:06,000
+Here are the annotations for a deployment.
+vault.hashicorp.com slash agent-inject set to true.
+
+111
+02:43:06,000 --> 02:43:12,000
+vault.hashicorp.com slash role specifies which Vault role to use.
+And agent-inject-secret plus agent-inject-template define each secret.
+
+112
+02:43:12,000 --> 02:43:18,000
+This is the recommended production pattern.
+No manual sidecar configuration needed.
+
+
+[## [SECTION: Step 7 — Deploy and Test the Sidecar (Component #66)]]
+
+
+113
+02:43:18,000 --> 02:43:24,000
+Now let's test the Vault Agent sidecar.
+We'll deploy a test pod with the API service account.
+
+114
+02:43:24,000 --> 02:43:30,000
+This pod has the Vault Agent annotations.
+It will automatically inject the sidecar and fetch secrets.
+
+115
+02:43:30,000 --> 02:43:36,000
+We create a simple pod with the busybox image.
+It just sleeps for 3600 seconds so we can inspect it.
+
+116
+02:43:36,000 --> 02:43:42,000
+The annotations tell Vault to inject the sidecar.
+And to fetch the database secret from the API role.
+
+117
+02:43:42,000 --> 02:43:48,000
+Wait for the pod to be ready with kubectl wait.
+Then inspect the injected secret file.
+
+118
+02:43:48,000 --> 02:43:54,000
+The expected output shows POSTGRES_USER and POSTGRES_PASSWORD.
+Notice the username starts with v dash k8s dash api dash role.
+
+119
+02:43:54,000 --> 02:44:00,000
+This is a dynamically generated credential.
+Unique per pod, rotated automatically after one hour.
+
+120
+02:44:00,000 --> 02:44:06,000
+If you run the test multiple times, you'll get different usernames.
+Each time, Vault creates a new database user.
+
+121
+02:44:06,000 --> 02:44:12,000
+Clean up the test pod when done.
+kubectl delete pod vault-test in the financial-rag namespace.
+
+
+[## [SECTION: Step 8 — Python Vault Client (Component #67)]]
+
+
+122
+02:44:12,000 --> 02:44:18,000
+Now let's build the Python Vault client.
+We'll put it in src/financial_rag/security/vault.py
+
+123
+02:44:18,000 --> 02:44:24,000
+This client handles reading secrets from Vault.
+But with an important design decision.
+
+124
+02:44:24,000 --> 02:44:30,000
+The client has a three-tier priority order.
+First, try file-based injection from the Vault Agent sidecar.
+
+125
+02:44:30,000 --> 02:44:36,000
+This is the production path. Secrets are written to slash vault slash secrets.
+As dot env files that the app can read.
+
+126
+02:44:36,000 --> 02:44:42,000
+Second, if no file exists, try direct Vault API using hvac.
+This is for development when running Vault locally.
+
+127
+02:44:42,000 --> 02:44:48,000
+Third, fall back to environment variables.
+This is for local development without Vault at all.
+
+128
+02:44:48,000 --> 02:44:54,000
+The VaultSecretReader class has a read method.
+It takes a secret name like database or llm.
+
+129
+02:44:54,000 --> 02:45:00,000
+In production, it looks for slash vault slash secrets slash database.env.
+It parses the KEY=VALUE pairs and returns them as a dictionary.
+
+130
+02:45:00,000 --> 02:45:06,000
+The _parse_env_file method handles the file parsing.
+It skips comments and blank lines.
+
+131
+02:45:06,000 --> 02:45:12,000
+If the file doesn't exist, we try direct Vault API.
+We need VAULT_ADDR and VAULT_TOKEN environment variables.
+
+132
+02:45:12,000 --> 02:45:18,000
+For static secrets like LLM keys, we use the KV v2 engine.
+For dynamic database credentials, we use the database engine.
+
+133
+02:45:18,000 --> 02:45:24,000
+The read_database_credentials method is a convenience wrapper.
+It specifically reads the database secret.
+
+134
+02:45:24,000 --> 02:45:30,000
+We use a module-level singleton for the Vault reader.
+get_vault_reader returns the same instance every time.
+
+135
+02:45:30,000 --> 02:45:36,000
+Update the security package __init__.py.
+Export VaultSecretReader and get_vault_reader.
+
+136
+02:45:36,000 --> 02:45:42,000
+Install the hvac library first.
+pip install hvac.
+
+137
+02:45:42,000 --> 02:45:48,000
+Let me summarize the Vault client design.
+
+138
+02:45:48,000 --> 02:45:54,000
+The key insight is that the application never talks to Vault directly.
+In production, the sidecar handles everything.
+
+139
+02:45:54,000 --> 02:46:00,000
+The app just reads files from slash vault slash secrets.
+This is much simpler and more secure.
+
+140
+02:46:00,000 --> 02:46:06,000
+The direct Vault API path is only for development.
+And for testing when you don't have the sidecar.
+
+141
+02:46:06,000 --> 02:46:12,000
+In production, VAULT_ADDR and VAULT_TOKEN are not set.
+So the client only uses the file path.
+
+142
+02:46:12,000 --> 02:46:18,000
+Our Python Vault client is complete.
+Now our application can read secrets from Vault seamlessly.
+
+
+[## [SECTION: Step 9 — OPA Rego Policy for Vault (Component #74 preview)]]
+
+
+143
+02:46:18,000 --> 02:46:24,000
+Now let's look at OPA Rego policy validation for Vault.
+This ensures our Vault policies are secure before they are applied.
+
+144
+02:46:24,000 --> 02:46:30,000
+OPA stands for Open Policy Agent. It's a general-purpose policy engine.
+We use it to validate Vault policy files.
+
+145
+02:46:30,000 --> 02:46:36,000
+Install conftest first. pip install conftest.
+This tool evaluates policies against your policy files.
+
+146
+02:46:36,000 --> 02:46:42,000
+We create a test input with a bad policy.
+It grants write on a wildcard secret path.
+
+147
+02:46:42,000 --> 02:46:48,000
+And delete capability on that same path.
+These are dangerous permissions.
+
+148
+02:46:48,000 --> 02:46:54,000
+We run conftest test against this input.
+Using the vault_policy.rego file from our repo.
+
+149
+02:46:54,000 --> 02:47:00,000
+The output shows two failures.
+One for wildcard write, one for delete capability.
+
+150
+02:47:00,000 --> 02:47:06,000
+The Rego policy enforces three rules.
+No wildcard write on secret paths.
+
+151
+02:47:06,000 --> 02:47:12,000
+No delete capability on secret paths.
+Application roles should never delete secrets.
+
+152
+02:47:12,000 --> 02:47:18,000
+No sudo capability except for admin policies.
+And no sys slash access from non-admin workloads.
+
+
+[## [SECTION: Step 10 — Production Vault HA (Component #68)]]
+
+
+153
+02:47:18,000 --> 02:47:24,000
+Now let's deploy Vault in production HA mode.
+We upgrade the Helm chart with different settings.
+
+154
+02:47:24,000 --> 02:47:30,000
+Dev mode is disabled. HA mode is enabled.
+We use three replicas for high availability.
+
+155
+02:47:30,000 --> 02:47:36,000
+Raft storage is enabled. This is Vault's built-in consensus algorithm.
+It replaces Consul storage.
+
+156
+02:47:36,000 --> 02:47:42,000
+Data storage is enabled with 10 gigabytes per replica.
+And the web UI is enabled for management.
+
+157
+02:47:42,000 --> 02:47:48,000
+In production, Vault must be unsealed after every restart.
+Manual unsealing is operationally painful.
+
+158
+02:47:48,000 --> 02:47:54,000
+You need 3 out of 5 key shares to unseal.
+That means someone must type three different keys.
+
+159
+02:47:54,000 --> 02:48:00,000
+AWS KMS auto-unseal solves this.
+Vault unseals itself using a KMS key you control.
+
+160
+02:48:00,000 --> 02:48:06,000
+The seal block goes in your Helm values as extraConfig.
+Region, and the KMS key ARN.
+
+161
+02:48:06,000 --> 02:48:12,000
+When Vault starts, it calls the KMS service.
+The KMS key decrypts Vault's master key automatically.
+
+162
+02:48:12,000 --> 02:48:18,000
+No human intervention needed. Vault just works after restarts.
+
+163
+02:48:18,000 --> 02:48:24,000
+Now let's set up Raft snapshot backups.
+A manual snapshot command saves the Vault state.
+
+164
+02:48:24,000 --> 02:48:30,000
+Use this before upgrades or major changes.
+
+165
+02:48:30,000 --> 02:48:36,000
+For automated backups, we use a Kubernetes CronJob.
+It runs daily at 2 AM.
+
+166
+02:48:36,000 --> 02:48:42,000
+The job calls vault operator raft snapshot save.
+Then uploads the snapshot to S3.
+
+
+[## [SECTION: Step 11 — Phase 6 Verification]]
+
+167
+02:48:42,000 --> 02:48:48,000
+Now let's verify everything works.
+First, read dynamic database credentials from Vault.
+
+168
+02:48:48,000 --> 02:48:54,000
+vault read database slash creds slash api-role.
+You get a lease ID, lease duration of one hour, username, and password.
+
+169
+02:48:54,000 --> 02:49:00,000
+The username starts with v dash k8s dash api dash role.
+The password is a secure random string.
+
+170
+02:49:00,000 --> 02:49:06,000
+Next, verify the credential actually works in PostgreSQL.
+Use PGPASSWORD with the password, then run a SELECT query.
+
+171
+02:49:06,000 --> 02:49:12,000
+If the query succeeds, your dynamic credentials are working.
+
+172
+02:49:12,000 --> 02:49:18,000
+Finally, verify the policy denies what it should.
+Create a token with the api-policy.
+
+173
+02:49:18,000 --> 02:49:24,000
+Then try to access the EDGAR secret path.
+vault kv get secret slash financial-rag slash prod slash edgar.
+
+174
+02:49:24,000 --> 02:49:30,000
+Expected output is permission denied.
+The API service should not have access to EDGAR secrets.
+
+175
+02:49:30,000 --> 02:49:36,000
+Let me summarize Phase six.
+
+176
+02:49:36,000 --> 02:49:42,000
+We installed Vault on Kubernetes.
+We bootstrapped the database and PKI engines.
+
+177
+02:49:42,000 --> 02:49:48,000
+We created least-privilege policies per service.
+We configured the Vault Agent sidecar for file injection.
+
+178
+02:49:48,000 --> 02:49:54,000
+We built a Python client that reads secrets from files.
+With fallbacks for development.
+
+179
+02:49:54,000 --> 02:50:00,000
+And we set up production HA with AWS KMS auto-unseal.
+Plus Raft snapshot backups for disaster recovery.
+
+180
+02:50:00,000 --> 02:50:06,000
+Phase six is complete.
+Secrets are now managed securely at production scale.
+
+---
+
+**End of Phase 6. Phase 7 covers CI/CD Pipeline. Shall I continue?**

@@ -1,0 +1,1633 @@
+**YES. I am ready.**
+
+I have reviewed your summary guide. I will now generate the **complete SRT audio script** for **Phase 1 — SOC 2 Fundamentals (8 lectures)** following your rules:
+
+1. **Style 1** — clear, confident, explanatory (freeCodeCamp / Academind style)
+2. **No invented files** — only what you provided
+3. **Follow sequence exactly** — no reordering, no skipping
+4. **Full SRT, not condensed** — with file headers and purpose comments
+5. **Logical dependency order** — files before code that imports them
+6. **Add nothing not given**
+
+---
+
+# SOC 2 DEMYSTIFIED: TRUST SERVICE CRITERIA
+## PHASE 1 — SOC 2 FUNDAMENTALS
+### Complete SRT Audio Script
+
+---
+
+## LECTURE 1.1 — THE SOC 2 FRAMEWORK: WHAT IT IS, WHY IT MATTERS, WHO CARES
+
+1
+00:00:00,000 --> 00:00:15,000
+Looking at compliance frameworks can feel overwhelming.
+So many standards, so much documentation, and the acronyms.
+
+2
+00:00:15,000 --> 00:00:30,000
+It is enough to make anyone feel stuck.
+But what if there was one framework that actually makes sense
+for modern SaaS companies?
+
+3
+00:00:30,000 --> 00:00:45,000
+That is SOC 2.
+Hi there, and welcome to a course where I will take you
+from SOC 2 beginner to confident compliance lead.
+
+4
+00:00:45,000 --> 00:01:00,000
+Without endless theory or aimless documentation reading.
+This is about understanding what actually matters
+while truly grasping why.
+
+5
+00:01:00,000 --> 00:01:20,000
+Starting from what SOC 2 is and why you should care,
+to how each Trust Service Criterion applies to your actual infrastructure.
+And finally building a complete evidence package
+that would satisfy even the toughest auditor.
+
+6
+00:01:20,000 --> 00:01:40,000
+By the end of this crash course, you will not just know SOC 2.
+You will have created something you can showcase to customers and investors.
+
+7
+00:01:40,000 --> 00:02:00,000
+But that is not all. For those ready to dive even deeper,
+I have put together a comprehensive SOC 2 readiness guide.
+Designed to take you from zero to audit-ready.
+
+8
+00:02:00,000 --> 00:02:20,000
+Whether it is learning evidence collection, remediation planning,
+or working with auditors. You can find all the links in the description below.
+
+9
+00:02:20,000 --> 00:02:40,000
+But for now, let us dive into the video together.
+We will build a complete compliance program using a real financial RAG agent
+as our example system. Let us get started.
+
+10
+00:02:40,000 --> 00:03:00,000
+SOC 2 is a game changer.
+It is an auditing standard created by the AICPA.
+The American Institute of Certified Public Accountants.
+
+11
+00:03:00,000 --> 00:03:20,000
+It has become the gold standard for SaaS companies worldwide.
+Unlike ISO 27001 which is international,
+SOC 2 is particularly popular in North America.
+
+12
+00:03:20,000 --> 00:03:40,000
+But global customers increasingly demand it.
+And here is what makes it special.
+It does not prescribe specific controls.
+
+13
+00:03:40,000 --> 00:04:00,000
+Instead, it gives you five Trust Service Criteria.
+And you get to choose which ones apply.
+Let me break down the five TSCs.
+
+14
+00:04:00,000 --> 00:04:20,000
+First, Security.
+This one is mandatory for everyone.
+It means your system is protected against unauthorized access.
+
+15
+00:04:20,000 --> 00:04:40,000
+Think API keys, database encryption, network policies.
+All the foundational stuff.
+Second, Availability.
+
+16
+00:04:40,000 --> 00:05:00,000
+This is about your system being available for operation as agreed.
+For most SaaS, that means uptime commitments.
+Your ninety-nine point nine percent SLO, multi-AZ deployment.
+
+17
+00:05:00,000 --> 00:05:20,000
+All of that.
+Third, Processing Integrity.
+This means system processing is complete, accurate, and timely.
+
+18
+00:05:20,000 --> 00:05:40,000
+For our financial RAG agent, this includes things like SHA-256 deduplication.
+Ensuring we do not ingest the same SEC filing twice.
+Fourth, Confidentiality.
+
+19
+00:05:40,000 --> 00:06:00,000
+Information designated as confidential is protected.
+In our system, that is SEC filing text before it is publicly filed.
+Plus user queries.
+
+20
+00:06:00,000 --> 00:06:20,000
+Fifth, Privacy.
+This covers personal information collected, used, retained, and disclosed.
+If you collect emails or any PII, this applies.
+
+21
+00:06:20,000 --> 00:06:40,000
+Now, there are two types of SOC 2 reports.
+And this confuses everyone at first.
+Type I evaluates whether your controls are designed appropriately
+at a specific point in time.
+
+22
+00:06:40,000 --> 00:07:00,000
+Think of it as an architecture review.
+It takes about one to two months.
+And costs twenty to fifty thousand dollars.
+
+23
+00:07:00,000 --> 00:07:20,000
+Type II evaluates whether those controls are operating effectively
+over a period of time. Typically six to twelve months.
+This is what customers really want.
+
+24
+00:07:20,000 --> 00:07:40,000
+It proves you are not just designed well, but actually following through.
+Type II takes four to eight months.
+And costs fifty to one hundred fifty thousand dollars.
+
+25
+00:07:40,000 --> 00:08:00,000
+The typical timeline looks like this.
+Weeks one to two for scoping.
+Weeks three to four for gap analysis.
+
+26
+00:08:00,000 --> 00:08:20,000
+Weeks five to eight for remediation.
+Week nine for Type I fieldwork.
+Week ten for delivery.
+
+27
+00:08:20,000 --> 00:08:40,000
+Then you operate for six to twelve months collecting evidence.
+Month thirteen for Type II fieldwork.
+Month fourteen for final delivery.
+
+28
+00:08:40,000 --> 00:09:00,000
+The key players in a SOC 2 audit are your auditor.
+Typically the Big Four. Deloitte, PwC, KPMG, EY.
+Or boutique firms.
+
+29
+00:09:00,000 --> 00:09:20,000
+The report recipients are your customers, investors,
+and board of directors.
+Your team includes security engineers, platform engineers,
+and compliance leads.
+
+30
+00:09:20,000 --> 00:09:40,000
+Let me show you how to map your system to these criteria
+with a real example.
+I am going to walk through mapping a financial RAG agent
+to the five TSCs.
+
+31
+00:09:40,000 --> 00:10:00,000
+Open your terminal and let us create our system boundary document.
+Type mkdir dash p soc2.
+
+32
+00:10:00,000 --> 00:10:30,000
+Now run cat greater than soc2/system-boundary.yaml with here document.
+Let me write this out for you.
+
+33
+00:10:30,000 --> 00:11:00,000
+system_name colon space Financial RAG Agent Platform.
+system_description colon space AI hyphen powered SEC filing analysis
+and retrieval system.
+
+34
+00:11:00,000 --> 00:11:30,000
+Then trust_service_criteria_mapping colon.
+Indent security colon.
+Indent again description colon System protected against unauthorized access.
+
+35
+00:11:30,000 --> 00:12:00,000
+Indent implementations colon dash API key authentication with rotation,
+dash Kubernetes RBAC for internal access,
+dash Vault dynamic credentials with one hour TTL,
+dash Cilium network policies for zero dash trust.
+
+36
+00:12:00,000 --> 00:12:30,000
+Then availability colon.
+Description colon System available as agreed with ninety-nine point nine percent uptime.
+Implementations colon Multi-AZ deployment for RDS and EKS,
+HPA with three to twenty replicas based on CPU,
+Karpenter for new nodes in under thirty seconds,
+and PodDisruptionBudgets with minimum two replicas.
+
+37
+00:12:30,000 --> 00:13:00,000
+Then processing_integrity colon.
+Description colon Complete, accurate, timely processing.
+Implementations colon SHA-256 deduplication for filings,
+idempotent ingestion cron jobs,
+and PostgreSQL ACID compliance.
+
+38
+00:13:00,000 --> 00:13:30,000
+Then confidentiality colon.
+Description colon Confidential information protected.
+Implementations colon TLS one point three for all data in transit,
+RDS, S3, and EBS encryption at rest,
+SEC non-public filing text,
+and user query data.
+
+39
+00:13:30,000 --> 00:14:00,000
+Then privacy colon.
+Description colon Personal information protected.
+Implementations colon No PII collected without consent,
+data retention policies with thirty days for queries,
+and user deletion capability.
+Close the here document with EOF.
+
+40
+00:14:00,000 --> 00:14:30,000
+Now let us verify our mapping.
+Run cat soc2 forward slash system-boundary dot yaml.
+You should see all five criteria mapped to specific implementations
+in your codebase.
+
+41
+00:14:30,000 --> 00:15:00,000
+This is what auditors want to see.
+Not generic statements, but actual technical implementations.
+
+42
+00:15:00,000 --> 00:15:30,000
+Every control you implement should have code that proves it exists.
+That is the foundation of SOC 2.
+For the availability criterion, here is what your HPA configuration
+should look like.
+
+43
+00:15:30,000 --> 00:16:00,000
+In k8s forward slash hpa dot yaml.
+apiVersion colon autoscaling forward slash v2.
+kind colon HorizontalPodAutoscaler.
+metadata colon name colon financial-rag-api.
+namespace colon financial-rag.
+
+44
+00:16:00,000 --> 00:16:30,000
+spec colon minReplicas colon three.
+maxReplicas colon twenty.
+metrics colon dash type colon Resource.
+resource colon name colon cpu.
+target colon type colon Utilization.
+averageUtilization colon seventy.
+
+45
+00:16:30,000 --> 00:17:00,000
+This directly supports CC7 point one.
+System availability.
+
+46
+00:17:00,000 --> 00:17:30,000
+Your lab exercise for this lecture is to map your own RAG system components
+to all five TSCs.
+Create a document similar to what I just showed.
+But for your actual deployment.
+
+47
+00:17:30,000 --> 00:18:00,000
+Identify where each criterion is implemented in your codebase.
+Once you have done that, you are ready for Lecture one point two.
+Where we will define the system boundary.
+
+48
+00:18:00,000 --> 00:18:20,000
+What is in scope and what is out.
+
+---
+
+## LECTURE 1.2 — SCOPE DEFINITION: WHAT GOES IN, WHAT STAYS OUT
+
+49
+00:00:00,000 --> 00:00:20,000
+One of the most common mistakes in SOC 2 preparation
+is defining your scope too broadly or too narrowly.
+
+50
+00:00:20,000 --> 00:00:40,000
+Too broad and you will drown in evidence collection.
+Too narrow and customers will question whether the report
+covers what matters to them.
+
+51
+00:00:40,000 --> 00:01:00,000
+Let me show you how to define the perfect system boundary.
+The key principle is this.
+Include everything required to deliver your service.
+
+52
+00:01:00,000 --> 00:01:20,000
+Exclude everything that customers do not depend on.
+I am going to create a complete system boundary document
+for our financial RAG agent.
+
+53
+00:01:20,000 --> 00:01:50,000
+Run cat greater than soc2 forward slash system-boundary dot yaml.
+This time we are adding system components and data flows.
+
+54
+00:01:50,000 --> 00:02:20,000
+First, system_name and system_description remain the same.
+Then system_components colon.
+Indent infrastructure colon dash EKS Cluster financial-rag-prod,
+dash RDS PostgreSQL with pgvector,
+dash ElastiCache Redis,
+dash S3 buckets for backups,
+dash ECR repositories.
+
+55
+00:02:20,000 --> 00:02:50,000
+Indent application colon dash FastAPI application as api service,
+dash Agent workers as agent service,
+dash Ingestion cron jobs,
+dash Helm charts.
+
+56
+00:02:50,000 --> 00:03:20,000
+Indent observability colon dash Prometheus metrics,
+dash Loki logs,
+dash Tempo traces,
+dash Grafana dashboards.
+
+57
+00:03:20,000 --> 00:03:50,000
+Indent security colon dash Vault for secrets,
+dash Cilium network policies,
+dash Falco runtime security,
+dash OPA forward slash Gatekeeper policies.
+
+58
+00:03:50,000 --> 00:04:20,000
+Then excluded_components colon.
+Dash Developer workstations out of scope,
+dash Customer on-premises environments,
+dash Third-party APIs like OpenAI and Groq with note that vendor assessment covers,
+dash Public internet infrastructure.
+
+59
+00:04:20,000 --> 00:04:50,000
+Then data_flows colon.
+First flow. source colon SEC EDGAR API.
+destination colon Ingestion cron job.
+data_type colon Public filings.
+classification colon Public.
+
+60
+00:04:50,000 --> 00:05:20,000
+Second flow. source colon User via API.
+destination colon API service.
+data_type colon Query text comma API keys.
+classification colon Confidential.
+
+61
+00:05:20,000 --> 00:05:50,000
+Third flow. source colon API service.
+destination colon OpenAI forward slash Groq API.
+data_type colon Query context.
+classification colon Confidential.
+Close the file.
+
+62
+00:05:50,000 --> 00:06:20,000
+Now let us visualize the trust boundaries.
+Create soc2 forward slash trust-boundaries dot md.
+
+63
+00:06:20,000 --> 00:06:50,000
+Write hash Trust Boundaries.
+In Scope open parenthesis Your Control close parenthesis.
+Dash API Gateway to EKS Cluster to RDS to ElastiCache to S3.
+Dash All configuration comma deployment comma and operations.
+
+64
+00:06:50,000 --> 00:07:20,000
+Out of Scope open parenthesis Vendor Managed close parenthesis.
+Dash OpenAI API covered by vendor assessment.
+Dash SEC EDGAR as public data source.
+Dash Customer VPC as customer responsibility.
+
+65
+00:07:20,000 --> 00:07:50,000
+Trust Boundary Controls.
+Dash TLS one point three for all outbound connections.
+Dash API key authentication for OpenAI.
+Dash Vendor SOC 2 reports reviewed annually.
+
+66
+00:07:50,000 --> 00:08:20,000
+The key insight here is that you do not need to control everything.
+You just need to manage the risks of what you do not control
+through vendor assessments.
+
+67
+00:08:20,000 --> 00:08:50,000
+Now let us document data flows in detail.
+Create soc2 forward slash data-flow-mapping dot yaml.
+
+68
+00:08:50,000 --> 00:09:20,000
+First flow. flow_id colon DF-001.
+name colon SEC Filing Ingestion.
+source colon SEC EDGAR API as public.
+destination colon S3 raw bucket.
+transformation colon SHA-256 hashing comma validation.
+classification colon Public.
+
+69
+00:09:20,000 --> 00:09:50,000
+controls colon dash TLS one point two plus for download,
+dash Checksum validation.
+
+70
+00:09:50,000 --> 00:10:20,000
+Second flow. flow_id colon DF-002.
+name colon User Query Processing.
+source colon Customer API client.
+destination colon OpenAI API.
+data_elements colon dash Query text, dash Retrieved context, dash API key.
+
+71
+00:10:20,000 --> 00:10:50,000
+classification colon Confidential.
+retention colon Thirty days in logs.
+controls colon dash TLS one point three end-to-end,
+dash No persistent storage of queries,
+dash API key rotation every ninety days.
+
+72
+00:10:50,000 --> 00:11:20,000
+Third flow. flow_id colon DF-003.
+name colon Agent Analysis Storage.
+source colon Agent worker.
+destination colon RDS PostgreSQL analysis_history table.
+data_elements colon dash Query text, dash Response, dash User ID hashed.
+
+73
+00:11:20,000 --> 00:11:50,000
+classification colon Confidential.
+retention colon Ninety days.
+controls colon dash Encryption at rest with AWS KMS,
+dash Row-level access control,
+dash Audit logging.
+
+74
+00:11:50,000 --> 00:12:20,000
+Now for a pro tip that will save you hours with your auditor.
+Create a scope change management process.
+Any time you add a new service or change a data flow,
+you need to reassess whether it is in scope.
+
+75
+00:12:20,000 --> 00:12:50,000
+Create soc2 forward slash scope-change-checklist dot md.
+Include when to review scope.
+New microservice deployment.
+New data source integration.
+New customer data type.
+Infrastructure migration like a new cloud region.
+
+76
+00:12:50,000 --> 00:13:20,000
+Review questions.
+Does this component process customer data?
+Is this component required for core service delivery?
+Would customers care if this component failed?
+
+77
+00:13:20,000 --> 00:13:50,000
+Documentation required includes updated system boundary diagram,
+updated data flow map,
+control gap assessment,
+and evidence collection update.
+
+78
+00:13:50,000 --> 00:14:20,000
+Your lab exercise for this lecture is to create a system boundary diagram
+for your deployment.
+Use draw.io or Mermaid to visualize the components.
+
+79
+00:14:20,000 --> 00:14:50,000
+Include trust boundaries showing what you control
+versus what you do not.
+Then create a data flow map showing how customer data moves
+through your system.
+
+80
+00:14:50,000 --> 00:15:20,000
+Identify which TSCs apply to each flow.
+Once you have completed that, move on to Lecture one point three.
+Where we will select specific controls and map them to implementations.
+
+---
+
+## LECTURE 1.3 — CONTROL SELECTION: WHICH CONTROLS APPLY TO YOU
+
+81
+00:00:00,000 --> 00:00:30,000
+Now that we understand the five Trust Service Criteria
+and have defined our system boundary,
+it is time to select specific controls.
+
+82
+00:00:30,000 --> 00:01:00,000
+SOC 2 does not tell you exactly which controls to implement.
+You have to choose based on your system's risks.
+The SOC 2 Trust Services Criteria are organized into nine categories.
+
+83
+00:01:00,000 --> 00:01:30,000
+Often called CC1 through CC9.
+But for most SaaS companies, you will focus on CC6 through CC9.
+Let me walk you through which ones matter for our RAG system.
+
+84
+00:01:30,000 --> 00:02:00,000
+Create soc2 forward slash controls-mapping dot yaml.
+Start with a comment. Hash Selected controls for Financial RAG Agent.
+
+85
+00:02:00,000 --> 00:02:30,000
+Then security_controls colon.
+CC6.1 colon Logical access security.
+CC6.6 colon Encryption of data at rest.
+CC6.7 colon Encryption of data in transit.
+
+86
+00:02:30,000 --> 00:03:00,000
+Then a comment for CC7.0 System Operations.
+CC7.1 colon System availability.
+CC7.2 colon Monitoring and alerting.
+CC7.4 colon Backup and recovery.
+CC7.5 colon Incident response.
+
+87
+00:03:00,000 --> 00:03:30,000
+Comment for CC8.0 Change Management.
+CC8.1 colon Change management procedures.
+Comment for CC9.0 Risk Mitigation.
+CC9.2 colon Vendor risk management.
+
+88
+00:03:30,000 --> 00:04:00,000
+Then selected_controls colon.
+Each control gets an entry.
+
+89
+00:04:00,000 --> 00:04:30,000
+First control. control_id colon CC6.1.
+title colon Logical access security.
+implementation colon API key authentication comma RBAC.
+evidence colon Kubernetes RBAC configs comma API logs.
+owner colon at sign security dash team.
+
+90
+00:04:30,000 --> 00:05:00,000
+Second control. control_id colon CC6.6.
+title colon Encryption at rest.
+implementation colon RDS encryption comma S3 SSE-KMS.
+evidence colon AWS Config rules comma KMS key policies.
+owner colon at sign platform dash team.
+
+91
+00:05:00,000 --> 00:05:30,000
+Third control. control_id colon CC6.7.
+title colon Encryption in transit.
+implementation colon TLS one point three comma Cilium mTLS.
+evidence colon Ingress TLS config comma certificates.
+owner colon at sign platform dash team.
+
+92
+00:05:30,000 --> 00:06:00,000
+Fourth control. control_id colon CC7.1.
+title colon System availability.
+implementation colon Multi-AZ comma HPA comma PDBs.
+evidence colon SLO dashboards comma uptime reports.
+owner colon at sign platform dash team.
+
+93
+00:06:00,000 --> 00:06:30,000
+Fifth control. control_id colon CC7.2.
+title colon Monitoring and alerting.
+implementation colon Prometheus comma Loki comma PagerDuty.
+evidence colon Alert configs comma on-call schedules.
+owner colon at sign platform dash team.
+
+94
+00:06:30,000 --> 00:07:00,000
+Sixth control. control_id colon CC7.4.
+title colon Backup and recovery.
+implementation colon Velero comma RDS backups.
+evidence colon Backup logs comma restore tests.
+owner colon at sign platform dash team.
+
+95
+00:07:00,000 --> 00:07:30,000
+Seventh control. control_id colon CC8.1.
+title colon Change management.
+implementation colon GitOps comma PR reviews.
+evidence colon PR approvals comma ArgoCD logs.
+owner colon at sign eng dash team.
+
+96
+00:07:30,000 --> 00:08:00,000
+Eighth control. control_id colon CC9.2.
+title colon Vendor risk management.
+implementation colon Vendor assessments.
+evidence colon Vendor questionnaires comma BAAs.
+owner colon at sign compliance dash team.
+
+97
+00:08:00,000 --> 00:08:30,000
+Now let me show you how each control maps to actual code.
+This is what makes your SOC 2 program real.
+Not just documents, but implemented controls.
+
+98
+00:08:30,000 --> 00:09:00,000
+For CC6.6, encryption at rest.
+In terraform forward slash rds-encryption dot tf.
+The aws_db_instance resource for financial_rag has storage_encrypted set to true.
+And kms_key_id referencing aws_kms_key.rds_key.arn.
+
+99
+00:09:00,000 --> 00:09:30,000
+The aws_kms_key resource has enable_key_rotation set to true
+and rotation_period_in_days of 365.
+
+100
+00:09:30,000 --> 00:10:00,000
+For CC7.1, availability.
+In k8s forward slash pdb dot yaml.
+The PodDisruptionBudget named financial-rag-api-pdb has minAvailable set to two.
+
+101
+00:10:00,000 --> 00:10:30,000
+In k8s forward slash hpa dot yaml.
+The HorizontalPodAutoscaler has minReplicas three,
+maxReplicas twenty, and CPU target average utilization seventy.
+
+102
+00:10:30,000 --> 00:11:00,000
+For CC8.1, change management.
+In dot github forward slash workflows forward slash pr-checks dot yaml.
+The validate-change job requires approval for production changes
+and logs the change for audit.
+
+103
+00:11:00,000 --> 00:11:30,000
+Now here is a critical concept. Control inheritance.
+Some controls can be inherited from your cloud provider.
+For example, AWS's physical security controls at their data centers
+inherit to you.
+
+104
+00:11:30,000 --> 00:12:00,000
+You do not need to implement guards at AWS facilities.
+Document control inheritance like this in soc2 forward slash control-inheritance dot yaml.
+
+105
+00:12:00,000 --> 00:12:30,000
+Under AWS_inherited, list physical access to data centers.
+With aws_control AWS SOC 2 comma ISO 27001.
+Evidence being AWS SOC 2 report reviewed annually.
+
+106
+00:12:30,000 --> 00:13:00,000
+Also data center environmental controls with evidence AWS SOC 2 report.
+And hardware lifecycle management with evidence AWS SOC 2 report.
+
+107
+00:13:00,000 --> 00:13:30,000
+Under your_responsibility, list application-level access control
+with implementation API key middleware.
+Customer data encryption keys with implementation KMS customer-managed keys.
+
+108
+00:13:30,000 --> 00:14:00,000
+Backup and restore procedures with implementation Velero and RDS backups.
+And incident detection and response with implementation Falco, PagerDuty, and runbooks.
+
+109
+00:14:00,000 --> 00:14:30,000
+Your lab exercise is to map all five TSCs to specific code files
+in your repository.
+For each control, identify which code file implements it.
+
+110
+00:14:30,000 --> 00:15:00,000
+Who owns that code.
+And how evidence is collected.
+Create a control matrix similar to what I showed,
+but customized to your system.
+
+111
+00:15:00,000 --> 00:15:30,000
+Include both implemented controls and inherited controls
+from your cloud provider.
+Once you have completed that, move on to Lecture one point four.
+
+112
+00:15:30,000 --> 00:16:00,000
+Where we will set up automated evidence collection.
+
+---
+
+## LECTURE 1.4 — EVIDENCE COLLECTION STRATEGY: AUTOMATE EVERYTHING
+
+113
+00:00:00,000 --> 00:00:30,000
+Evidence is the currency of SOC 2.
+Without evidence, controls do not exist.
+The worst thing that can happen during an audit is the auditor asks
+for evidence of a control and you cannot produce it.
+
+114
+00:00:30,000 --> 00:01:00,000
+Manual evidence collection is error-prone and miserable.
+You will forget to collect it, collect the wrong thing,
+or collect it at the wrong time.
+The solution is automation.
+
+115
+00:01:00,000 --> 00:01:30,000
+Let me show you how to build an automated evidence collection pipeline.
+Create dot github forward slash workflows forward slash evidence-collection dot yaml.
+
+116
+00:01:30,000 --> 00:02:00,000
+Name colon SOC 2 Evidence Collection.
+On colon schedule colon dash cron colon zero zero asterisk asterisk asterisk.
+That is daily at midnight.
+And workflow_dispatch for manual trigger.
+
+117
+00:02:00,000 --> 00:02:30,000
+The collect-evidence job runs on ubuntu-latest.
+Steps include checkout, then for each control we collect evidence.
+
+118
+00:02:30,000 --> 00:03:00,000
+For CC6.1, collect API key configuration.
+Run kubectl get secret api-keys in the financial-rag namespace.
+Output to evidence forward slash CC6.1 forward slash api-keys with date.
+
+119
+00:03:00,000 --> 00:03:30,000
+For CC6.6, collect RDS encryption status.
+Run aws rds describe-db-instances for financial-rag-prod.
+Query StorageEncrypted. Output to evidence forward slash CC6.6 forward slash rds-encryption with date.
+
+120
+00:03:30,000 --> 00:04:00,000
+For CC6.7, collect TLS certificate expiration.
+Run kubectl get secret api-tls, pipe to jq and base64 decode,
+then openssl x509 to get end date.
+Output to evidence forward slash CC6.7 forward slash cert-expiry with date.
+
+121
+00:04:00,000 --> 00:04:30,000
+For CC7.1, collect uptime metrics.
+Run curl to Prometheus querying up job financial-rag-api.
+Output to evidence forward slash CC7.1 forward slash uptime with date.
+
+122
+00:04:30,000 --> 00:05:00,000
+For CC7.2, collect alert configurations.
+Run kubectl get prometheusrules across all namespaces.
+Output to evidence forward slash CC7.2 forward slash alert-rules with date.
+
+123
+00:05:00,000 --> 00:05:30,000
+For CC7.4, collect backup status.
+Run velero backup get in JSON format.
+Output to evidence forward slash CC7.4 forward slash backup-status with date.
+
+124
+00:05:30,000 --> 00:06:00,000
+For CC8.1, collect recent deployments.
+Run kubectl rollout history for the API deployment.
+Output to evidence forward slash CC8.1 forward slash deployments with date.
+
+125
+00:06:00,000 --> 00:06:30,000
+Finally, upload to S3 evidence bucket.
+Run aws s3 sync evidence to s3://financial-rag-soc2-evidence with date folder.
+
+126
+00:06:30,000 --> 00:07:00,000
+Now let me show you the evidence retention policy.
+You need to keep evidence for the audit period plus typically seven years
+for SOC 2 Type II.
+
+127
+00:07:00,000 --> 00:07:30,000
+In terraform forward slash s3-evidence-lifecycle dot tf.
+Create an aws_s3_bucket_lifecycle_configuration for the evidence bucket.
+
+128
+00:07:30,000 --> 00:08:00,000
+First rule. id colon archive-after-1-year.
+Transition to GLACIER after 365 days.
+Second rule. id colon delete-after-7-years.
+
+129
+00:08:00,000 --> 00:08:30,000
+Expiration after 2555 days.
+Which is seven years.
+
+130
+00:08:30,000 --> 00:09:00,000
+Here is the complete evidence inventory you should maintain.
+CC6.1 evidence type API key logs from CloudWatch with retention one year.
+CC6.6 evidence type RDS encryption status from AWS Config with retention seven years.
+
+131
+00:09:00,000 --> 00:09:30,000
+CC6.7 evidence type TLS cert expiry from kubectl with retention seven years.
+CC7.1 evidence type uptime metrics from Prometheus with retention one year.
+
+132
+00:09:30,000 --> 00:10:00,000
+CC7.2 evidence type alert configurations from Git with retention seven years.
+CC7.4 evidence type backup logs from Velero with retention seven years.
+
+133
+00:10:00,000 --> 00:10:30,000
+CC8.1 evidence type PR approvals from GitHub API with retention seven years.
+CC9.2 evidence type vendor assessments from S3 with retention seven years.
+
+134
+00:10:30,000 --> 00:11:00,000
+Now create a template for documenting each piece of evidence.
+Make a file called evidence forward slash README dot md.
+
+135
+00:11:00,000 --> 00:11:30,000
+Start with evidence format standard.
+All evidence must include timestamp of collection,
+control ID, description of what the evidence proves,
+collection method, and retention period.
+
+136
+00:11:30,000 --> 00:12:00,000
+For CC6.1, the file is CC6.1 forward slash api-keys dash YYYYMMDD dot yaml.
+It proves API keys are properly configured and rotated.
+Collection is automated daily. Retention one year.
+
+137
+00:12:00,000 --> 00:12:30,000
+For CC6.6, the file is CC6.6 forward slash rds-encryption dash YYYYMMDD dot json.
+It proves RDS instance has encryption enabled.
+Automated daily. Retention seven years.
+
+138
+00:12:30,000 --> 00:13:00,000
+For CC7.1, the file is CC7.1 forward slash uptime dash YYYYMMDD dot json.
+It proves system meets ninety-nine point nine percent availability SLO.
+Automated daily. Retention one year.
+
+139
+00:13:00,000 --> 00:13:30,000
+Now create a validation script.
+In scripts forward slash validate-evidence dot sh.
+The script takes a date parameter defaulting to today.
+
+140
+00:13:30,000 --> 00:14:00,000
+It sets evidence directory to evidence forward slash that date.
+Then for each control including CC6.1, CC6.6, CC6.7, CC7.1, CC7.2, CC7.4, and CC8.1.
+It checks if the control directory has any files.
+
+141
+00:14:00,000 --> 00:14:30,000
+If missing, it outputs a red X and exits with error.
+If all present, it outputs green check marks
+and says all evidence present.
+
+142
+00:14:30,000 --> 00:15:00,000
+Your lab exercise is to run the evidence collection pipeline
+and verify the artifacts.
+Set up the GitHub Actions workflow I showed.
+
+143
+00:15:00,000 --> 00:15:30,000
+Or create a local script if you are not using GitHub Actions.
+Run it once manually, then check that evidence files are created
+in your S3 bucket or local directory.
+
+144
+00:15:30,000 --> 00:16:00,000
+Verify that each control has at least one evidence file.
+If anything is missing, note what is missing.
+That is your gap analysis for remediation.
+
+145
+00:16:00,000 --> 00:16:30,000
+Once you have completed that, move on to Lecture one point five.
+Where we will cover Type I versus Type II timelines and expectations.
+
+---
+
+## LECTURE 1.5 — TYPE I VS TYPE II: TIMELINES, COSTS, AND WHAT CUSTOMERS WANT
+
+146
+00:00:00,000 --> 00:00:30,000
+One of the first decisions you will make is whether to pursue
+a Type I or Type II report.
+And in what order.
+Let me clear up the confusion.
+
+147
+00:00:30,000 --> 00:01:00,000
+Type I evaluates design.
+Are your controls designed appropriately to meet the trust criteria?
+It is a point-in-time assessment.
+
+148
+00:01:00,000 --> 00:01:30,000
+Your auditor will look at your policies, your architecture diagrams,
+your control implementations.
+But they will not test whether they actually work over time.
+
+149
+00:01:30,000 --> 00:02:00,000
+Type II evaluates operating effectiveness.
+Not only are your controls designed well,
+but they have been working properly over a period of time.
+Typically six to twelve months.
+
+150
+00:02:00,000 --> 00:02:30,000
+Here is the comparison table that matters.
+Type I proves controls are designed appropriately.
+Duration is point-in-time.
+Evidence needed includes design documents and configurations.
+
+151
+00:02:30,000 --> 00:03:00,000
+Timeline is one to two months.
+Cost is twenty to fifty thousand dollars.
+Customer value shows intent.
+
+152
+00:03:00,000 --> 00:03:30,000
+Type II proves controls are operating effectively.
+Duration is six to twelve months.
+Evidence needed includes operational logs and monitoring data.
+
+153
+00:03:30,000 --> 00:04:00,000
+Timeline is four to eight months.
+Cost is fifty to one hundred fifty thousand dollars.
+Customer value shows proven operation.
+
+154
+00:04:00,000 --> 00:04:30,000
+Most companies do Type I first, then Type II about six to twelve months later.
+Here is why.
+Type I gives you something to show customers
+while you are building the operational history for Type II.
+
+155
+00:04:30,000 --> 00:05:00,000
+Here is the typical timeline I recommend.
+Months one to two. Scoping and readiness assessment.
+Months three to four. Control gap analysis.
+
+156
+00:05:00,000 --> 00:05:30,000
+Months five to eight. Remediation. Building missing controls.
+Month nine. Type I audit fieldwork.
+Month ten. Type I report delivery.
+
+157
+00:05:30,000 --> 00:06:00,000
+Months ten to sixteen. Continuous operation and evidence collection.
+Month seventeen. Type II audit fieldwork.
+Month eighteen. Type II report delivery.
+
+158
+00:06:00,000 --> 00:06:30,000
+Now let me show you how to assess your readiness.
+Create scripts forward slash readiness-check dot sh.
+
+159
+00:06:30,000 --> 00:07:00,000
+Start with echo SOC 2 Readiness Check.
+For CC6.1, check API key authentication.
+Look for API_KEY_ENABLED in the deployment environment variables.
+
+160
+00:07:00,000 --> 00:07:30,000
+For CC6.6, check RDS encryption.
+Verify StorageEncrypted is true.
+For CC6.7, check TLS for ALB.
+Look for TLS configuration in the ingress.
+
+161
+00:07:30,000 --> 00:08:00,000
+For CC7.1, check Prometheus metrics.
+Look for a ServiceMonitor.
+For CC7.4, check Velero backups.
+Look for a completed backup.
+
+162
+00:08:00,000 --> 00:08:30,000
+For CC8.1, check GitHub branch protection.
+Verify required pull request reviews are configured.
+Each check outputs a green check mark if present,
+a red X if missing.
+
+163
+00:08:30,000 --> 00:09:00,000
+Here is what customers actually care about.
+When a customer asks for your SOC 2 report,
+enterprise customers want Type II with all five trust criteria.
+
+164
+00:09:00,000 --> 00:09:30,000
+Mid-market customers often accept Type I initially,
+but want Type II within a year.
+Startup customers might only care about Security.
+
+165
+00:09:30,000 --> 00:10:00,000
+Pro tip. Do not wait for perfection.
+Get a Type I report as soon as your basic controls are in place.
+It is much easier to sell with a Type I report than with nothing.
+
+166
+00:10:00,000 --> 00:10:30,000
+Your lab exercise is to run the readiness check script
+against your environment.
+For each missing control, create a remediation ticket.
+
+167
+00:10:30,000 --> 00:11:00,000
+Estimate how long each fix will take.
+That becomes your roadmap to Type I.
+Once you have completed that, move on to Lecture one point six.
+
+168
+00:11:00,000 --> 00:11:30,000
+Where we will walk through an auditor interview.
+
+---
+
+## LECTURE 1.6 — THE AUDITOR WALKTHROUGH: FIVE QUESTIONS AND HOW TO ANSWER THEM
+
+169
+00:00:00,000 --> 00:00:30,000
+The auditor walkthrough is where SOC 2 readiness lives or dies.
+This is when the auditor meets with your team
+to understand your system and controls.
+
+170
+00:00:30,000 --> 00:01:00,000
+They are not trying to fail you.
+They are trying to understand.
+But if you cannot explain your controls clearly,
+they will note gaps.
+
+171
+00:01:00,000 --> 00:01:30,000
+Let me walk you through the five most common questions
+and exactly how to answer them.
+
+172
+00:01:30,000 --> 00:02:00,000
+Question one. How do you ensure only authorized users access the system?
+Here is your answer template.
+
+173
+00:02:00,000 --> 00:02:30,000
+Our system implements defense-in-depth for access control.
+At the edge, all API requests require a valid API key
+with rotation every ninety days.
+
+174
+00:02:30,000 --> 00:03:00,000
+Internally, Kubernetes RBAC restricts what service accounts can do.
+For database access, Vault provides dynamic credentials
+with a one hour TTL.
+
+175
+00:03:00,000 --> 00:03:30,000
+Network policies enforce zero-trust between services.
+And all access attempts are logged with a unique request ID for audit.
+
+176
+00:03:30,000 --> 00:04:00,000
+Now show them the evidence.
+Run grep with A10 on APIKeyMiddleware in the middleware file.
+Run kubectl get roles and rolebindings to show RBAC configuration.
+
+177
+00:04:00,000 --> 00:04:30,000
+Run vault read database forward slash creds forward slash rag-app
+to show dynamic credentials.
+Run kubectl logs on the API deployment filtered for API key
+to show audit logs.
+
+178
+00:04:30,000 --> 00:05:00,000
+Question two. How do you detect and respond to security incidents?
+Answer template.
+
+179
+00:05:00,000 --> 00:05:30,000
+We use Falco for runtime security with eBPF probes
+monitoring system calls.
+We have written custom rules for RAG-specific threats.
+
+180
+00:05:30,000 --> 00:06:00,000
+Like unauthorized EDGAR or OpenAI access.
+Alerts route to PagerDuty with severity-based escalation.
+Incident response runbooks are version-controlled in Git.
+
+181
+00:06:00,000 --> 00:06:30,000
+And we conduct post-incident reviews with evidence collection
+for every security event.
+
+182
+00:06:30,000 --> 00:07:00,000
+Evidence to show. Cat the Falco rules file.
+Kubectl get configmap for falcosidekick to show PagerDuty integration.
+Ls runbooks to show they exist.
+
+183
+00:07:00,000 --> 00:07:30,000
+And kubectl logs on the Falco daemonset filtered for alerts.
+
+184
+00:07:30,000 --> 00:08:00,000
+Question three. How do you ensure data integrity
+and prevent unauthorized changes?
+Answer template.
+
+185
+00:08:00,000 --> 00:08:30,000
+Data integrity starts at ingestion.
+SHA-256 deduplication ensures we never process the same SEC filing twice.
+For changes, we use GitOps with ArgoCD.
+
+186
+00:08:30,000 --> 00:09:00,000
+Which prevents manual kubectl changes.
+All code changes require PR reviews with at least one approver.
+Database changes are audited in the analysis_history table.
+
+187
+00:09:00,000 --> 00:09:30,000
+And we maintain point-in-time recovery capable backups.
+
+188
+00:09:30,000 --> 00:10:00,000
+Evidence. Grep for file_hash in the SEC ingestor.
+Argocd app get to show sync status.
+And psql to count records in analysis_history for the last thirty days.
+
+189
+00:10:00,000 --> 00:10:30,000
+Question four. How do you ensure system availability meets SLAs?
+Answer template.
+
+190
+00:10:30,000 --> 00:11:00,000
+We target ninety-nine point nine percent availability
+with multi-AZ deployment for both RDS and EKS.
+The API automatically scales from three to twenty replicas
+based on CPU utilization using HPA.
+
+191
+00:11:00,000 --> 00:11:30,000
+Karpenter provisions new nodes in under thirty seconds
+during scale-up events.
+PodDisruptionBudgets ensure minimum two replicas during maintenance.
+
+192
+00:11:30,000 --> 00:12:00,000
+Our SLO dashboard in Grafana tracks rolling thirty-day availability.
+
+193
+00:12:00,000 --> 00:12:30,000
+Question five. How do you manage third-party vendor risks?
+Answer template.
+
+194
+00:12:30,000 --> 00:13:00,000
+We maintain a vendor register for all third parties
+that process customer data.
+For high-risk vendors like OpenAI, we have reviewed their SOC 2 Type II report
+and executed a data processing agreement.
+
+195
+00:13:00,000 --> 00:13:30,000
+AWS is covered under the shared responsibility model.
+Their physical and environmental controls are inherited.
+All vendors are reassessed annually.
+
+196
+00:13:30,000 --> 00:14:00,000
+Here is the vendor register you should maintain in vendor-register dot yaml.
+OpenAI has service LLM API, risk level high,
+assessment date 2026-01-15.
+
+197
+00:14:00,000 --> 00:14:30,000
+Controls include SOC 2 Type II report reviewed,
+data processing agreement executed,
+and subprocessor list reviewed.
+Next review 2026-07-15.
+
+198
+00:14:30,000 --> 00:15:00,000
+AWS has service cloud infrastructure, risk level medium.
+Controls include Shared Responsibility Model documented
+and AWS SOC 2 report reviewed.
+
+199
+00:15:00,000 --> 00:15:30,000
+Next review 2026-07-15.
+SEC EDGAR has service public data source, risk level low.
+Controls include public data only and no customer data shared.
+
+200
+00:15:30,000 --> 00:16:00,000
+Next review 2027-01-15.
+
+201
+00:16:00,000 --> 00:16:30,000
+Your lab exercise is to conduct a mock auditor interview with your team.
+Have one person play the auditor, asking these five questions.
+Practice until you can answer smoothly without looking at notes.
+
+202
+00:16:30,000 --> 00:17:00,000
+Record the session and review what could be clearer.
+Once you have completed that, move on to Lecture one point seven.
+Where we will create a remediation plan for any gaps.
+
+---
+
+## LECTURE 1.7 — REMEDIATION PLANNING: CLOSING EVERY GAP BEFORE FIELDWORK
+
+203
+00:00:00,000 --> 00:00:30,000
+Your readiness check will almost certainly reveal gaps.
+That is normal. Every company has them.
+The key is having a plan to close them before your audit.
+
+204
+00:00:30,000 --> 00:01:00,000
+Let me show you the most common gaps I see
+and exactly how to fix them.
+
+205
+00:01:00,000 --> 00:01:30,000
+Create soc2 forward slash remediation-tracker dot yaml.
+Under remediations, list each gap.
+
+206
+00:01:30,000 --> 00:02:00,000
+First gap. gap colon No API key rotation policy.
+control colon CC6.1.
+owner colon at sign security dash team.
+due_date colon 2026-04-15.
+status colon in_progress.
+
+207
+00:02:00,000 --> 00:02:30,000
+steps colon dash Create rotation Lambda function.
+dash Update documentation.
+dash Test rotation in staging.
+evidence colon A pull request URL.
+
+208
+00:02:30,000 --> 00:03:00,000
+Second gap. gap colon RDS not encrypted in staging.
+control colon CC6.6.
+owner colon at sign platform dash team.
+due_date colon 2026-05-01.
+status colon planned.
+
+209
+00:03:00,000 --> 00:03:30,000
+steps colon dash Take snapshot of unencrypted database.
+dash Restore as encrypted.
+dash Update Terraform config.
+dash Verify application connectivity.
+
+210
+00:03:30,000 --> 00:04:00,000
+Third gap. gap colon Missing vendor assessment for OpenAI.
+control colon CC9.2.
+owner colon at sign compliance dash team.
+due_date colon 2026-04-30.
+status colon not_started.
+
+211
+00:04:00,000 --> 00:04:30,000
+steps colon dash Request SOC 2 report from OpenAI.
+dash Review controls.
+dash Document in vendor register.
+
+212
+00:04:30,000 --> 00:05:00,000
+Fourth gap. gap colon No quarterly restore test performed.
+control colon CC7.4.
+owner colon at sign platform dash team.
+due_date colon 2026-04-15.
+status colon in_progress.
+
+213
+00:05:00,000 --> 00:05:30,000
+steps colon dash Write restore test script.
+dash Schedule first test.
+dash Document results.
+evidence colon A link to the tests directory.
+
+214
+00:05:30,000 --> 00:06:00,000
+Here is a remediation timeline in Gantt chart format.
+For access control, API key rotation starts 2026-03-15 for fourteen days.
+RBAC documentation starts after that for seven days.
+
+215
+00:06:00,000 --> 00:06:30,000
+For encryption, RDS encryption in staging starts 2026-03-20 for twenty-one days.
+TLS certificate automation starts 2026-04-01 for fourteen days.
+
+216
+00:06:30,000 --> 00:07:00,000
+For operations, restore test script starts 2026-03-25 for ten days.
+On-call schedule starts 2026-03-20 for five days.
+
+217
+00:07:00,000 --> 00:07:30,000
+For vendors, OpenAI assessment starts 2026-04-01 for fourteen days.
+AWS review starts 2026-04-01 for seven days.
+
+218
+00:07:30,000 --> 00:08:00,000
+For each gap, you need a clear description of what is missing.
+The specific control it affects.
+An owner assigned. A due date.
+
+219
+00:08:00,000 --> 00:08:30,000
+Concrete steps to fix it.
+And evidence of completion.
+
+220
+00:08:30,000 --> 00:09:00,000
+Here is how to prioritize remediation.
+Critical priority means missing control with high risk.
+For example, no API authentication.
+Timeline less than two weeks.
+
+221
+00:09:00,000 --> 00:09:30,000
+High priority means partial control with medium risk.
+For example, manual key rotation only.
+Timeline less than four weeks.
+
+222
+00:09:30,000 --> 00:10:00,000
+Medium priority means control exists but weak evidence.
+For example, no audit logging.
+Timeline less than eight weeks.
+
+223
+00:10:00,000 --> 00:10:30,000
+Low priority means control exists but needs documentation.
+For example, policy not documented.
+Timeline less than twelve weeks.
+
+224
+00:10:30,000 --> 00:11:00,000
+Your lab exercise is to create a remediation plan
+for the gaps you identified in your readiness check.
+Use the tracker template I provided.
+
+225
+00:11:00,000 --> 00:11:30,000
+Assign owners and due dates.
+Review with your team and get commitment on the timeline.
+Once you have completed that, move on to Lecture one point eight.
+
+226
+00:11:30,000 --> 00:12:00,000
+Where we will assemble the final evidence package.
+
+---
+
+## LECTURE 1.8 — EVIDENCE PACKAGE ASSEMBLY: WHAT YOU HAND YOUR AUDITOR
+
+227
+00:00:00,000 --> 00:00:30,000
+The final step before your audit is assembling the evidence package.
+This is what you will upload to your auditor's portal.
+It needs to be complete, organized, and clearly labeled.
+
+228
+00:00:30,000 --> 00:01:00,000
+Let me show you the exact structure.
+
+229
+00:01:00,000 --> 00:01:30,000
+soc2-evidence forward slash YYYY-MM-DD.
+Inside that, a controls folder.
+With files CC6.1-api-keys dot json.
+CC6.6-encryption dot json.
+CC6.7-tls-cert dot json.
+
+230
+00:01:30,000 --> 00:02:00,000
+CC7.1-uptime dot json.
+CC7.2-alerts dot json.
+CC7.4-backups dot json.
+CC8.1-changes dot json.
+And CC9.2-vendors dot json.
+
+231
+00:02:00,000 --> 00:02:30,000
+A policies folder with security-policy dot pdf.
+incident-response dot pdf.
+change-management dot pdf.
+and vendor-management dot pdf.
+
+232
+00:02:30,000 --> 00:03:00,000
+A runbooks folder with incident-response dot md.
+backup-restore dot md.
+and on-call dot md.
+And a README dot md.
+
+233
+00:03:00,000 --> 00:03:30,000
+Now create the assembly script.
+In scripts forward slash assemble-evidence dot sh.
+
+234
+00:03:30,000 --> 00:04:00,000
+Set DATE to today's date.
+Set EVIDENCE_DIR to soc2-evidence forward slash DATE.
+Create the directory structure with mkdir dash p.
+
+235
+00:04:00,000 --> 00:04:30,000
+Then collect all control evidence.
+Kubectl get secrets in the financial-rag namespace to YAML.
+Output to controls forward slash CC6.1-secrets dot yaml.
+
+236
+00:04:30,000 --> 00:05:00,000
+Aws rds describe-db-instances for financial-rag-prod.
+Output to controls forward slash CC6.6-rds dot json.
+
+237
+00:05:00,000 --> 00:05:30,000
+Kubectl get ingress in the financial-rag namespace to YAML.
+Output to controls forward slash CC6.7-ingress dot yaml.
+
+238
+00:05:30,000 --> 00:06:00,000
+Curl to Prometheus query for up metric.
+Output to controls forward slash CC7.1-metrics dot json.
+
+239
+00:06:00,000 --> 00:06:30,000
+Kubectl get prometheusrules across all namespaces to YAML.
+Output to controls forward slash CC7.2-alerts dot yaml.
+
+240
+00:06:30,000 --> 00:07:00,000
+Velero backup get in JSON format.
+Output to controls forward slash CC7.4-backups dot json.
+
+241
+00:07:00,000 --> 00:07:30,000
+Gh api to get pull requests.
+Output to controls forward slash CC8.1-prs dot json.
+
+242
+00:07:30,000 --> 00:08:00,000
+Then generate a summary README dot md.
+Include a table with each control and its status.
+
+243
+00:08:00,000 --> 00:08:30,000
+Then run a validation check.
+For each control, verify the file exists and is non-empty.
+
+244
+00:08:30,000 --> 00:09:00,000
+If any control missing evidence, print a red X and exit with error.
+If all present, print green check marks
+and say evidence package assembled.
+
+245
+00:09:00,000 --> 00:09:30,000
+Your final lab exercise is to assemble a complete evidence package
+using the script I provided.
+Run it, then review each file to ensure it contains valid evidence.
+
+246
+00:09:30,000 --> 00:10:00,000
+Create a README summarizing what is included and any gaps.
+Once you have your evidence package, you are ready to engage an auditor
+for your Type I audit.
+
+247
+00:10:00,000 --> 00:10:30,000
+Key takeaways for Phase one.
+The five Trust Service Criteria and how they apply to RAG systems.
+Security, Availability, Processing Integrity, Confidentiality, Privacy.
+
+248
+00:10:30,000 --> 00:11:00,000
+System boundary definition.
+What to include, what to exclude, and how to document trust boundaries.
+Control selection and mapping.
+
+249
+00:11:00,000 --> 00:11:30,000
+Choosing the right controls and mapping them to code.
+Automated evidence collection.
+Daily pipelines that prove controls are working.
+
+250
+00:11:30,000 --> 00:12:00,000
+Type I versus Type II.
+Design versus operating effectiveness, timelines, and costs.
+Auditor walkthrough preparation.
+
+251
+00:12:00,000 --> 00:12:30,000
+The five questions you will be asked and how to answer them.
+Remediation planning. Closing gaps before the audit.
+Evidence package assembly.
+
+252
+00:12:30,000 --> 00:13:00,000
+The final deliverable your auditor will review.
+This is the foundation.
+Everything in the remaining eight phases builds on this.
+
+253
+00:13:00,000 --> 00:13:30,000
+In Phase two, we will dive deep into cryptographic controls.
+You will learn to implement AWS KMS, RDS encryption, S3 SSE-KMS,
+TLS one point three, certificate management with cert-manager.
+
+254
+00:13:30,000 --> 00:14:00,000
+And encryption for pgvector embeddings.
+Plus how to collect evidence that satisfies CC6.6 and CC6.7.
+
+255
+00:14:00,000 --> 00:14:30,000
+Continue to Phase two when you are ready.
+
+---
+
+**End of Phase 1 SRT**
+
+**Total lines:** 255
+**Duration:** ~2 hours (14 minutes per line average)
+
+Shall I continue with **Phase 2**?

@@ -1,0 +1,2826 @@
+# PHASE 1 — FINOPS FUNDAMENTALS: UNIT ECONOMICS & TAGGING STRATEGY
+
+## CORRECTED COMPLETE SRT — VERSION 2
+
+1
+00:00:00,000 --> 00:00:06,000
+Learning cloud cost optimization can feel overwhelming.
+So many services, so many pricing models, and the endless acronyms.
+
+2
+00:00:06,000 --> 00:00:12,000
+RI, SP, EBS, NAT, Karpenter, Kubecost, VPA, EKS, RDS, S3.
+It's enough to make anyone feel stuck.
+
+3
+00:00:12,000 --> 00:00:18,000
+Your eyes glaze over. You close the billing dashboard.
+You tell yourself you'll look at it next month.
+
+4
+00:00:18,000 --> 00:00:24,000
+But next month comes and the number is bigger.
+And you still don't understand why.
+
+5
+00:00:24,000 --> 00:00:30,000
+But what if there was one best bet?
+One framework that not only saves your startup thousands of dollars.
+
+6
+00:00:30,000 --> 00:00:36,000
+But makes you the person who actually understands
+where every dollar goes.
+
+7
+00:00:36,000 --> 00:00:42,000
+The person the CTO asks when the bill arrives.
+The person who doesn't flinch at the number
+because they already know what's in it.
+
+8
+00:00:42,000 --> 00:00:48,000
+That's FinOps.
+
+9
+00:00:48,000 --> 00:00:54,000
+Hi there, and welcome to a course where I'm going to take you
+from a complete FinOps beginner to a confident cloud economist.
+
+10
+00:00:54,000 --> 00:01:00,000
+No endless theory. No aimless command copying.
+No watching someone else type commands
+while you nod along and forget everything five minutes later.
+
+11
+00:01:00,000 --> 00:01:06,000
+This is about saving real money
+while truly understanding where it's going.
+
+12
+00:01:06,000 --> 00:01:12,000
+This is about building something real while actually understanding it.
+Not just running commands, but knowing why each command matters.
+
+13
+00:01:12,000 --> 00:01:18,000
+Not just copying from a blog post,
+but being able to explain it to your team.
+
+14
+00:01:18,000 --> 00:01:24,000
+Starting from what FinOps is and why you should learn it.
+To how cloud billing works under the hood.
+
+15
+00:01:24,000 --> 00:01:30,000
+Unit economics fundamentals. Tagging strategy.
+AWS Cost Explorer basics.
+
+16
+00:01:30,000 --> 00:01:36,000
+And finally, we're going to build a cost baseline document
+that shows exactly what every team spends,
+every service costs, and every region is burning money.
+
+17
+00:01:36,000 --> 00:01:42,000
+By the end of this crash course,
+you won't just know FinOps.
+
+18
+00:01:42,000 --> 00:01:48,000
+You will have created a cost allocation framework
+you can show your CTO.
+
+19
+00:01:48,000 --> 00:01:54,000
+You will have a document that proves you understand
+the cloud bill better than anyone else on your team.
+
+20
+00:01:54,000 --> 00:02:00,000
+You will have the confidence to open that AWS bill
+on the 3rd of the month and know exactly what you're looking at.
+
+21
+00:02:00,000 --> 00:02:06,000
+But that's not all.
+For those ready to dive even deeper,
+I've put together a free guide and a comprehensive FinOps plus IDP course.
+
+22
+00:02:06,000 --> 00:02:12,000
+Designed to take you from zero to production-ready.
+Whether it's learning Kubecost cost attribution,
+Karpenter right-sizing, or Backstage golden path templates.
+
+23
+00:02:12,000 --> 00:02:18,000
+This course will help you build and deploy platforms like a pro.
+You can find all the links in the description below.
+
+24
+00:02:18,000 --> 00:02:24,000
+But for now, let's dive into the video.
+Together we're going to build an awesome cost visibility platform.
+
+25
+00:02:24,000 --> 00:02:30,000
+Using real production stacks, financial-rag-agent and riskoracle,
+to handle FinOps tracking seamlessly.
+
+26
+00:02:30,000 --> 00:02:36,000
+Let's get started.
+
+27
+00:02:36,000 --> 00:02:42,000
+FinOps is a game changer.
+A cloud cost discipline created by the FinOps Foundation.
+
+28
+00:02:42,000 --> 00:02:48,000
+It powers some of the smartest engineering organizations
+in the world.
+
+29
+00:02:48,000 --> 00:02:54,000
+Companies like Uber, Spotify, and Airbnb
+don't guess at their cloud costs. They have FinOps practices.
+
+30
+00:02:54,000 --> 00:03:00,000
+They have dedicated teams. They have frameworks.
+
+31
+00:03:00,000 --> 00:03:06,000
+FinOps is maintained by a strong open-source community
+constantly innovating with new features like real-time cost visibility.
+
+32
+00:03:06,000 --> 00:03:12,000
+Which simplifies your cloud financial workflow
+by showing you exactly where every dollar goes, in real time.
+
+33
+00:03:12,000 --> 00:03:18,000
+Without waiting for the monthly bill to arrive.
+
+34
+00:03:18,000 --> 00:03:24,000
+And it might seem like FinOps is just borrowing
+your finance team's homework for building cost-conscious infrastructure.
+
+35
+00:03:24,000 --> 00:03:30,000
+Like, isn't this what the finance department is supposed to do?
+
+36
+00:03:30,000 --> 00:03:36,000
+But it's more like FinOps is peeking at their notes,
+modernizing them, adding automation.
+
+37
+00:03:36,000 --> 00:03:42,000
+Adding real-time data, adding developer self-service.
+So you spend less time reinventing the basics of cost tracking.
+
+38
+00:03:42,000 --> 00:03:48,000
+And more time building amazing products
+that actually make money.
+
+39
+00:03:48,000 --> 00:03:54,000
+Of course, FinOps isn't alone.
+Tools like CloudHealth, Vantage, and OpenCost
+are also making waves in the cloud cost space.
+
+40
+00:03:54,000 --> 00:04:00,000
+They each have their strengths.
+CloudHealth is great for enterprises with thousands of accounts.
+
+41
+00:04:00,000 --> 00:04:06,000
+Vantage has a beautiful UI.
+OpenCost is open source and free.
+
+42
+00:04:06,000 --> 00:04:12,000
+But when it comes to popularity, Kubecost dominates.
+Just look at the numbers.
+
+43
+00:04:12,000 --> 00:04:18,000
+Thousands of engineering teams have adopted Kubecost
+as their Kubernetes cost visibility tool.
+
+44
+00:04:18,000 --> 00:04:24,000
+It has topped the cloud-native surveys for consecutive years
+as the FinOps tool of choice.
+
+45
+00:04:24,000 --> 00:04:30,000
+The Cloud Native Computing Foundation, which runs KubeCon,
+the biggest Kubernetes conference in the world.
+
+46
+00:04:30,000 --> 00:04:36,000
+Has featured Kubecost in their landscape
+as a leading FinOps tool. And with good reason.
+
+47
+00:04:36,000 --> 00:04:42,000
+Let me tell you why.
+
+48
+00:04:42,000 --> 00:04:48,000
+FinOps is built on three phases.
+
+49
+00:04:48,000 --> 00:04:54,000
+Phase one is Inform. This is about visibility.
+You cannot optimize what you cannot see.
+
+50
+00:04:54,000 --> 00:05:00,000
+You cannot fix what you cannot measure.
+You cannot save money on a service you don't know exists.
+
+51
+00:05:00,000 --> 00:05:06,000
+So Phase one is all about getting data.
+Tagging your resources so you know who owns what.
+
+52
+00:05:06,000 --> 00:05:12,000
+Setting up Cost Explorer so you can query your spend.
+Deploying Kubecost so you can see cost per namespace,
+cost per pod, cost per team.
+
+53
+00:05:12,000 --> 00:05:18,000
+Knowing which team spent what on which service
+in which region at which time of day.
+
+54
+00:05:18,000 --> 00:05:24,000
+Phase two is Optimize. This is about action.
+Once you can see the waste, you need to eliminate it.
+
+55
+00:05:24,000 --> 00:05:30,000
+Rightsizing EC2 instances that are twice as big
+as they need to be.
+
+56
+00:05:30,000 --> 00:05:36,000
+Migrating gp2 volumes to gp3 for an instant 20% savings.
+Buying Savings Plans for your stable workloads.
+
+57
+00:05:36,000 --> 00:05:42,000
+Running Karpenter to continuously consolidate your EKS nodes.
+Actually reducing the number on the bill.
+
+58
+00:05:42,000 --> 00:05:48,000
+Phase three is Operate. This is about continuity.
+Because here's the thing about cloud waste. It comes back.
+
+59
+00:05:48,000 --> 00:05:54,000
+You rightsize an instance today.
+And three months later someone deploys a new service
+and forgets to set resource limits.
+
+60
+00:05:54,000 --> 00:06:00,000
+You add lifecycle policies to S3.
+And next quarter someone creates a new bucket
+and forgets to add the policy.
+
+61
+00:06:00,000 --> 00:06:06,000
+You tag everything. And a new intern spins up a test instance
+with no tags.
+
+62
+00:06:06,000 --> 00:06:12,000
+So Phase three is about making sure the waste never comes back.
+Budget alerts that email you when spend exceeds a threshold.
+
+63
+00:06:12,000 --> 00:06:18,000
+AWS Config rules that flag untagged resources automatically.
+Terraform guardrails that prevent non-compliant resources
+from being created in the first place.
+
+64
+00:06:18,000 --> 00:06:24,000
+IDP cost visibility that shows developers the impact of their deploy
+before they click the button.
+
+65
+00:06:24,000 --> 00:06:30,000
+Most courses only teach Phase two.
+They show you how to rightsize an instance and call it done.
+
+66
+00:06:30,000 --> 00:06:36,000
+They give you a few commands, show you a few dashboards,
+and send you on your way.
+
+67
+00:06:36,000 --> 00:06:42,000
+But without Phase one, you don't know what to rightsize.
+You're just guessing.
+
+68
+00:06:42,000 --> 00:06:48,000
+You might rightsize the wrong instance.
+You might miss the biggest cost driver entirely.
+
+69
+00:06:48,000 --> 00:06:54,000
+You might save two hundred dollars
+when you could have saved two thousand.
+
+70
+00:06:54,000 --> 00:07:00,000
+And without Phase three, the waste creeps back in.
+You do all this work, you feel great about yourself.
+
+71
+00:07:00,000 --> 00:07:06,000
+And then three months later you're right back where you started.
+The bill is high again. The waste is back.
+
+72
+00:07:06,000 --> 00:07:12,000
+And you have to do the whole thing over.
+
+73
+00:07:12,000 --> 00:07:18,000
+This course teaches all three phases.
+On real EKS workloads. With Kubecost, Karpenter, and Backstage.
+
+74
+00:07:18,000 --> 00:07:24,000
+On financial-rag-agent and riskoracle.
+Two production systems I built specifically for this course.
+
+75
+00:07:24,000 --> 00:07:30,000
+Now let me show you what makes FinOps so powerful
+with a project that I made specifically for this course.
+
+76
+00:07:30,000 --> 00:07:36,000
+I built this project to help you visually understand
+cost optimization patterns in practice.
+
+77
+00:07:36,000 --> 00:07:42,000
+And it's built entirely on real EKS workloads.
+This isn't some toy application with fake data.
+
+78
+00:07:42,000 --> 00:07:48,000
+This is a real RAG system that answers questions
+about financial documents.
+
+79
+00:07:48,000 --> 00:07:54,000
+This is a real MLOps risk engine that processes batch jobs.
+
+80
+00:07:54,000 --> 00:08:00,000
+This dashboard showcases real-time cost updates.
+You won't see a monthly billing surprise or a shocked CTO.
+
+81
+00:08:00,000 --> 00:08:06,000
+Even when different teams deploy different services,
+everything gets attributed dynamically to the right namespace
+and the right team.
+
+82
+00:08:06,000 --> 00:08:12,000
+The financial-rag team sees their cost.
+The riskoracle team sees their cost.
+
+83
+00:08:12,000 --> 00:08:18,000
+Nobody sees anyone else's cost unless they're supposed to.
+
+84
+00:08:18,000 --> 00:08:24,000
+That's how FinOps uses Kubecost and the cost allocation model
+to make it all possible.
+
+85
+00:08:24,000 --> 00:08:30,000
+The cost allocation model is like a simplified map
+of your cloud spend.
+
+86
+00:08:30,000 --> 00:08:36,000
+It's a data structure that mirrors every dollar leaving
+your account.
+
+87
+00:08:36,000 --> 00:08:42,000
+Every EC2 instance, every EBS volume, every S3 request,
+every NAT Gateway data transfer.
+
+88
+00:08:42,000 --> 00:08:48,000
+All of it mapped to a namespace, a team, a service, an environment.
+
+89
+00:08:48,000 --> 00:08:54,000
+Here's why it's a revolution.
+
+90
+00:08:54,000 --> 00:09:00,000
+Before Kubecost, you had to wait for the monthly AWS bill.
+Then you had to download a CSV file with 47 columns of usage types
+you didn't understand.
+
+91
+00:09:00,000 --> 00:09:06,000
+Then you had to manually map instance IDs to services.
+Then you had to guess which team owned which resource.
+
+92
+00:09:06,000 --> 00:09:12,000
+It took days. By the time you had answers,
+the month was over and a new bill had arrived.
+
+93
+00:09:12,000 --> 00:09:18,000
+With Kubecost, when something changes in your cluster,
+a new deployment, a scaled pod, a data transfer spike.
+
+94
+00:09:18,000 --> 00:09:24,000
+Kubecost creates a new cost allocation element in real time.
+It then compares it to the historical baseline
+to pinpoint the difference.
+
+95
+00:09:24,000 --> 00:09:30,000
+And only the changed portion of your budget is flagged
+for review.
+
+96
+00:09:30,000 --> 00:09:36,000
+Making FinOps blazingly fast.
+Think of it as updating a single tile in a mosaic
+instead of repainting the entire wall.
+
+97
+00:09:36,000 --> 00:09:42,000
+You don't need to recalculate everything from scratch
+every time. You just update what changed.
+
+98
+00:09:42,000 --> 00:09:48,000
+And FinOps doesn't demand much.
+Just a solid understanding of cloud basics.
+
+99
+00:09:48,000 --> 00:09:54,000
+So if you're unsure about concepts like EKS,
+which is Amazon's managed Kubernetes service.
+
+100
+00:09:54,000 --> 00:10:00,000
+Or VPC, which is your virtual private cloud inside AWS.
+Or IAM roles, which control who can do what.
+
+101
+00:10:00,000 --> 00:10:06,000
+Pause this video right now and go check out my complete
+AWS Mastery course. I'll link it in the description.
+
+102
+00:10:06,000 --> 00:10:12,000
+It will make sure you have all the necessary prerequisite knowledge
+to be able to get the most out of this course.
+
+103
+00:10:12,000 --> 00:10:18,000
+And for a more focused approach, or if you want to have
+a reference guide always available.
+
+104
+00:10:18,000 --> 00:10:24,000
+Download my free ultimate FinOps guide.
+It's linked in the description.
+
+105
+00:10:24,000 --> 00:10:30,000
+Packed with prerequisites, core concepts, command cheat sheets,
+and project ideas to get you started.
+
+106
+00:10:30,000 --> 00:10:36,000
+It's the guide I wish I had when I started learning FinOps.
+
+107
+00:10:36,000 --> 00:10:42,000
+And now that you understand what FinOps is
+and why it's so popular.
+
+108
+00:10:42,000 --> 00:10:48,000
+Let me teach you the fundamentals.
+We'll start with unit economics and tagging.
+
+109
+00:10:48,000 --> 00:10:54,000
+Then slowly move towards building our amazing
+cost visibility platform.
+
+110
+00:10:54,000 --> 00:11:00,000
+So, are you ready to optimize?
+
+111
+00:11:00,000 --> 00:11:06,000
+Before we dive into the commands,
+let me introduce you to the two production stacks
+that we'll be using throughout this course.
+
+112
+00:11:06,000 --> 00:11:12,000
+Because you're not learning on hypothetical examples.
+You're not optimizing some fake application
+that doesn't exist in the real world.
+
+113
+00:11:12,000 --> 00:11:18,000
+You're learning on real systems
+that real startups run every day.
+
+114
+00:11:18,000 --> 00:11:24,000
+First is financial-rag-agent.
+RAG stands for Retrieval Augmented Generation.
+
+115
+00:11:24,000 --> 00:11:30,000
+It's the tech behind ChatGPT-style chatbots
+that can answer questions about your own private data.
+
+116
+00:11:30,000 --> 00:11:36,000
+Think of it as ChatGPT but trained on your company's SEC filings,
+earnings reports, investor updates.
+
+117
+00:11:36,000 --> 00:11:42,000
+Internal documentation, customer support tickets,
+whatever you want.
+
+118
+00:11:42,000 --> 00:11:48,000
+So financial-rag-agent is a system that answers questions
+about financial documents.
+
+119
+00:11:48,000 --> 00:11:54,000
+You ask it "what was our revenue last quarter"
+and it goes and finds the answer in your earnings report.
+
+120
+00:11:54,000 --> 00:12:00,000
+You ask it "what's our burn rate"
+and it calculates it from your financial statements.
+
+121
+00:12:00,000 --> 00:12:06,000
+You ask it "show me all the risks mentioned
+in the last board deck" and it extracts them.
+
+122
+00:12:06,000 --> 00:12:12,000
+This is the kind of AI workload
+that every startup is building right now.
+
+123
+00:12:12,000 --> 00:12:18,000
+If you're not building a RAG system today,
+you probably will be within the next 12 months.
+
+124
+00:12:18,000 --> 00:12:24,000
+And RAG systems are expensive.
+They use large language models.
+
+125
+00:12:24,000 --> 00:12:30,000
+They use vector databases. They use GPU instances.
+They generate a lot of data transfer.
+
+126
+00:12:30,000 --> 00:12:36,000
+Understanding how to optimize the cost of a RAG system
+is a superpower.
+
+127
+00:12:36,000 --> 00:12:42,000
+Second is riskoracle.
+This is an MLOps risk calculation engine.
+
+128
+00:12:42,000 --> 00:12:48,000
+It processes batch jobs. It runs GPU workloads
+for risk modeling.
+
+129
+00:12:48,000 --> 00:12:54,000
+It does the kind of number-crunching
+that financial services companies need.
+
+130
+00:12:54,000 --> 00:13:00,000
+It's resource-intensive, variable,
+and perfect for Spot instance optimization.
+
+131
+00:13:00,000 --> 00:13:06,000
+Riskoracle doesn't need to run 24/7.
+It can run on Spot instances that are 70% cheaper
+than on-demand.
+
+132
+00:13:06,000 --> 00:13:12,000
+It can tolerate interruptions because batch jobs
+can restart.
+
+133
+00:13:12,000 --> 00:13:18,000
+It's the perfect candidate for the kind of optimization
+we'll do in Series five.
+
+134
+00:13:18,000 --> 00:13:24,000
+Both of these stacks are running on EKS,
+Amazon's managed Kubernetes service.
+
+135
+00:13:24,000 --> 00:13:30,000
+Both have real cost patterns.
+Both are on GitHub at aayostem slash financial-rag-agent
+and aayostem slash riskoracle.
+
+136
+00:13:30,000 --> 00:13:36,000
+You can clone them. You can deploy them
+in your own AWS account.
+
+137
+00:13:36,000 --> 00:13:42,000
+You can break them. You can optimize them.
+And you will see your savings in real numbers.
+
+138
+00:13:42,000 --> 00:13:48,000
+Not estimated savings. Not projected savings.
+Actual Kubecost output with real data from your own account.
+
+139
+00:13:48,000 --> 00:13:54,000
+Now let's get your machine ready.
+
+140
+00:13:54,000 --> 00:14:00,000
+Before you can run your first FinOps command,
+you need the right tools installed on your machine.
+
+141
+00:14:00,000 --> 00:14:06,000
+This is the boring but essential part.
+Every course has it. You can't skip it.
+
+142
+00:14:06,000 --> 00:14:12,000
+But I promise we'll get through it quickly.
+
+143
+00:14:12,000 --> 00:14:18,000
+First, you need the AWS CLI installed.
+AWS CLI stands for Amazon Web Services
+Command Line Interface.
+
+144
+00:14:18,000 --> 00:14:24,000
+It's a command-line tool that allows you to interact
+with AWS services directly from your terminal.
+
+145
+00:14:24,000 --> 00:14:30,000
+No clicking around the AWS console.
+No searching for buttons.
+
+146
+00:14:30,000 --> 00:14:36,000
+Just commands that do exactly what you tell them to do.
+
+147
+00:14:36,000 --> 00:14:42,000
+This is essential because FinOps involves running
+cost analysis tools and scripts on your local machine.
+
+148
+00:14:42,000 --> 00:14:48,000
+You're going to query Cost Explorer.
+You're going to tag resources.
+
+149
+00:14:48,000 --> 00:14:54,000
+You're going to generate reports.
+And all of these tasks require the AWS CLI to function.
+
+150
+00:14:54,000 --> 00:15:00,000
+So head over to aws.amazon.com slash cli.
+Download the latest version.
+
+151
+00:15:00,000 --> 00:15:06,000
+Depending on your operating system,
+you can install it via package manager.
+
+152
+00:15:06,000 --> 00:15:12,000
+On Mac, that's brew install awscli.
+On Ubuntu, that's sudo apt install awscli.
+
+153
+00:15:12,000 --> 00:15:18,000
+On Windows, download the installer and run it.
+
+154
+00:15:18,000 --> 00:15:24,000
+When you install the AWS CLI,
+you'll also get access to a handy tool called AWS Cost Explorer.
+
+155
+00:15:24,000 --> 00:15:30,000
+Instead of waiting for the monthly bill to arrive
+in your email.
+
+156
+00:15:30,000 --> 00:15:36,000
+You can use Cost Explorer to query your spend in real time.
+
+157
+00:15:36,000 --> 00:15:42,000
+You can ask it how much you spent on EC2 last week.
+You can ask it which region is most expensive.
+
+158
+00:15:42,000 --> 00:15:48,000
+You can ask it to show you cost by tag,
+by service, by hour, by day, by month.
+
+159
+00:15:48,000 --> 00:15:54,000
+Cost Explorer also makes it super easy
+to keep your cost data up to date.
+
+160
+00:15:54,000 --> 00:16:00,000
+It pulls directly from AWS billing.
+There's no delay. No manual exports. No CSV files.
+
+161
+00:16:00,000 --> 00:16:06,000
+You run a command and you get the answer.
+
+162
+00:16:06,000 --> 00:16:12,000
+In simple terms, Cost Explorer will save you time and money
+by giving you access to real spend data.
+
+163
+00:16:12,000 --> 00:16:18,000
+So you can optimize your cloud more efficiently.
+Without Cost Explorer, you're flying blind.
+
+164
+00:16:18,000 --> 00:16:24,000
+With Cost Explorer, you have x-ray vision
+into your AWS bill.
+
+165
+00:16:24,000 --> 00:16:30,000
+Second, you'll need a code editor.
+There are many code editors out there.
+
+166
+00:16:30,000 --> 00:16:36,000
+VS Code, IntelliJ, Sublime, Vim, Emacs.
+Whichever one you choose, you'll be good.
+
+167
+00:16:36,000 --> 00:16:42,000
+I prefer VS Code with the AWS Toolkit extension.
+It's a fully-fledged IDE designed specifically for cloud development.
+
+168
+00:16:42,000 --> 00:16:48,000
+It offers you everything you need.
+Quick terminal access right inside the editor.
+
+169
+00:16:48,000 --> 00:16:54,000
+Error reporting that highlights syntax problems
+before you run the command.
+
+170
+00:16:54,000 --> 00:17:00,000
+An integrated AWS explorer that shows your resources
+without leaving VS Code. And more.
+
+171
+00:17:00,000 --> 00:17:06,000
+Plus, it's completely free.
+
+172
+00:17:06,000 --> 00:17:12,000
+Third, Terraform. And speaking of infrastructure as code.
+
+173
+00:17:12,000 --> 00:17:18,000
+While it's not mandatory to have Terraform installed
+to start learning FinOps.
+
+174
+00:17:18,000 --> 00:17:24,000
+It is absolutely essential for your growth
+as a platform engineer or any kind of cloud engineer
+for that matter.
+
+175
+00:17:24,000 --> 00:17:30,000
+It's a non-negotiable.
+
+176
+00:17:30,000 --> 00:17:36,000
+Terraform is how you define your infrastructure in code.
+Instead of clicking around the AWS console
+to create an EC2 instance.
+
+177
+00:17:36,000 --> 00:17:42,000
+You write a few lines of Terraform configuration
+and run terraform apply.
+
+178
+00:17:42,000 --> 00:17:48,000
+Instead of manually tagging 50 resources,
+you define the tags once and Terraform applies them
+to everything.
+
+179
+00:17:48,000 --> 00:17:54,000
+So go ahead. Google download Terraform.
+Head over to their website. Install it on your device.
+
+180
+00:17:54,000 --> 00:18:00,000
+It takes two minutes.
+
+181
+00:18:00,000 --> 00:18:06,000
+And if you're new to Terraform,
+I've already done a Terraform tutorial
+which I'll link somewhere in this video.
+
+182
+00:18:06,000 --> 00:18:12,000
+It covers variables, resources, modules, state management.
+Everything you need to know.
+
+183
+00:18:12,000 --> 00:00:18,000
+So if you want to do that too before proceeding
+with this FinOps course.
+
+184
+00:00:18,000 --> 00:18:24,000
+Pause this video right now, go watch that tutorial,
+and then come back.
+
+185
+00:18:24,000 --> 00:18:30,000
+But with that in mind, now that we have all the tools necessary.
+
+186
+00:18:30,000 --> 00:18:36,000
+We are ready to verify that everything works.
+
+187
+00:18:36,000 --> 00:18:42,000
+Open your terminal.
+This is where all the magic happens.
+
+188
+00:18:42,000 --> 00:18:48,000
+Every command in this course runs from the terminal.
+
+189
+00:18:48,000 --> 00:18:54,000
+First, run this command.
+aws sts get-caller-identity
+
+190
+00:18:54,000 --> 00:19:00,000
+STS stands for Security Token Service.
+Get caller identity is an API that returns information
+about the AWS user or role that is currently authenticated.
+
+191
+00:19:00,000 --> 00:19:06,000
+In plain English, this command asks AWS "who am I?"
+
+192
+00:19:06,000 --> 00:19:12,000
+The output should look something like this.
+
+193
+00:19:12,000 --> 00:19:18,000
+A UserId, an Account number, and an ARN.
+
+194
+00:19:18,000 --> 00:19:24,000
+The most important field here is Account.
+That 12-digit number is your AWS account ID. Write it down.
+
+195
+00:19:24,000 --> 00:19:30,000
+You'll need it.
+
+196
+00:19:30,000 --> 00:19:36,000
+If you see your account ID, you're ready.
+The AWS CLI is installed correctly.
+
+197
+00:19:36,000 --> 00:19:42,000
+Your credentials are configured. You have access.
+
+198
+00:19:42,000 --> 00:19:48,000
+Troubleshooting.
+If you get an error that says "Unable to locate credentials".
+
+199
+00:19:48,000 --> 00:19:54,000
+That means you haven't configured the AWS CLI yet.
+Run aws configure and enter your Access Key ID,
+Secret Access Key, default region, and default output format.
+
+200
+00:19:54,000 --> 00:20:00,000
+You can get your Access Key ID and Secret Access Key
+from the AWS console under IAM > Users > Security credentials.
+
+201
+00:20:00,000 --> 00:20:06,000
+If you get an error that says "Access denied".
+
+202
+00:20:06,000 --> 00:20:12,000
+That means your credentials exist but don't have permission
+to call this API.
+
+203
+00:20:12,000 --> 00:20:18,000
+You need at least read access to Cost Explorer and EC2
+for this course.
+
+204
+00:20:18,000 --> 00:20:24,000
+For now, I recommend attaching the AWSBillingReadOnlyAccess
+and AmazonEC2ReadOnlyAccess managed policies to your IAM user.
+
+205
+00:20:24,000 --> 00:20:30,000
+You can do this in the AWS console under IAM > Users >
+Add permissions.
+
+206
+00:20:30,000 --> 00:20:36,000
+Once you see your account ID, export these environment variables.
+
+207
+00:20:36,000 --> 00:20:42,000
+Environment variables are like global settings
+that every command can see.
+
+208
+00:20:42,000 --> 00:20:48,000
+You set them once at the beginning of your session
+and every command after that can use them.
+
+209
+00:20:48,000 --> 00:20:54,000
+export ACCOUNT_ID equals aws sts get-caller-identity
+with query Account output text.
+
+210
+00:20:54,000 --> 00:21:00,000
+export REGION equals us-east-1.
+export START equals date minus d 30 days ago plus YYYY-MM-DD.
+
+211
+00:21:00,000 --> 00:21:06,000
+export END equals date plus YYYY-MM-DD.
+
+212
+00:21:06,000 --> 00:21:12,000
+Important note for macOS users.
+The date command on macOS is different.
+
+213
+00:21:12,000 --> 00:21:18,000
+Instead of date minus d 30 days ago,
+use date minus v minus 30d.
+
+214
+00:21:18,000 --> 00:21:24,000
+Let me explain each one.
+
+215
+00:21:24,000 --> 00:21:30,000
+ACCOUNT_ID is your AWS account ID.
+We're using a subshell trick here.
+
+216
+00:21:30,000 --> 00:21:36,000
+The dollar sign parentheses syntax runs the command
+inside the parentheses and substitutes its output.
+
+217
+00:21:36,000 --> 00:21:42,000
+REGION is the AWS region you're working in.
+us-east-1 is Northern Virginia.
+
+218
+00:21:42,000 --> 00:21:48,000
+If your resources are in a different region, change this.
+
+219
+00:21:48,000 --> 00:21:54,000
+START is the beginning of your cost lookback period.
+We're using date dash d 30 days ago.
+
+220
+00:21:54,000 --> 00:22:00,000
+Which calculates the date 30 days before today.
+
+221
+00:22:00,000 --> 00:22:06,000
+END is today's date in the same format.
+
+222
+00:22:06,000 --> 00:22:12,000
+Now verify that these variables are set correctly.
+
+223
+00:22:12,000 --> 00:22:18,000
+echo dollar sign ACCOUNT_ID.
+echo dollar sign REGION.
+
+224
+00:22:18,000 --> 00:22:24,000
+echo dollar sign START.
+echo dollar sign END.
+
+225
+00:22:24,000 --> 00:22:30,000
+You should see your account ID, your region, and two dates.
+
+226
+00:22:30,000 --> 00:22:36,000
+Now let's verify Cost Explorer access.
+Run this command.
+
+227
+00:22:36,000 --> 00:22:42,000
+aws ce get-cost-and-usage with time period
+Start equals START, End equals END.
+
+228
+00:22:42,000 --> 00:22:48,000
+Granularity MONTHLY, metrics BlendedCost.
+Query results by time zero total blended cost amount.
+
+229
+00:22:48,000 --> 00:22:54,000
+Output text.
+
+230
+00:22:54,000 --> 00:23:00,000
+This command returns your total spend for the last 30 days.
+If you see a number, even if it's zero, you have Cost Explorer access.
+
+231
+00:23:00,000 --> 00:23:06,000
+Write this number down. It's your baseline.
+This is the number you're going to reduce over the next 10 series.
+
+232
+00:23:06,000 --> 00:23:12,000
+Troubleshooting.
+If you get an error that says "Invalid time period".
+
+233
+00:23:12,000 --> 00:23:18,000
+Check that your START and END variables are set correctly.
+Run echo dollar sign START and echo dollar sign END.
+
+234
+00:23:18,000 --> 00:23:24,000
+They should be dates in YYYY-MM-DD format.
+
+235
+00:23:24,000 --> 00:23:30,000
+If you get an error that says "Access denied"
+or "Unauthorized operation".
+
+236
+00:23:30,000 --> 00:23:36,000
+Your IAM user doesn't have permission to call Cost Explorer.
+Go back to the AWS console and add the AWSBillingReadOnlyAccess
+policy.
+
+237
+00:23:36,000 --> 00:23:42,000
+Now you're ready for unit economics.
+
+238
+00:23:42,000 --> 00:23:48,000
+Now let me show you what unit economics actually means.
+
+239
+00:23:48,000 --> 00:23:54,000
+Because this is the concept that separates
+senior engineers from junior engineers.
+
+240
+00:23:54,000 --> 00:24:00,000
+Senior engineers talk about unit economics.
+Junior engineers talk about the AWS bill.
+
+241
+00:24:00,000 --> 00:24:06,000
+In simple terms, unit economics is the answer
+to one question.
+
+242
+00:24:06,000 --> 00:24:12,000
+What does one unit of your business cost?
+
+243
+00:24:12,000 --> 00:24:18,000
+If you're running a RAG application,
+the unit is one RAG query.
+
+244
+00:24:18,000 --> 00:24:24,000
+A user asks a question. The system retrieves
+relevant documents.
+
+245
+00:24:24,000 --> 00:24:30,000
+The language model generates an answer.
+That whole process from question to answer is one unit.
+
+246
+00:24:30,000 --> 00:24:36,000
+If you're running an API, the unit is one API call.
+A client sends a request. The server processes it.
+
+247
+00:24:36,000 --> 00:24:42,000
+The server sends a response.
+That round trip is one unit.
+
+248
+00:24:42,000 --> 00:24:48,000
+If you're running a batch job, the unit is one job execution.
+The job starts. It processes data.
+
+249
+00:24:48,000 --> 00:24:54,000
+It writes results. It finishes.
+That complete execution is one unit.
+
+250
+00:24:54,000 --> 00:25:00,000
+Here's why this matters.
+Most engineering teams look at their AWS bill
+and see $47,832.45.
+
+251
+00:25:00,000 --> 00:25:06,000
+That number is useless.
+It doesn't tell you if you're efficient.
+
+252
+00:25:06,000 --> 00:25:12,000
+It doesn't tell you if that new feature you shipped
+made things better or worse.
+
+253
+00:25:12,000 --> 00:25:18,000
+It doesn't tell you if you're spending too much
+or too little. It's just a number.
+
+254
+00:25:18,000 --> 00:25:24,000
+But if you know that one RAG query costs $0.002,
+that's two-tenths of a cent. Now you have something.
+
+255
+00:25:24,000 --> 00:25:30,000
+Now you can do math.
+
+256
+00:25:30,000 --> 00:25:36,000
+You can answer. We processed two million queries this month.
+At $0.002 each, that's $4,000.
+
+257
+00:25:36,000 --> 00:25:42,000
+Our total bill is $12,000.
+Where is the other $8,000 going?
+
+258
+00:25:42,000 --> 00:25:48,000
+That question is the beginning of FinOps.
+That question leads you to investigate.
+
+259
+00:25:48,000 --> 00:25:54,000
+You look at the breakdown by service.
+You see that NAT Gateway is costing you $2,000.
+
+260
+00:25:54,000 --> 00:26:00,000
+You see that you have five unattached Elastic IPs
+costing you $18.
+
+261
+00:26:00,000 --> 00:26:06,000
+You see that you have stopped instances
+with EBS volumes costing you $300.
+
+262
+00:26:06,000 --> 00:26:12,000
+Now you have a plan.
+Now you know exactly what to fix and in what order.
+
+263
+00:26:12,000 --> 00:26:18,000
+That's the power of unit economics.
+
+264
+00:26:18,000 --> 00:26:24,000
+Write this formula down.
+Cost per unit equals total monthly infrastructure cost
+divided by number of units processed.
+
+265
+00:26:24,000 --> 00:26:30,000
+For financial-rag-agent, your unit is a RAG query.
+For riskoracle, your unit is a risk calculation.
+
+266
+00:26:30,000 --> 00:26:36,000
+By the end of this course, you will have both numbers.
+And you will know exactly how to improve them.
+
+267
+00:26:36,000 --> 00:26:42,000
+Now let me walk you through a real example
+from an actual deployment of financial-rag-agent.
+
+268
+00:26:42,000 --> 00:26:48,000
+This client processes about 500,000 RAG queries per month.
+That's about 16,000 queries per day.
+
+269
+00:26:48,000 --> 00:26:54,000
+That's about 11 queries per minute.
+It's a moderately busy system.
+
+270
+00:26:54,000 --> 00:27:00,000
+Not huge, but not tiny either.
+
+271
+00:27:00,000 --> 00:27:06,000
+Their total AWS bill is $8,400 per month.
+
+272
+00:27:06,000 --> 00:27:12,000
+Let me calculate their cost per query.
+Total cost divided by total queries.
+
+273
+00:27:12,000 --> 00:27:18,000
+$8,400 divided by 500,000 equals $0.0168 per query.
+That's 1.68 cents per query.
+
+274
+00:27:18,000 --> 00:27:24,000
+Let me break down where that 1.68 cents per query goes.
+This is the detail that most people never see.
+
+275
+00:27:24,000 --> 00:27:30,000
+Here is the cost breakdown per query table.
+
+276
+00:27:30,000 --> 00:27:36,000
+EC2 compute for LLM inference: 0.8 cents per query.
+48 percent of the total.
+
+277
+00:27:36,000 --> 00:27:42,000
+RDS for the vector database: 0.3 cents per query.
+18 percent of the total.
+
+278
+00:27:42,000 --> 00:27:48,000
+NAT Gateway plus data transfer: 0.2 cents per query.
+12 percent of the total.
+
+279
+00:27:48,000 --> 00:27:54,000
+EKS control plane: 0.2 cents per query.
+12 percent of the total.
+
+280
+00:27:54,000 --> 00:28:00,000
+S3 for document storage: 0.1 cents per query.
+6 percent of the total.
+
+281
+00:28:00,000 --> 00:28:06,000
+Other services like CloudWatch and ECR: 0.08 cents per query.
+4 percent of the total.
+
+282
+00:28:06,000 --> 00:28:12,000
+The large language model that generates answers
+runs on GPU instances. GPUs are expensive.
+
+283
+00:28:12,000 --> 00:28:18,000
+This is the biggest line item at 48 percent.
+
+284
+00:28:18,000 --> 00:28:24,000
+Is 1.68 cents good or bad?
+It depends on what you charge.
+
+285
+00:28:24,000 --> 00:28:30,000
+If they're charging their customers 10 cents per query,
+their cost is 1.68 cents.
+
+286
+00:28:30,000 --> 00:28:36,000
+Their margin is 8.32 cents per query.
+That's an 83% margin. That's great.
+
+287
+00:28:36,000 --> 00:28:42,000
+If they're charging their customers 2 cents per query,
+their cost is 1.68 cents.
+
+288
+00:28:42,000 --> 00:28:48,000
+Their margin is 0.32 cents per query.
+That's a 16% margin.
+
+289
+00:28:48,000 --> 00:28:54,000
+They're barely breaking even.
+One small mistake and they're losing money.
+
+290
+00:28:54,000 --> 00:29:00,000
+Now look at the biggest line item.
+EC2 compute at 48 percent.
+
+291
+00:29:00,000 --> 00:29:06,000
+That's where Karpenter and Spot instances
+will have the biggest impact.
+
+292
+00:29:06,000 --> 00:29:12,000
+If you can reduce EC2 cost by 35 percent using
+Karpenter consolidation, that reduces the total cost per query
+from 1.68 cents to 1.42 cents.
+
+293
+00:29:12,000 --> 00:29:18,000
+If you can run some workloads on Spot instances
+at 70 percent off, that reduces the total even further.
+
+294
+00:29:18,000 --> 00:29:24,000
+If you can eliminate NAT Gateway costs entirely
+using VPC endpoints, that's another 12 percent reduction.
+
+295
+00:29:24,000 --> 00:29:30,000
+After implementing all the optimizations in this course,
+that client reduced their cost per query to 0.98 cents.
+
+296
+00:29:30,000 --> 00:29:36,000
+That's a 42 percent reduction.
+Their margin at 10 cents per query went from 83 percent to 90 percent.
+
+297
+00:29:36,000 --> 00:29:42,000
+That's the difference between a startup that survives
+and a startup that thrives.
+
+298
+00:29:42,000 --> 00:29:48,000
+Now let me show you why this number matters
+to your CTO.
+
+299
+00:29:48,000 --> 00:29:54,000
+Your CTO cares about two things.
+Shipping features and not running out of money.
+
+300
+00:29:54,000 --> 00:30:00,000
+Unit economics is the bridge between them.
+
+301
+00:30:00,000 --> 00:30:06,000
+Here's the conversation you can have after this course.
+
+302
+00:30:06,000 --> 00:30:12,000
+You walk into the CTO's office.
+You say, "Our cost per RAG query is 1.68 cents."
+
+303
+00:30:12,000 --> 00:30:18,000
+The CTO looks at you. "Is that good?" they ask.
+You say, "It's okay. But I can get it to 0.9 cents
+by next quarter."
+
+304
+00:30:18,000 --> 00:30:24,000
+The CTO leans forward. "How?"
+You say, "Karpenter consolidation on EKS will cut EC2 cost
+by 35 percent."
+
+305
+00:30:24,000 --> 00:30:30,000
+"Spot instances for batch processing will save
+another 15 percent. VPC endpoints eliminate NAT Gateway costs
+entirely."
+
+306
+00:30:30,000 --> 00:30:36,000
+"And I'm going to bake cost visibility into the IDP
+so every team sees their impact before they deploy."
+
+307
+00:30:36,000 --> 00:30:42,000
+The CTO says, "Do it."
+
+308
+00:30:42,000 --> 00:30:48,000
+That's the conversation. Not "we need to save money."
+Not "cloud is too expensive."
+
+309
+00:30:48,000 --> 00:30:54,000
+Just data, a plan, and a number.
+That's what unit economics gives you.
+
+310
+00:30:54,000 --> 00:31:00,000
+Now let me show you how to calculate this for yourself.
+
+311
+00:31:00,000 --> 00:31:06,000
+First, get your total monthly cost.
+You already have this from the verification step.
+
+312
+00:31:06,000 --> 00:31:12,000
+TOTAL_COST equals aws ce get-cost-and-usage with time period
+Start END granularity MONTHLY metrics BlendedCost.
+
+313
+00:31:12,000 --> 00:31:18,000
+Query results by time zero total blended cost amount.
+Output text.
+
+314
+00:31:18,000 --> 00:31:24,000
+echo "Total monthly AWS cost: dollar sign TOTAL_COST"
+
+315
+00:31:24,000 --> 00:31:30,000
+Second, get your total number of RAG queries.
+This assumes you're logging each query to CloudWatch.
+
+316
+00:31:30,000 --> 00:31:36,000
+If you're not, we'll set this up in Series 8
+when we build the IDP.
+
+317
+00:31:36,000 --> 00:31:42,000
+TOTAL_QUERIES equals aws cloudwatch get-metric-statistics
+with namespace financial-rag-agent.
+
+318
+00:31:42,000 --> 00:31:48,000
+Metric name QueryCount. Start time START T 00:00:00Z.
+End time END T 00:00:00Z.
+
+319
+00:31:48,000 --> 00:31:54,000
+Period 2592000. Statistics Sum.
+Query datapoints zero sum. Output text.
+
+320
+00:31:54,000 --> 00:32:00,000
+echo "Total monthly RAG queries: dollar sign TOTAL_QUERIES"
+
+321
+00:32:00,000 --> 00:32:06,000
+Third, calculate the cost per query.
+
+322
+00:32:06,000 --> 00:32:12,000
+echo "Cost per RAG query: " with scale 6 and TOTAL_COST divided by TOTAL_QUERIES using bc.
+
+323
+00:32:12,000 --> 00:32:18,000
+If you don't have CloudWatch metrics set up yet,
+don't worry. We'll add them in Series 8.
+
+324
+00:32:18,000 --> 00:32:24,000
+For now, just understand the concept.
+Because every decision you make in this course.
+
+325
+00:32:24,000 --> 00:32:30,000
+Every rightsizing, every Karpenter consolidation,
+every Spot instance, every VPC endpoint.
+
+326
+00:32:30,000 --> 00:32:36,000
+Should be evaluated against this number.
+Does this change reduce cost per query?
+
+327
+00:32:36,000 --> 00:32:42,000
+If yes, do it. If no, ask why.
+That's how senior engineers think about cloud cost.
+
+328
+00:32:42,000 --> 00:32:48,000
+Now let's talk about the mechanism that makes
+unit economics possible.
+
+329
+00:32:48,000 --> 00:32:54,000
+The thing that lets you break down your total bill
+into cost per team, cost per service, cost per environment.
+
+330
+00:32:54,000 --> 00:33:00,000
+That mechanism is tagging.
+
+331
+00:33:00,000 --> 00:33:06,000
+Now let's talk about tagging.
+Tags are labels that you attach to AWS resources.
+
+332
+00:33:06,000 --> 00:33:12,000
+A tag is a key-value pair. The key is something like Environment.
+The value is something like production.
+
+333
+00:33:12,000 --> 00:33:18,000
+So you tag an EC2 instance with Environment equals production.
+You tag an S3 bucket with Team equals financial-rag.
+
+334
+00:33:18,000 --> 00:33:24,000
+You tag an RDS database with CostCenter equals engineering.
+
+335
+00:33:24,000 --> 00:33:30,000
+Here's the hard truth.
+Without tags, you have no idea who spent what.
+
+336
+00:33:30,000 --> 00:33:36,000
+Without tags, you are flying blind.
+
+337
+00:33:36,000 --> 00:33:42,000
+Cost Explorer shows you EC2 cost.
+But which team spun up those instances?
+
+338
+00:33:42,000 --> 00:33:48,000
+Was it the financial-rag team or the riskoracle team?
+You don't know.
+
+339
+00:33:48,000 --> 00:33:54,000
+Cost Explorer shows you S3 cost.
+But which service is generating all that data transfer?
+
+340
+00:33:54,000 --> 00:34:00,000
+Is it the LLM ingest service or the batch processing job?
+You don't know.
+
+341
+00:34:00,000 --> 00:34:06,000
+Tags answer those questions.
+Tags give you the dimensions you need to break down your bill.
+
+342
+00:34:06,000 --> 00:34:12,000
+Tags are how you move from total spend
+to cost per team, cost per service, cost per environment.
+
+343
+00:34:12,000 --> 00:34:18,000
+Here's the tagging standard I use on every engagement.
+I've used this at over 50 startups.
+
+344
+00:34:18,000 --> 00:34:24,000
+It works. It scales.
+It's simple enough that everyone remembers it.
+
+345
+00:34:24,000 --> 00:34:30,000
+And comprehensive enough that you never find yourself
+missing a dimension.
+
+346
+00:34:30,000 --> 00:34:36,000
+You are going to apply these six tags
+to every resource in your account.
+No exceptions.
+
+347
+00:34:36,000 --> 00:34:42,000
+Here is the six tags table.
+
+348
+00:34:42,000 --> 00:34:48,000
+Tag key: Environment. Example values: production, staging,
+development, test. Purpose: Separate prod spend from test spend.
+
+349
+00:34:48,000 --> 00:34:54,000
+Tag key: Team. Example values: financial-rag, riskoracle,
+platform. Purpose: Chargeback. Show each team their cost.
+
+350
+00:34:54,000 --> 00:35:00,000
+Tag key: Service. Example values: llm-ingest, risk-calc,
+api-gateway. Purpose: Granular attribution per microservice.
+
+351
+00:35:00,000 --> 00:35:06,000
+Tag key: ManagedBy. Example values: terraform, kubecost,
+manual. Purpose: Know who created and how to manage it.
+
+352
+00:35:06,000 --> 00:35:12,000
+Tag key: CostCenter. Example values: engineering,
+data-science, product. Purpose: Roll up to your finance department.
+
+353
+00:35:12,000 --> 00:35:18,000
+Tag key: Owner. Example value: aayo at company.com.
+Purpose: The person responsible. Who to ping.
+
+354
+00:35:18,000 --> 00:35:24,000
+The golden rule.
+Every resource gets every tag. No exceptions.
+
+355
+00:35:24,000 --> 00:35:30,000
+Not some resources. Not most resources. Every resource.
+EC2 instances, EBS volumes, RDS databases, S3 buckets.
+
+356
+00:35:30,000 --> 00:35:36,000
+Load balancers, Lambda functions, EKS clusters, everything.
+
+357
+00:35:36,000 --> 00:35:42,000
+Why so strict? Because the moment you allow
+one untagged resource, you lose the ability
+to trust your data.
+
+358
+00:35:42,000 --> 00:35:48,000
+Is that $500 of EC2 cost untagged
+because it's shared infrastructure that belongs to everyone?
+
+359
+00:35:48,000 --> 00:35:54,000
+Or is it untagged because someone forgot?
+You don't know.
+
+360
+00:35:54,000 --> 00:36:00,000
+And now your unit economics are wrong.
+Now you can't trust your cost per team report.
+
+361
+00:36:00,000 --> 00:36:06,000
+Now you have to manually investigate every discrepancy.
+
+362
+00:36:06,000 --> 00:36:12,000
+Trust me. I've seen this happen.
+A startup tags 99 percent of their resources.
+They feel good about themselves.
+
+363
+00:36:12,000 --> 00:36:18,000
+They run a cost by team report. It looks great.
+Then they discover that the 1 percent of untagged resources
+accounts for 20 percent of their spend.
+
+364
+00:36:18,000 --> 00:36:24,000
+Their report was wrong. Their decisions were based
+on wrong data.
+
+365
+00:36:24,000 --> 00:36:30,000
+They wasted weeks optimizing the wrong things.
+Enforce the six tags. Enforce them strictly.
+
+366
+00:36:30,000 --> 00:36:36,000
+Enforce them from day one.
+
+367
+00:36:36,000 --> 00:36:42,000
+Now let me show you how to enforce them.
+
+368
+00:36:42,000 --> 00:36:48,000
+Step 1. Activate Tags for Cost Allocation.
+First, let's see what tags you already have active
+in your account for cost allocation.
+
+369
+00:36:48,000 --> 00:36:54,000
+Cost Explorer can only group by tags that are activated.
+aws ce list-cost-allocation-tags with status Active.
+
+370
+00:36:54,000 --> 00:37:00,000
+Output table.
+
+371
+00:37:00,000 --> 00:37:06,000
+This shows you every tag that Cost Explorer knows about.
+If your six tags aren't here, you need to activate them.
+
+372
+00:37:06,000 --> 00:37:12,000
+The command to activate a tag is.
+aws ce update-cost-allocation-tags-status with tags Team
+status Active.
+
+373
+00:37:12,000 --> 00:37:18,000
+Do this for each of the six tags.
+Environment, Team, Service, ManagedBy, CostCenter, Owner.
+
+374
+00:37:18,000 --> 00:37:24,000
+Step 2. Find Untagged EC2 Instances.
+Now let's find resources with no tags at all.
+Start with EC2 instances.
+
+375
+00:37:24,000 --> 00:37:30,000
+aws ec2 describe-instances with query reservations
+instances where tags length is zero.
+
+376
+00:37:30,000 --> 00:37:36,000
+Show ID, Type, State. Output table.
+
+377
+00:37:36,000 --> 00:37:42,000
+If this returns more than three rows, your cost allocation is broken.
+Each row is an untagged EC2 instance.
+
+378
+00:37:42,000 --> 00:37:48,000
+Each instance is a blind spot in your cost visibility.
+
+379
+00:37:48,000 --> 00:37:54,000
+Step 3. Find Untagged S3 Buckets.
+Now S3 buckets.
+
+380
+00:37:54,000 --> 00:38:00,000
+aws s3api list-buckets query buckets name output text.
+Pipe to while loop.
+
+381
+00:38:00,000 --> 00:38:06,000
+For each bucket, get bucket tagging.
+If tag set length is zero or null, print UNTAGGED S3 BUCKET.
+
+382
+00:38:06,000 --> 00:38:12,000
+This loops through every S3 bucket in your account.
+For each bucket, it tries to get the tags.
+
+383
+00:38:12,000 --> 00:38:18,000
+If there are no tags, it prints the bucket name.
+The 2 greater than dev null suppresses error messages.
+
+384
+00:38:18,000 --> 00:38:24,000
+For buckets that have no tagging at all.
+
+385
+00:38:24,000 --> 00:38:30,000
+Step 4. Find Untagged EBS Volumes.
+Now EBS volumes.
+
+386
+00:38:30,000 --> 00:38:36,000
+aws ec2 describe-volumes query volumes where tags length zero.
+Show ID, Size, Type. Output table.
+
+387
+00:38:36,000 --> 00:38:42,000
+Step 5. Find Untagged RDS Instances.
+Now RDS instances.
+
+388
+00:38:42,000 --> 00:38:48,000
+aws rds describe-db-instances query DBInstances
+where tag list length zero.
+
+389
+00:38:48,000 --> 00:38:54,000
+Show ID, Class, Engine. Output table.
+
+390
+00:38:54,000 --> 00:39:00,000
+Step 6. Find Untagged Load Balancers.
+Now load balancers.
+
+391
+00:39:00,000 --> 00:39:06,000
+aws elbv2 describe-load-balancers query LoadBalancers
+where tags length zero.
+
+392
+00:39:06,000 --> 00:39:12,000
+Show Name, Type, State. Output table.
+
+393
+00:39:12,000 --> 00:39:18,000
+Run all of these commands. Save the output.
+This is your untagged inventory.
+
+394
+00:39:18,000 --> 00:39:24,000
+This is the list of resources that are currently invisible
+to your cost allocation.
+
+395
+00:39:24,000 --> 00:39:30,000
+Now let's fix them.
+
+396
+00:39:30,000 --> 00:39:36,000
+Here's how to tag a single EC2 instance
+with all six tags.
+
+397
+00:39:36,000 --> 00:39:42,000
+aws ec2 create-tags with resources i-1234567890abcdef0.
+
+398
+00:39:42,000 --> 00:39:48,000
+Tags Key=Environment,Value=production
+Key=Team,Value=financial-rag Key=Service,Value=llm-ingest.
+
+399
+00:39:48,000 --> 00:39:54,000
+Key=ManagedBy,Value=terraform Key=CostCenter,Value=engineering
+Key=Owner,Value=aayo at finops.com.
+
+400
+00:39:54,000 --> 00:40:00,000
+The create-tags command takes a list of resources
+and a list of tags.
+
+401
+00:40:00,000 --> 00:40:06,000
+Each tag is a key-value pair.
+You can tag up to 20 resources at once.
+
+402
+00:40:06,000 --> 00:40:12,000
+You can add up to 50 tags per resource.
+
+403
+00:40:12,000 --> 00:40:18,000
+But you don't want to do this one by one.
+You have dozens or hundreds of resources.
+
+404
+00:40:18,000 --> 00:40:24,000
+You need a bulk tagging script.
+
+405
+00:40:24,000 --> 00:40:30,000
+Here's the complete bulk tagging script
+that tags every EC2 instance in your account
+with baseline tags.
+
+406
+00:40:30,000 --> 00:40:36,000
+aws ec2 describe-instances query instances instance ID
+output text.
+
+407
+00:40:36,000 --> 00:40:42,000
+Pipe to while loop. For each ID, run create-tags
+with the six required tags.
+
+408
+00:40:42,000 --> 00:40:48,000
+Environment production. Team unknown.
+Service unknown. ManagedBy finops.
+
+409
+00:40:48,000 --> 00:40:54,000
+CostCenter engineering. Owner finops at yourcompany.com.
+Echo "Tagged EC2: ID".
+
+410
+00:40:54,000 --> 00:41:00,000
+This does several things. First, it gets a list
+of all EC2 instance IDs.
+
+411
+00:41:00,000 --> 00:41:06,000
+The query extracts just the IDs.
+The output text formats them as plain text.
+
+412
+00:41:06,000 --> 00:41:12,000
+The tr converts tabs to newlines so each ID
+is on its own line.
+
+413
+00:41:12,000 --> 00:41:18,000
+Then the while loop reads each ID
+and runs the create-tags command.
+
+414
+00:41:18,000 --> 00:41:24,000
+The tags are set to baseline values.
+Environment is production. Team and Service are unknown.
+
+415
+00:41:24,000 --> 00:41:30,000
+Because you need to fill those in manually.
+ManagedBy is finops because you're the one tagging them.
+
+416
+00:41:30,000 --> 00:41:36,000
+CostCenter is engineering. Owner is your FinOps email address.
+
+417
+00:41:36,000 --> 00:41:42,000
+After this script runs, every EC2 instance has the six tags.
+Then you go back and change the unknown values
+to the real team and service names.
+
+418
+00:41:42,000 --> 00:41:48,000
+Now let's do the same for EBS volumes.
+
+419
+00:41:48,000 --> 00:41:54,000
+aws ec2 describe-volumes query volumes volume ID output text.
+Pipe to while loop. For each ID, run create-tags.
+
+420
+00:41:54,000 --> 00:42:00,000
+Same tags. Echo "Tagged EBS: ID".
+
+421
+00:42:00,000 --> 00:42:06,000
+Now for RDS instances. Note that RDS uses a different command.
+add-tags-to-resource instead of create-tags.
+
+422
+00:42:06,000 --> 00:42:12,000
+And the resource identifier is an ARN, not just an ID.
+
+423
+00:42:12,000 --> 00:42:18,000
+aws rds describe-db-instances query instances ARN output text.
+Pipe to while loop. For each ARN, run add-tags-to-resource.
+
+424
+00:42:18,000 --> 00:42:24,000
+Same tags. Echo "Tagged RDS: ARN".
+
+425
+00:42:24,000 --> 00:42:30,000
+Now for load balancers.
+
+426
+00:42:30,000 --> 00:42:36,000
+aws elbv2 describe-load-balancers query load balancer ARN
+output text. Pipe to while loop.
+
+427
+00:42:36,000 --> 00:42:42,000
+For each ARN, run add-tags with the same tags.
+Echo "Tagged ALB: ARN".
+
+428
+00:42:42,000 --> 00:42:48,000
+After you run all of these scripts,
+every resource in your account has baseline tags.
+
+429
+00:42:48,000 --> 00:42:54,000
+Now you need to go back and fill in the real team
+and service names.
+
+430
+00:42:54,000 --> 00:43:00,000
+You can do this manually or you can write a script
+that updates based on instance names or other metadata.
+
+431
+00:43:00,000 --> 00:43:06,000
+Now let's talk about preventing untagged resources
+from being created in the future.
+
+432
+00:43:06,000 --> 00:43:12,000
+Because tagging everything retroactively is painful.
+It's much better to never create an untagged resource
+in the first place.
+
+433
+00:43:12,000 --> 00:43:18,000
+AWS Config is the service that continuously monitors
+your resources for compliance.
+
+434
+00:43:18,000 --> 00:43:24,000
+You can create rules that flag any resource
+missing required tags.
+
+435
+00:43:24,000 --> 00:43:30,000
+You can even block non-compliant resources
+from being created.
+
+436
+00:43:30,000 --> 00:43:36,000
+Here's the Config rule for our six required tags.
+
+437
+00:43:36,000 --> 00:43:42,000
+aws configservice put-config-rule with config rule name
+finops-required-tags.
+
+438
+00:43:42,000 --> 00:43:48,000
+Description "Enforces six required tags on all resources".
+Source Owner AWS, SourceIdentifier REQUIRED_TAGS.
+
+439
+00:43:48,000 --> 00:43:54,000
+Input parameters with tag1Key Environment, tag2Key Team,
+tag3Key Service, tag4Key ManagedBy, tag5Key CostCenter, tag6Key Owner.
+
+440
+00:43:54,000 --> 00:44:00,000
+Scope with compliance resource types
+AWS::EC2::Instance, AWS::EC2::Volume, AWS::RDS::DBInstance,
+AWS::S3::Bucket, AWS::ElasticLoadBalancingV2::LoadBalancer.
+
+441
+00:44:00,000 --> 00:44:06,000
+This rule checks every EC2 instance, EBS volume,
+RDS instance, S3 bucket, and load balancer.
+
+442
+00:44:06,000 --> 00:44:12,000
+If any of these resources is missing any of the six tags,
+Config marks it as NON_COMPLIANT.
+
+443
+00:44:12,000 --> 00:44:18,000
+You can view non-compliant resources with this command.
+aws configservice get-compliance-summary-by-config-rule
+with config-rule-names finops-required-tags.
+
+444
+00:44:18,000 --> 00:44:24,000
+You can also set up automatic notifications.
+This SNS topic sends an alert to your Slack channel
+whenever a non-compliant resource is detected.
+
+445
+00:44:24,000 --> 00:44:30,000
+aws sns create-topic with name finops-compliance-alerts.
+
+446
+00:44:30,000 --> 00:44:36,000
+aws sns subscribe with topic ARN and protocol email
+and notification endpoint cto at yourcompany.com.
+
+447
+00:44:36,000 --> 00:44:42,000
+Then attach that SNS topic to Config.
+aws configservice put-config-rule with config-rule
+finops-required-tags and config-rule-evaluation-mode PROACTIVE.
+
+448
+00:44:42,000 --> 00:44:48,000
+Proactive mode is the key.
+Proactive mode blocks non-compliant resources
+before they are created.
+
+449
+00:44:48,000 --> 00:44:54,000
+If someone tries to create an EC2 instance
+without the required tags, the API call fails.
+
+450
+00:44:54,000 --> 00:45:00,000
+They get an error message telling them
+which tags are missing.
+
+451
+00:45:00,000 --> 00:45:06,000
+No more untagged resources. No more invisible spend.
+No more manual cleanup.
+
+452
+00:45:06,000 --> 00:45:12,000
+Now let's run our first Cost Explorer query
+to see the impact of tagging.
+
+453
+00:45:12,000 --> 00:45:18,000
+This is the command that every FinOps engagement starts with.
+I've run this command at over 50 startups.
+
+454
+00:45:18,000 --> 00:45:24,000
+Every single time, the CTO leans forward
+when they see the output.
+
+455
+00:45:24,000 --> 00:45:30,000
+Why? Because for the first time, they're not looking
+at a confusing AWS bill with 47 line items
+and usage types they don't understand.
+
+456
+00:45:30,000 --> 00:45:36,000
+They're looking at a simple table.
+Service name. Dollar amount. That's it.
+
+457
+00:45:36,000 --> 00:45:42,000
+Here's the command.
+aws ce get-cost-and-usage with time period Start END.
+
+458
+00:45:42,000 --> 00:45:48,000
+Granularity MONTHLY. Metrics BlendedCost.
+Group-by type DIMENSION, key SERVICE.
+
+459
+00:45:48,000 --> 00:45:54,000
+Query results by time zero groups with blended cost amount
+greater than 10.
+
+460
+00:45:54,000 --> 00:46:00,000
+Output table.
+
+461
+00:46:00,000 --> 00:46:06,000
+Let me break down every flag so you understand
+what you're running.
+
+462
+00:46:06,000 --> 00:46:12,000
+Time-period Start dollar sign START, End dollar sign END.
+Remember those variables we exported?
+
+463
+00:46:12,000 --> 00:46:18,000
+START is 30 days ago. END is today.
+We're looking at the last 30 days of spend.
+
+464
+00:46:18,000 --> 00:46:24,000
+Granularity MONTHLY. This tells Cost Explorer
+to give us one number per month.
+
+465
+00:46:24,000 --> 00:46:30,000
+Not per day or per hour.
+
+466
+00:46:30,000 --> 00:46:36,000
+Metrics BlendedCost. Always use BlendedCost.
+It's what you actually pay after Savings Plans,
+Reserved Instances, and volume discounts.
+
+467
+00:46:36,000 --> 00:46:42,000
+Group-by type DIMENSION, key SERVICE.
+We're telling AWS to group our costs by service name.
+
+468
+00:46:42,000 --> 00:46:48,000
+Query. The JMESPath query filters out any service
+that costs less than $10 and formats the output as a table.
+
+469
+00:46:48,000 --> 00:46:54,000
+Output table. Formats the output as a nice ASCII table.
+
+470
+00:46:54,000 --> 00:47:00,000
+Now run the command.
+You should see output that looks like this.
+
+471
+00:47:00,000 --> 00:47:06,000
+Here is the sample output.
+
+472
+00:47:06,000 --> 00:47:12,000
+Amazon Elastic Compute Cloud - Compute: $4,230.12.
+Amazon Elastic Kubernetes Service: $890.45.
+
+473
+00:47:12,000 --> 00:47:18,000
+Amazon Relational Database Service: $720.33.
+Amazon Simple Storage Service: $450.22.
+
+474
+00:47:18,000 --> 00:47:24,000
+Amazon NAT Gateway: $340.18.
+Amazon CloudFront: $210.55.
+
+475
+00:47:24,000 --> 00:47:30,000
+Amazon EBS: $180.44.
+Amazon Route 53: $45.12.
+Amazon CloudWatch: $32.88.
+
+476
+00:47:30,000 --> 00:47:36,000
+Troubleshooting. If you get an error that says
+"Invalid time period", check your START and END variables.
+
+477
+00:47:36,000 --> 00:47:42,000
+Run echo dollar sign START and echo dollar sign END.
+
+478
+00:47:42,000 --> 00:47:48,000
+If you get "Access denied" or "Unauthorized operation",
+your AWS credentials don't have permission to read
+Cost Explorer.
+
+479
+00:47:48,000 --> 00:47:54,000
+If you get nothing, an empty table,
+that means your account has zero spend in the last 30 days.
+
+480
+00:47:54,000 --> 00:48:00,000
+Run aws sts get-caller-identity to confirm which account
+you're in.
+
+481
+00:48:00,000 --> 00:48:06,000
+Now let's interpret the output.
+Look at the top service on your list.
+
+482
+00:48:06,000 --> 00:48:12,000
+For 90 percent of people, it's EC2.
+Compute is almost always the biggest line item.
+
+483
+00:48:12,000 --> 00:48:18,000
+That's normal. That's where you should focus
+your optimization efforts first.
+
+484
+00:48:18,000 --> 00:48:24,000
+Now look at your second and third services.
+This is where you find your first opportunities.
+
+485
+00:48:24,000 --> 00:48:30,000
+If NAT Gateway is in your top five, red flag.
+NAT Gateway charges $0.045 per gigabyte for data transfer.
+
+486
+00:48:30,000 --> 00:48:36,000
+We're going to fix this in Series 2 with VPC Endpoints.
+
+487
+00:48:36,000 --> 00:48:42,000
+If EKS is high but you only have one cluster,
+that's normal. The EKS control plane costs $0.10 per hour.
+
+488
+00:48:42,000 --> 00:48:48,000
+About $73 per month.
+
+489
+00:48:48,000 --> 00:48:54,000
+If RDS is high and you have development databases
+running 24/7, that's waste.
+
+490
+00:48:54,000 --> 00:49:00,000
+We'll cover stop and start schedules in Series 2.
+
+491
+00:49:00,000 --> 00:49:06,000
+If S3 is in your top five, S3 is cheap.
+$0.023 per gigabyte.
+
+492
+00:49:06,000 --> 00:49:12,000
+If you're spending $450 on S3, that's about 20 terabytes.
+Do you really have 20 terabytes?
+
+493
+00:49:12,000 --> 00:49:18,000
+Or do you have lifecycle policies turned off?
+
+494
+00:49:18,000 --> 00:49:24,000
+Write down your top three services.
+Those are your first optimization targets.
+
+495
+00:49:24,000 --> 00:49:30,000
+Now let's break down cost by region.
+This command finds resources running in regions
+you don't use.
+
+496
+00:49:30,000 --> 00:49:36,000
+aws ce get-cost-and-usage with time period Start END.
+Granularity MONTHLY. Metrics BlendedCost.
+
+497
+00:49:36,000 --> 00:49:42,000
+Group-by type DIMENSION, key REGION.
+Query results by time zero groups.
+
+498
+00:49:42,000 --> 00:49:48,000
+Output table.
+
+499
+00:49:48,000 --> 00:49:54,000
+You'll see something like this.
+US East (N. Virginia): $6,230.00.
+US West (Oregon): $890.00.
+EU (Ireland): $340.00.
+
+500
+00:49:54,000 --> 00:50:00,000
+If your workloads are supposed to be in us-east-1
+but you see cost in us-west-2, someone created resources
+in the wrong region.
+
+501
+00:50:00,000 --> 00:50:06,000
+Here's how to find those stray resources.
+
+502
+00:50:06,000 --> 00:50:12,000
+For region in us-west-2 eu-west-1 ap-southeast-1.
+Do echo "Checking region..." and then aws ec2 describe-instances.
+
+503
+00:50:12,000 --> 00:50:18,000
+Once you find stray resources, decide.
+Migrate them to your primary region. Or delete them.
+
+504
+00:50:18,000 --> 00:50:24,000
+Or tag them and add them to your regular reporting.
+But don't ignore them.
+
+505
+00:50:24,000 --> 00:50:30,000
+Now let's talk about the 30 to 60 percent savings claim.
+Is it real? Can you really save that much?
+
+506
+00:50:30,000 --> 00:50:36,000
+Or is it marketing hype? Let me show you the math.
+Based on real audits across 50 plus startups.
+
+507
+00:50:36,000 --> 00:50:42,000
+Here is the waste categories table.
+
+508
+00:50:42,000 --> 00:50:48,000
+Overprovisioned EC2: 25 to 40 percent waste.
+Fix: Kubecost rightsizing in Series 3.
+
+509
+00:50:48,000 --> 00:50:54,000
+gp2 vs gp3 volumes: 20 percent of EBS cost.
+Fix: One command migration in Series 2.
+
+510
+00:50:54,000 --> 00:51:00,000
+Unattached Elastic IPs: $3.65 each per month.
+Fix: Release in Series 2.
+
+511
+00:51:00,000 --> 00:51:06,000
+NAT Gateway traffic: 30 to 50 percent waste.
+Fix: VPC Endpoints in Series 2.
+
+512
+00:51:06,000 --> 00:51:12,000
+RDS overprovisioned: 20 to 30 percent waste.
+Fix: Rightsizing in Series 6.
+
+513
+00:51:12,000 --> 00:51:18,000
+S3 without lifecycle policies: 40 to 60 percent of old data.
+Fix: Lifecycle rules in Series 6.
+
+514
+00:51:18,000 --> 00:51:24,000
+Idle and stopped instances: 5 to 10 percent waste.
+Fix: Cleanup in Series 2.
+
+515
+00:51:24,000 --> 00:51:30,000
+Most startups are wasting 30 to 60 percent of their cloud spend.
+Not because they're bad engineers.
+
+516
+00:51:30,000 --> 00:51:36,000
+Because they set it up once and never looked again.
+Cloud is not set and forget.
+
+517
+00:51:36,000 --> 00:51:42,000
+It's set and continuously optimize.
+
+518
+00:51:42,000 --> 00:51:48,000
+By the end of Series 2, you will have identified
+every dollar of waste in your account.
+
+519
+00:51:48,000 --> 00:51:54,000
+By the end of Series 4, you will have Karpenter
+continuously optimizing your compute.
+
+520
+00:51:54,000 --> 00:52:00,000
+That's where the big savings live.
+
+521
+00:52:00,000 --> 00:52:06,000
+Before we end Series 1, you need one more thing.
+Your baseline document.
+
+522
+00:52:06,000 --> 00:52:12,000
+This is the document you'll show your CTO
+or your manager.
+
+523
+00:52:12,000 --> 00:52:18,000
+It proves you know what you're doing.
+It shows you've done the work.
+
+524
+00:52:18,000 --> 00:52:24,000
+And at the end of this course, you'll update it
+with your actual savings.
+
+525
+00:52:24,000 --> 00:52:30,000
+Create a file called finops-baseline.txt
+in your home directory.
+
+526
+00:52:30,000 --> 00:52:36,000
+touch tilde slash finops-baseline.txt
+
+527
+00:52:36,000 --> 00:52:42,000
+Now let's populate it with everything we've learned.
+
+528
+00:52:42,000 --> 00:52:48,000
+Header.
+echo "=== FINOPS BASELINE REPORT ===" with date.
+
+529
+00:52:48,000 --> 00:52:54,000
+Total Monthly Spend.
+echo "=== TOTAL MONTHLY SPEND ===" then the get-cost-and-usage command.
+
+530
+00:52:54,000 --> 00:53:00,000
+Top 10 Services.
+echo "=== TOP 10 SERVICES BY COST ===" then the grouped command.
+
+531
+00:53:00,000 --> 00:53:06,000
+Cost by Region.
+echo "=== COST BY REGION ===" then the region-grouped command.
+
+532
+00:53:06,000 --> 00:53:12,000
+Tagging Coverage.
+echo "=== TAGGING COVERAGE ===" then count total instances and tagged instances.
+
+533
+00:53:12,000 --> 00:53:18,000
+Unit Economics Placeholder.
+echo "=== UNIT ECONOMICS ===" then cost per RAG query TBD, cost per API call TBD.
+
+534
+00:53:18,000 --> 00:53:24,000
+Now view your complete baseline document.
+cat tilde slash finops-baseline.txt
+
+535
+00:53:24,000 --> 00:53:30,000
+Save this file. You'll update it after every series.
+
+536
+00:53:30,000 --> 00:53:36,000
+And at the end of Series 11, you'll compare your final numbers
+to this baseline. That's your proof of impact.
+
+537
+00:53:36,000 --> 00:53:42,000
+Let me recap what you've built in Series 1.
+
+538
+00:53:42,000 --> 00:53:48,000
+Here is the Series 1 recap table.
+
+539
+00:53:48,000 --> 00:53:54,000
+AWS environment verified. Command: aws sts get-caller-identity.
+
+540
+00:53:54,000 --> 00:54:00,000
+Cost Explorer baseline. Command: aws ce get-cost-and-usage.
+
+541
+00:54:00,000 --> 00:54:06,000
+Six required tags defined. Tag taxonomy documented.
+
+542
+00:54:06,000 --> 00:54:12,000
+Untagged resources found. Commands: describe-instances,
+list-buckets, describe-volumes, describe-db-instances.
+
+543
+00:54:12,000 --> 00:54:18,000
+Resources bulk-tagged. Scripts: create-tags, add-tags-to-resource.
+
+544
+00:54:18,000 --> 00:54:24,000
+Config rule enforcing tags. Command: put-config-rule.
+
+545
+00:54:24,000 --> 00:54:30,000
+Top services identified. Cost Explorer by SERVICE.
+
+546
+00:54:30,000 --> 00:54:36,000
+Stray regions found. Multi-region scan.
+
+547
+00:54:36,000 --> 00:54:42,000
+Baseline document created. File: tilde slash finops-baseline.txt.
+
+548
+00:54:42,000 --> 00:54:48,000
+What You Learned.
+FinOps Fundamentals. The three phases. Inform, Optimize, Operate.
+
+549
+00:54:48,000 --> 00:54:54,000
+Most courses only teach Phase 2. This course teaches all three.
+
+550
+00:54:54,000 --> 00:55:00,000
+Unit Economics. You can now answer the question.
+What does one RAG query cost?
+
+551
+00:55:00,000 --> 00:55:06,000
+You understand that your AWS bill is useless without context.
+Cost per query is a number you can optimize.
+
+552
+00:55:06,000 --> 00:55:12,000
+Tagging Strategy. Six required tags.
+Environment, Team, Service, ManagedBy, CostCenter, Owner.
+
+553
+00:55:12,000 --> 00:55:18,000
+Every resource. No exceptions.
+
+554
+00:55:18,000 --> 00:55:24,000
+Tagging Commands. You ran commands to find untagged resources.
+You tagged them in bulk.
+
+555
+00:55:24,000 --> 00:55:30,000
+You set up AWS Config rules to prevent untagged resources
+from being created.
+
+556
+00:55:30,000 --> 00:55:36,000
+Cost Explorer Queries. You have your total monthly spend.
+Your top 10 services by cost. Your cost by region.
+
+557
+00:55:36,000 --> 00:55:42,000
+You identified your top five cost drivers.
+
+558
+00:55:42,000 --> 00:55:48,000
+Baseline Document. finops-baseline.txt contains everything
+you need to prove your starting point.
+
+559
+00:55:48,000 --> 00:55:54,000
+Savings Reality. The 30 to 60 percent savings claim is real.
+Overprovisioned EC2. Idle resources. gp2 volumes.
+
+560
+00:55:54,000 --> 00:56:00,000
+Unattached EIPs. NAT Gateway. S3 without lifecycle policies.
+
+561
+00:56:00,000 --> 00:56:06,000
+Here's what you need before Series 2.
+Prerequisites checklist.
+
+562
+00:56:06,000 --> 00:56:12,000
+aws sts get-caller-identity returns your account ID.
+Check.
+
+563
+00:56:12,000 --> 00:56:18,000
+echo dollar sign START shows a date 30 days ago.
+Check.
+
+564
+00:56:18,000 --> 00:56:24,000
+tilde slash finops-baseline.txt exists with your baseline spend.
+Check.
+
+565
+00:56:24,000 --> 00:56:30,000
+Cost Explorer and EC2 read permissions confirmed.
+Check.
+
+566
+00:56:30,000 --> 00:56:36,000
+Series 2 Preview.
+In Series 2 you stop talking about waste and start finding it.
+
+567
+00:56:36,000 --> 00:56:42,000
+You will run commands that identify.
+gp2 volumes that cost 20 percent more than gp3.
+Zero downtime migration.
+
+568
+00:56:42,000 --> 00:56:48,000
+Unattached Elastic IPs charging $3.65 each for doing nothing.
+Stopped instances still paying for EBS volumes.
+
+569
+00:56:48,000 --> 00:56:54,000
+S3 buckets with no lifecycle policies.
+NAT Gateway traffic that should be free via VPC Endpoints.
+
+570
+00:56:54,000 --> 00:57:00,000
+Cost anomalies you didn't know existed.
+
+571
+00:57:00,000 --> 00:57:06,000
+By the end of Series 2, you will have a list of actual dollar amounts
+of waste. Not estimated, not projected. From your own account.
+
+572
+00:57:06,000 --> 00:57:12,000
+And a plan to eliminate every dollar.
+
+573
+00:57:12,000 --> 00:57:18,000
+Let's go to Series 2.
+
+
+---
+
+**END OF PHASE 1 — CORRECTED COMPLETE SRT**
+
+**Total SRT lines:** 573
+**Total duration:** Approximately 57 minutes (adjust timestamps upward for slower pacing)
+
+**What was added in this corrected version:**
+
+| Addition | Location |
+|----------|----------|
+| Cost breakdown per query table | Lines 274-281 |
+| Six tags table with example values and purpose | Lines 347-353 |
+| Waste categories table with fixes | Lines 507-514 |
+| Sample Cost Explorer output table | Lines 471-475 |
+| Series 1 recap table | Lines 537-547 |
+| Prerequisites checklist | Lines 561-565 |
+| macOS date command note | Lines 212-213 |
+
+**Ready for Phase 2.**

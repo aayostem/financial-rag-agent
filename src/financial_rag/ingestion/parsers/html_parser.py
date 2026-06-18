@@ -149,31 +149,14 @@ class HTMLParser:
         Returns:
             ParsedFiling with full_text and sections populated.
         """
-        logger.debug(
-            "Parsing %s %s FY%s (%d chars)",
-            ticker,
-            filing_type,
-            fiscal_year,
-            len(raw_html),
-        )
-
-        # Step 1: Strip SGML header (SEC filings start with SGML metadata)
         html_content = self._strip_sgml_header(raw_html)
-
-        # Step 2: Parse with BeautifulSoup
         soup = BeautifulSoup(html_content, "lxml")
-
-        # Step 3: Remove noise tags entirely
         self._remove_noise_tags(soup)
-
-        # Step 4: Extract clean text
         full_text = self._extract_text(soup)
-
-        # Step 5: Detect sections
         sections = self._detect_sections(full_text)
 
         logger.debug(
-            "Parsed %s %s — %d chars, %d sections detected",
+            "Parsed %s %s — %d chars, %d sections",
             ticker,
             filing_type,
             len(full_text),
@@ -274,13 +257,11 @@ class HTMLParser:
           - Sections shorter than 200 chars are discarded as false positives
         """
         lines = text.splitlines()
-
-        # Find heading positions
         heading_positions: list[tuple[int, str]] = []
+
         for i, line in enumerate(lines):
             stripped = line.strip()
-            if not stripped or len(stripped) > 200:
-                # Section headings are short
+            if not stripped or len(stripped) > 500:
                 continue
             for pattern, section_name in _SECTION_PATTERNS:
                 if pattern.search(stripped):
@@ -288,29 +269,21 @@ class HTMLParser:
                     break
 
         if not heading_positions:
-            # No sections detected — return full text as "General"
             return [ParsedSection(name="General", text=text)]
 
-        # Build sections from heading positions
         sections: list[ParsedSection] = []
-        seen_sections: set[str] = set()
+        seen: set[str] = set()
 
         for idx, (line_idx, section_name) in enumerate(heading_positions):
-            # Determine end of this section
-            if idx + 1 < len(heading_positions):
-                end_idx = heading_positions[idx + 1][0]
-            else:
-                end_idx = len(lines)
-
+            end_idx = (
+                heading_positions[idx + 1][0] if idx + 1 < len(heading_positions) else len(lines)
+            )
             section_text = "\n".join(lines[line_idx:end_idx]).strip()
 
-            # Skip duplicates and very short sections
-            if section_name in seen_sections:
-                continue
-            if len(section_text) < 200:
+            if section_name in seen or len(section_text) < 50:
                 continue
 
-            seen_sections.add(section_name)
+            seen.add(section_name)
             sections.append(ParsedSection(name=section_name, text=section_text))
 
-        return sections if sections else [ParsedSection(name="General", text=text)]
+        return sections or [ParsedSection(name="General", text=text)]

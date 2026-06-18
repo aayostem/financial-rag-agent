@@ -1,0 +1,1150 @@
+Here is the **complete SRT audio script** for **Phase 3 — Secrets Management & Access Control** following your strict rules: Style 1 (Architectural Briefing), no invented files, exact sequence, full SRT, no external sources.
+
+---
+
+# SOC 2 DEMYSTIFIED: TRUST SERVICE CRITERIA
+[## PHASE 3 — SECRETS MANAGEMENT & ACCESS CONTROL]
+### Complete SRT Audio Script
+
+---
+
+[## LECTURE 3.1 — VAULT DYNAMIC CREDENTIALS: NO MORE STATIC PASSWORDS]
+1
+00:00:00,000 --> 00:00:30,000
+CC6.1 is the single most commonly cited finding in SOC 2 audits.
+Not because companies ignore access control.
+They do not.
+
+2
+00:00:30,000 --> 00:01:00,000
+The findings come from the gap between what engineers believe is true
+and what is actually true.
+Engineers believe their system has no static credentials.
+
+3
+00:01:00,000 --> 00:01:30,000
+The auditor finds a hardcoded database password in a ConfigMap.
+Engineers believe only the API team can access production secrets.
+The auditor finds a developer service account with cluster dash admin.
+
+4
+00:01:30,000 --> 00:02:00,000
+Engineers believe access is reviewed quarterly.
+The auditor asks for the last review.
+And finds none was ever conducted.
+
+5
+00:02:00,000 --> 00:02:30,000
+Static credentials have four properties that auditors hate.
+They do not expire.
+They grant excessive privilege.
+
+6
+00:02:30,000 --> 00:03:00,000
+They require downtime to rotate.
+And they are shared across multiple replicas.
+
+7
+00:03:00,000 --> 00:03:30,000
+Vault's Database Secrets Engine solves all four problems.
+Every pod gets a unique credential with a defined TTL.
+The credential is scoped to exactly the permissions the pod needs.
+
+8
+00:03:30,000 --> 00:04:00,000
+Rotation is automatic and zero-downtime.
+The audit log distinguishes connections by Vault lease ID.
+
+9
+00:04:00,000 --> 00:04:30,000
+Let me show you how to configure Vault dynamic credentials for RDS.
+
+10
+00:04:30,000 --> 00:05:00,000
+First, verify that Vault is running and unsealed.
+kubectl exec minus n vault vault-0 dash dash vault status.
+The sealed field should be false.
+
+11
+00:05:00,000 --> 00:05:30,000
+Enable the database secrets engine.
+kubectl exec minus n vault vault-0 dash dash vault secrets enable database.
+
+12
+00:05:30,000 --> 00:06:00,000
+Create a dedicated Vault admin user in PostgreSQL.
+Never use a superuser account for Vault.
+Create a user named vaultadmin with CREATEROLE privilege.
+
+13
+00:06:00,000 --> 00:06:30,000
+Grant SELECT, INSERT, UPDATE, DELETE on all tables in the public schema.
+This user can create and drop roles but cannot access customer data directly.
+
+14
+00:06:30,000 --> 00:07:00,000
+Now configure Vault to connect to RDS.
+Get the RDS host endpoint using aws rds describe-db-instances.
+
+15
+00:07:00,000 --> 00:07:30,000
+Run vault write database forward slash config forward slash financial-rag.
+Set plugin_name to postgresql-database-plugin.
+Set allowed_roles to rag-app, rag-readonly, and rag-agent.
+
+16
+00:07:30,000 --> 00:08:00,000
+The connection URL includes sslmode equals verify-full.
+And sslrootcert points to the RDS CA bundle.
+This enforces TLS for the database connection.
+
+17
+00:08:00,000 --> 00:08:30,000
+Now create the roles.
+First, the rag-app role for API pods.
+Set db_name to financial-rag.
+
+18
+00:08:30,000 --> 00:09:00,000
+The creation_statements are SQL that Vault executes.
+CREATE ROLE with a random name and password, VALID UNTIL the expiration time.
+Then GRANT SELECT, INSERT, UPDATE on all tables.
+
+19
+00:09:00,000 --> 00:09:30,000
+GRANT USAGE on the public schema.
+And GRANT USAGE, SELECT on all sequences.
+Finally, set default TTL to one hour and max TTL to twenty-four hours.
+
+20
+00:09:30,000 --> 00:10:00,000
+Create a read-only role for reporting.
+It only gets SELECT permission on tables.
+No INSERT, no UPDATE.
+
+21
+00:10:00,000 --> 00:10:30,000
+Create an agent role for worker pods.
+It gets SELECT on financial_chunks and sec_filings.
+And SELECT, INSERT only on analysis_history.
+
+22
+00:10:30,000 --> 00:11:00,000
+Test the configuration.
+Run vault read database forward slash creds forward slash rag-app.
+The output shows lease_id, lease_duration of one hour, password, and username.
+
+23
+00:11:00,000 --> 00:11:30,000
+The username follows the pattern v dash k8s dash rag-app dash random characters.
+Verify the role exists in PostgreSQL.
+Run SELECT rolname, rolvaliduntil FROM pg_roles.
+
+24
+00:11:30,000 --> 00:12:00,000
+The rolvaliduntil field should show the expiration time one hour from now.
+After one hour, Vault automatically runs DROP ROLE.
+
+25
+00:12:00,000 --> 00:12:30,000
+Now we need to inject these credentials into our pods.
+This is done with the Vault Agent sidecar.
+
+26
+00:12:30,000 --> 00:13:00,000
+In the API deployment YAML, add annotations.
+vault.hashicorp.com forward slash agent-inject equals true.
+vault.hashicorp.com forward slash role equals financial-rag-api.
+
+27
+00:13:00,000 --> 00:13:30,000
+vault.hashicorp.com forward slash agent-inject-secret-db-creds
+equals database forward slash creds forward slash rag-app.
+
+28
+00:13:30,000 --> 00:14:00,000
+The template renders the secret as export statements.
+POSTGRES_USER equals the username.
+POSTGRES_PASSWORD equals the password.
+
+29
+00:14:00,000 --> 00:14:30,000
+When the pod starts, Vault Agent injects a sidecar container.
+It fetches the credentials and writes them to forward slash vault forward slash secrets.
+The volume is a tmpfs in-memory mount, never written to disk.
+
+30
+00:14:30,000 --> 00:15:00,000
+The application reads the credentials from this file at startup.
+The credentials are never in environment variables.
+Which could be leaked in logs or crash dumps.
+
+31
+00:15:00,000 --> 00:15:30,000
+The renewal annotation sends a SIGHUP signal to the application.
+This triggers the application to re-read the credential file.
+Zero-downtime credential rotation.
+
+32
+00:15:30,000 --> 00:16:00,000
+Your lab exercise is to configure the Vault database secrets engine.
+Create the three roles with appropriate permissions.
+Test generating credentials manually.
+
+33
+00:16:00,000 --> 00:16:30,000
+Verify that after one hour, the credential no longer works.
+Deploy the Vault Agent sidecar injection.
+Confirm the pod receives dynamic credentials.
+
+34
+00:16:30,000 --> 00:17:00,000
+This is one of the most impactful security improvements you can make.
+Auditors love dynamic credentials because they eliminate long-lived secrets.
+
+35
+00:17:00,000 --> 00:17:30,000
+In the next lecture, we will configure Vault policies.
+And implement IAM least privilege with EKS Pod Identity.
+
+---
+
+[## LECTURE 3.2 — VAULT POLICIES AND IAM LEAST PRIVILEGE]
+
+36
+00:00:00,000 --> 00:00:30,000
+Vault dynamic credentials eliminate static passwords.
+But Vault itself needs access control.
+Which service accounts can read which secrets?
+
+37
+00:00:30,000 --> 00:01:00,000
+Vault policies define this.
+Each service account gets a policy that grants read access
+to exactly the secrets it needs and nothing else.
+
+38
+00:01:00,000 --> 00:01:30,000
+First, enable Kubernetes authentication in Vault.
+vault auth enable kubernetes.
+
+39
+00:01:30,000 --> 00:02:00,000
+Configure it with your cluster's host, CA certificate, and token reviewer JWT.
+The token reviewer JWT is created with kubectl create token.
+It must have a long duration because Vault uses it to validate service account tokens.
+
+40
+00:02:00,000 --> 00:02:30,000
+Now write Vault policies.
+The API service policy grants read access to database forward slash creds forward slash rag-app.
+Read access to secret forward slash data forward slash financial-rag forward slash openai.
+And read access to secret forward slash data forward slash financial-rag forward slash field-encryption-key.
+
+41
+00:02:30,000 --> 00:03:00,000
+Notice the policy explicitly does not grant list or create capabilities.
+The service account cannot list all available secrets.
+It can only read the specific paths it needs.
+
+42
+00:03:00,000 --> 00:03:30,000
+The agent service policy is narrower.
+It can read database forward slash creds forward slash rag-agent instead of rag-app.
+This role has fewer database permissions.
+
+43
+00:03:30,000 --> 00:04:00,000
+The ingestion service policy has no LLM access at all.
+Only database credentials and possibly AWS credentials if not using IRSA.
+
+44
+00:04:00,000 --> 00:04:30,000
+Now bind Kubernetes service accounts to these policies.
+vault write auth forward slash kubernetes forward slash role forward slash financial-rag-api.
+bound_service_account_names equals financial-rag-api.
+bound_service_account_namespaces equals financial-rag.
+
+45
+00:04:30,000 --> 00:05:00,000
+policies equals financial-rag-api.
+ttl equals one hour.
+
+46
+00:05:00,000 --> 00:05:30,000
+Test that the API service account cannot access agent secrets.
+Create a token with the financial-rag-api policy.
+Try to read database forward slash creds forward slash rag-agent.
+You should get a permission denied error.
+
+47
+00:05:30,000 --> 00:06:00,000
+Now let us move to IAM least privilege for AWS access.
+Your pods need to read from S3, write to CloudWatch, and describe RDS instances.
+But they do not need to create EC2 instances or modify IAM roles.
+
+48
+00:06:00,000 --> 00:06:30,000
+Create an IAM policy document for the API service.
+First statement: S3ReadEmbeddings.
+Effect Allow. Actions s3:GetObject and s3:ListBucket.
+
+49
+00:06:30,000 --> 00:07:00,000
+Resources are scoped to the embeddings bucket.
+And only the forward slash vectors forward slash prefix.
+This prevents reading backup files or other buckets.
+
+50
+00:07:00,000 --> 00:07:30,000
+Second statement: CloudWatchLogs.
+Actions logs:CreateLogStream and logs:PutLogEvents.
+Resource scoped to forward slash financial-rag forward slash asterisk.
+
+51
+00:07:30,000 --> 00:08:00,000
+Third statement: RDSDescribeOnly.
+Action rds:DescribeDBInstances.
+Resource is the specific production RDS instance ARN.
+
+52
+00:08:00,000 --> 00:08:30,000
+Fourth statement: KMSDecryptViaS3.
+Actions kms:Decrypt and kms:DescribeKey.
+Condition requires kms:ViaService equals s3 dot region dot amazonaws dot com.
+
+53
+00:08:30,000 --> 00:09:00,000
+This means the API pod can only decrypt KMS keys
+when the request comes from S3.
+It cannot decrypt arbitrary ciphertext.
+
+54
+00:09:00,000 --> 00:09:30,000
+Finally, an explicit deny statement for dangerous actions.
+iam colon asterisk, ec2 colon asterisk, rds:Create asterisk.
+s3:Delete asterisk, kms:Delete asterisk.
+
+55
+00:09:30,000 --> 00:10:00,000
+This is belt and suspenders defense in depth.
+Even if a later policy accidentally grants something broad,
+the explicit deny blocks it.
+
+56
+00:10:00,000 --> 00:10:30,000
+Attach this policy to an IAM role.
+Create an EKS Pod Identity association.
+This binds the Kubernetes service account to the IAM role.
+
+57
+00:10:30,000 --> 00:11:00,000
+Now test the permissions.
+Assume the role using aws sts assume-role.
+Export the temporary credentials.
+
+58
+00:11:00,000 --> 00:11:30,000
+Test allowed actions.
+aws s3 ls on the vectors prefix should succeed.
+aws rds describe-db-instances should succeed.
+
+59
+00:11:30,000 --> 00:12:00,000
+Test denied actions.
+aws s3 ls on the backups prefix should fail with AccessDenied.
+aws iam list-roles should fail.
+aws ec2 describe-instances should fail.
+
+60
+00:12:00,000 --> 00:12:30,000
+Your lab exercise is to create the Vault policies.
+Bind them to the service accounts.
+Test that each service account can only access its intended secrets.
+
+61
+00:12:30,000 --> 00:13:00,000
+Create the IAM least privilege policy.
+Attach it via EKS Pod Identity.
+Test that allowed actions work and disallowed actions fail.
+
+62
+00:13:00,000 --> 00:13:30,000
+Document the permission boundary for your auditor.
+In the next lecture, we will configure Kubernetes RBAC.
+And enforce namespace isolation.
+
+---
+
+[## LECTURE 3.3 — KUBERNETES RBAC: NAMESPACE ISOLATION]
+
+63
+00:00:00,000 --> 00:00:30,000
+By default, every pod in a Kubernetes cluster
+can call the Kubernetes API server using its service account token.
+The default service account may have no explicit permissions.
+
+64
+00:00:30,000 --> 00:01:00,000
+But in older or misconfigured clusters,
+it may have inherited broad permissions through a ClusterRoleBinding.
+RBAC prevents this by explicitly defining what each service account can do.
+
+65
+00:01:00,000 --> 00:01:30,000
+Create service accounts for each workload.
+api-service, agent, ingestion.
+Each gets its own service account.
+
+66
+00:01:30,000 --> 00:02:00,000
+For EKS, also annotate with the IAM role ARN.
+eks.amazonaws.com forward slash role-arn points to the IAM role we created.
+This integrates AWS IAM with Kubernetes service accounts.
+
+67
+00:02:00,000 --> 00:02:30,000
+Now create a Role for the API service account.
+This Role is namespace-scoped. It cannot affect other namespaces.
+
+68
+00:02:30,000 --> 00:03:00,000
+The API service account needs to read its own ConfigMap for feature flags.
+It needs to read its own Service for self-discovery.
+That is it.
+
+69
+00:03:00,000 --> 00:03:30,000
+It cannot read secrets.
+It cannot create or update anything.
+It cannot list pods in its own namespace.
+It cannot exec into pods.
+
+70
+00:03:30,000 --> 00:04:00,000
+Bind the Role to the service account with a RoleBinding.
+roleRef points to the Role we created.
+subjects lists the service account.
+
+71
+00:04:00,000 --> 00:04:30,000
+Create a similar Role and RoleBinding for the agent service account.
+It has slightly broader permissions.
+It needs to read HPA metrics and its own ConfigMap.
+
+72
+00:04:30,000 --> 00:05:00,000
+Apply the RBAC configuration.
+kubectl apply dash f.
+
+73
+00:05:00,000 --> 00:05:30,000
+Now test that the API service account cannot do things it should not.
+kubectl auth can-i get secrets dash dash as equals the service account.
+Expected output: no.
+
+74
+00:05:30,000 --> 00:06:00,000
+kubectl auth can-i list pods in the financial-rag namespace.
+Expected output: no.
+kubectl auth can-i get secrets in the kube-system namespace.
+Expected output: no.
+
+75
+00:06:00,000 --> 00:06:30,000
+Test that it can do what it needs.
+kubectl auth can-i get configmaps in the financial-rag namespace.
+Expected output: yes.
+
+76
+00:06:30,000 --> 00:07:00,000
+Now enforce Pod Security Standards on the namespace.
+kubectl label namespace financial-rag.
+pod-security.kubernetes.io forward slash enforce equals restricted.
+
+77
+00:07:00,000 --> 00:07:30,000
+This enforces: no root user, no privileged containers,
+read-only root filesystem, all capabilities dropped,
+and seccomp profile set to runtime default.
+
+78
+00:07:30,000 --> 00:08:00,000
+Verify the label is applied.
+kubectl get namespace financial-rag dash o jsonpath equals dot metadata dot labels.
+
+79
+00:08:00,000 --> 00:08:30,000
+Save the RBAC configuration as evidence.
+kubectl get roles, rolebindings, serviceaccounts minus n financial-rag dash o yaml.
+Output to soc2-evidence under today's date in CC6.1.
+Call it rbac-configs dot yaml.
+
+80
+00:08:30,000 --> 00:09:00,000
+Your lab exercise is to create the RBAC roles and bindings.
+Test each service account with kubectl auth can-i.
+Confirm that the API service account cannot read secrets or list pods.
+
+81
+00:09:00,000 --> 00:09:30,000
+Apply the Pod Security Standard to the namespace.
+Verify that a pod running as root would be rejected.
+In the next lecture, we will implement API key lifecycle management.
+
+---
+
+[## LECTURE 3.4 — API KEY LIFECYCLE: GENERATION, ROTATION, AND REVOCATION]
+
+82
+00:00:00,000 --> 00:00:30,000
+Your customers use API keys to authenticate to your service.
+These keys need lifecycle management too.
+Creation, rotation, and revocation.
+
+83
+00:00:30,000 --> 00:01:00,000
+Auditors ask three questions.
+How long are API keys valid?
+How do you revoke them when an employee leaves?
+How do customers know when to rotate?
+
+84
+00:01:00,000 --> 00:01:30,000
+Let me show you a complete API key management system.
+First, the database model.
+Never store raw keys. Store only the SHA-256 hash.
+
+85
+00:01:30,000 --> 00:02:00,000
+The table includes id, key_hash, name, created_by, created_at.
+expires_at, last_used_at, is_active.
+revoked_at, revoked_by, revocation_reason.
+And rotation_of to track which key this replaced.
+
+86
+00:02:00,000 --> 00:02:30,000
+The default TTL is ninety days.
+Why ninety days? Industry best practice.
+Short enough to limit exposure if a key leaks.
+Long enough that customers are not annoyed by frequent rotation.
+
+87
+00:02:30,000 --> 00:03:00,000
+The generate method creates a raw key using secrets.token_urlsafe.
+Thirty-two bytes of randomness, base64 encoded.
+Prefix it with finrag underscore for easy detection in secret scanning.
+
+88
+00:03:00,000 --> 00:03:30,000
+Compute the SHA-256 hash of the raw key.
+Store the hash, not the raw key.
+Insert a record with expires_at equals now plus ninety days.
+
+89
+00:03:30,000 --> 00:04:00,000
+Return both the database record and the raw key string.
+The raw key is shown to the customer exactly once.
+It cannot be recovered later.
+
+90
+00:04:00,000 --> 00:04:30,000
+The validate method is called on every API request.
+Check that the key starts with the finrag prefix.
+Compute the hash of the raw key.
+
+91
+00:04:30,000 --> 00:05:00,000
+Query for a matching key that is active and not expired.
+If found, update last_used_at to now.
+Return the record.
+
+92
+00:05:00,000 --> 00:05:30,000
+The revoke method immediately deactivates a key.
+Set is_active to false.
+Set revoked_at, revoked_by, and revocation_reason.
+Commit the change.
+
+93
+00:05:30,000 --> 00:06:00,000
+Revocation takes effect on the next request.
+No grace period.
+No exceptions.
+
+94
+00:06:00,000 --> 00:06:30,000
+The rotate method creates a new key.
+And marks the old key for deactivation.
+The old key remains valid for twenty-four hours.
+This allows in-flight requests to complete.
+
+95
+00:06:30,000 --> 00:07:00,000
+After twenty-four hours, the old key expires.
+The new key has a fresh ninety-day TTL.
+
+96
+00:07:00,000 --> 00:07:30,000
+The get_expiring_soon method returns keys expiring within fourteen days.
+This is used by a daily CronJob to notify customers.
+Send an email: your API key expires in N days.
+
+97
+00:07:30,000 --> 00:08:00,000
+The get_unused method returns keys not used in ninety days.
+These are candidates for automatic revocation.
+You can choose to revoke them or contact the customer.
+
+98
+00:08:00,000 --> 00:08:30,000
+Create a CronJob that runs every Monday at 9 AM.
+It queries for expiring keys and sends notifications.
+It also logs unused keys for the compliance team.
+
+99
+00:08:30,000 --> 00:09:00,000
+The CronJob uses the API service account.
+It runs a Python script that imports APIKeyManager.
+It sends emails via your email provider or Slack.
+
+100
+00:09:00,000 --> 00:09:30,000
+Collect evidence for the auditor.
+cat docs forward slash api-key-policy dot md.
+Should show ninety-day TTL and thirty-day rotation notice.
+
+101
+00:09:30,000 --> 00:10:00,000
+Show active keys and their expiry dates.
+kubectl exec into the API pod and run psql.
+SELECT name, created_by, expires_at, last_used_at FROM api_keys.
+
+102
+00:10:00,000 --> 00:10:30,000
+Show rotation logs.
+kubectl logs minus n financial-rag job forward slash api-key-rotation-xxx.
+Grep for api_key dot rotated.
+
+103
+00:10:30,000 --> 00:11:00,000
+Your lab exercise is to implement the API key manager.
+Create keys with ninety-day expiry.
+Verify that expired keys are rejected.
+
+104
+00:11:00,000 --> 00:11:30,000
+Test immediate revocation.
+Schedule the rotation CronJob.
+Document the rotation schedule for your auditor.
+
+105
+00:11:30,000 --> 00:12:00,000
+In the next lecture, we will encrypt Kubernetes secrets at rest.
+etcd encryption for CC6.6.
+
+---
+
+[## LECTURE 3.5 — ETCD ENCRYPTION: PROTECTING KUBERNETES SECRETS AT REST]
+
+106
+00:00:00,000 --> 00:00:30,000
+Every Kubernetes Secret is stored in etcd.
+By default, Kubernetes stores secrets as base64-encoded values.
+Not encrypted.
+
+107
+00:00:30,000 --> 00:01:00,000
+Anyone with etcd access can run etcdctl get
+forward slash registry forward slash secrets forward slash financial-rag forward slash vault-token.
+And read the secret in plaintext.
+
+108
+00:01:00,000 --> 00:01:30,000
+For SOC 2 CC6.6 to cover Kubernetes secrets,
+etcd must be encrypted.
+For EKS, this is enabled at the cluster level via a KMS key.
+
+109
+00:01:30,000 --> 00:02:00,000
+Create a KMS key for etcd secrets encryption.
+aws kms create-key with description EKS etcd secrets encryption.
+Tags include Control equals CC6.6.
+
+110
+00:02:00,000 --> 00:02:30,000
+Create an alias for the key.
+aws kms create-alias dash dash alias-name alias forward slash financial-rag-etcd.
+Enable key rotation on the key.
+
+111
+00:02:30,000 --> 00:03:00,000
+Now enable etcd encryption on the EKS cluster.
+aws eks update-cluster-config dash dash name financial-rag-prod.
+encryption-config with resources set to secrets.
+Provider keyArn set to the KMS key ARN.
+
+112
+00:03:00,000 --> 00:03:30,000
+Wait for the update to complete.
+This takes five to ten minutes.
+aws eks wait cluster-active dash dash name financial-rag-prod.
+
+113
+00:03:30,000 --> 00:04:00,000
+Verify the encryption configuration.
+aws eks describe-cluster dash dash name financial-rag-prod.
+Query cluster.encryptionConfig.
+
+114
+00:04:00,000 --> 00:04:30,000
+The output should show an array with resources equals secrets.
+And provider dot keyArn equals your KMS key ARN.
+
+115
+00:04:30,000 --> 00:05:00,000
+Create a test secret.
+kubectl create secret generic test-secret.
+from-literal password equals super-secret-value.
+
+116
+00:05:00,000 --> 00:05:30,000
+Get the secret.
+kubectl get secret test-secret dash o yaml.
+The data field should show encrypted content.
+Not base64 of the original value.
+
+117
+00:05:30,000 --> 00:06:00,000
+For self-managed Kubernetes, you need to configure the API server directly.
+Create an encryption-configuration YAML file.
+resources colon secrets. providers colon aescbc with a base64-encoded key.
+
+118
+00:06:00,000 --> 00:06:30,000
+Then modify the kube-apiserver manifest.
+Add dash dash encryption-provider-config equals forward slash etc forward slash kubernetes forward slash encryption-config dot yaml.
+
+119
+00:06:30,000 --> 00:07:00,000
+Save evidence for the auditor.
+aws eks describe-cluster dash dash name financial-rag-prod.
+Query cluster.encryptionConfig.
+Save the output to etcd-encryption dot json.
+
+120
+00:07:00,000 --> 00:07:30,000
+Verify no unencrypted secrets remain.
+kubectl get secrets dash dash all-namespaces dash o json.
+Check each secret for encryption configuration annotations.
+
+121
+00:07:30,000 --> 00:08:00,000
+Your lab exercise is to enable etcd encryption for your EKS cluster.
+Create the KMS key and enable rotation.
+Apply the cluster update and verify the configuration.
+
+122
+00:08:00,000 --> 00:08:30,000
+Create a test secret and verify it is encrypted at rest.
+Save the evidence.
+In the next lecture, we will implement access logging.
+And the complete audit trail.
+
+---
+
+[## LECTURE 3.6 — ACCESS LOGGING AND THE COMPLETE AUDIT TRAIL]
+
+123
+00:00:00,000 --> 00:00:30,000
+CC6.1 requires that access be restricted.
+CC7.2 requires that access be logged.
+Together they mean every successful and failed access attempt
+must generate a log entry.
+
+124
+00:00:30,000 --> 00:01:00,000
+The log must answer who accessed what, when, and from where.
+For the financial RAG agent, this means five things.
+Every API request logged with key prefix, path, status, and latency.
+
+125
+00:01:00,000 --> 00:01:30,000
+Every Vault credential issuance logged with lease ID and role.
+Every Kubernetes API call logged via EKS audit logs.
+Every database connection logged via pgAudit.
+Every failed authentication logged immediately with client IP.
+
+126
+00:01:30,000 --> 00:02:00,000
+Let me show you the audit logger implementation.
+Create a class AuditLogger with static methods.
+
+127
+00:02:00,000 --> 00:02:30,000
+The api_request method logs every API request.
+Fields include timestamp, request_id, method, path, client_ip.
+api_key_prefix, status_code, latency_ms, and user_agent.
+
+128
+00:02:30,000 --> 00:03:00,000
+Notice we log only the key prefix. The first eight characters.
+Never the full key.
+The prefix is enough to correlate logs without exposing the secret.
+
+129
+00:03:00,000 --> 00:03:30,000
+The auth_failure method logs authentication failures.
+Fields include reason, client_ip, path, and api_key_prefix if available.
+This is a warning-level log, not info.
+
+130
+00:03:30,000 --> 00:04:00,000
+The permission_denied method logs authorization failures.
+Even if the API key is valid, the user may not have permission for the action.
+These should be rare and investigated.
+
+131
+00:04:00,000 --> 00:04:30,000
+The key_event method logs API key lifecycle events.
+Generated, revoked, rotated, or expired.
+Includes key_id, actor, and reason.
+
+132
+00:04:30,000 --> 00:05:00,000
+Now integrate the audit logger into the API middleware.
+In the APIKeyMiddleware, generate a request_id at the start.
+Use uuid dot uuid4 dot hex.
+
+133
+00:05:00,000 --> 00:05:30,000
+Store the request_id in the request state.
+This makes it available to other middleware and handlers.
+For correlation across logs.
+
+134
+00:05:30,000 --> 00:06:00,000
+If the request is to a public path like health or metrics,
+bypass authentication but still log at a lower level.
+Do not log the request body.
+
+135
+00:06:00,000 --> 00:06:30,000
+If the API key is missing or invalid,
+call AuditLogger dot auth_failure.
+Then raise an HTTP 401 or 403.
+
+136
+00:06:30,000 --> 00:07:00,000
+If the key is valid, store the key record in the request state.
+Proceed to the handler.
+After the handler returns, calculate latency.
+
+137
+00:07:00,000 --> 00:07:30,000
+Call AuditLogger dot api_request with all the fields.
+This logs every successful and failed request.
+The success field is derived from status code two hundred to four hundred.
+
+138
+00:07:30,000 --> 00:08:00,000
+Now enable Kubernetes API audit logging.
+For EKS, run aws eks update-cluster-config.
+Set logging clusterLogging types to api, audit, authenticator, controllerManager, scheduler.
+Enabled equals true.
+
+139
+00:08:00,000 --> 00:08:30,000
+Verify logs are flowing to CloudWatch.
+aws logs tail forward slash aws forward slash eks forward slash financial-rag-prod forward slash cluster.
+Filter pattern audit.
+
+140
+00:08:30,000 --> 00:09:00,000
+Query for secret access attempts in the last twenty-four hours.
+aws logs filter-log-events with filter pattern secrets and get.
+Extract the user, resource name, and timestamp.
+
+141
+00:09:00,000 --> 00:09:30,000
+This shows you exactly who accessed which secrets.
+A powerful audit capability for your incident response runbook.
+
+142
+00:09:30,000 --> 00:10:00,000
+Your lab exercise is to implement the audit logger.
+Integrate it into the API middleware.
+Test that every request produces a structured log entry.
+
+143
+00:10:00,000 --> 00:10:30,000
+Enable EKS audit logging.
+Query the logs and confirm you can see API access events.
+Save a sample query output as evidence.
+
+144
+00:10:30,000 --> 00:11:00,000
+In the next lecture, we will automate the quarterly access review.
+This closes the final CC6.1 gap.
+
+---
+
+[## LECTURE 3.7 — QUARTERLY ACCESS REVIEW: AUTOMATED EVIDENCE]
+
+145
+00:00:00,000 --> 00:00:30,000
+Quarterly access reviews are the most commonly cited CC6.3 gap.
+Not because companies do not conduct them.
+The problem is documentation.
+
+146
+00:00:30,000 --> 00:01:00,000
+An auditor asks: show me the Q1 2026 access review.
+The answer should be a signed document listing all active API keys.
+IAM roles, and Kubernetes service accounts.
+
+147
+00:01:00,000 --> 00:01:30,000
+With a certification that each is still needed.
+Instead, the answer is: we discussed it in a Slack channel.
+That is not evidence.
+
+148
+00:01:30,000 --> 00:02:00,000
+Automated reviews solve this.
+A CronJob runs quarterly, generates the report,
+uploads it to the immutable evidence bucket,
+and posts a certification request to Slack.
+
+149
+00:02:00,000 --> 00:02:30,000
+Let me show you the access review script.
+
+150
+00:02:30,000 --> 00:03:00,000
+First, set the date and reviewer.
+REVIEWER defaults to git config user dot email.
+REPORT_FILE points to soc2-evidence forward slash access-reviews forward slash access-review-dash date dot md.
+
+151
+00:03:00,000 --> 00:03:30,000
+The report has four sections.
+API keys, IAM roles, Kubernetes service accounts,
+and unused access older than ninety days.
+
+152
+00:03:30,000 --> 00:04:00,000
+For API keys, query the database for active keys.
+Show ID prefix, name, created_by, created date, expiry date, last used date.
+Mark keys that have never been used as REVOKE question mark.
+
+153
+00:04:00,000 --> 00:04:30,000
+For IAM roles, list roles that contain financial-rag in the name.
+Show role name, creation date, last used date, and attached policies.
+Mark any role that has not been used in ninety days.
+
+154
+00:04:30,000 --> 00:05:00,000
+For Kubernetes service accounts, list all service accounts in the financial-rag namespace.
+Show namespace, service account name, creation timestamp, and bound roles.
+The bound roles section requires manual inspection.
+
+155
+00:05:00,000 --> 00:05:30,000
+For unused access, query API keys with last_used_at older than ninety days.
+Or last_used_at is null.
+These are candidates for revocation.
+
+156
+00:05:30,000 --> 00:06:00,000
+The report ends with a certification section.
+The reviewer signs off that all listed access is still required.
+And that any access marked REVOKE has been actioned.
+
+157
+00:06:00,000 --> 00:06:30,000
+Schedule this report as a quarterly CronJob.
+Schedule zero nine one one, four, seven, ten asterisk.
+This runs at 9 AM on the first day of January, April, July, and October.
+
+158
+00:06:30,000 --> 00:07:00,000
+The CronJob uses the compliance-runner service account.
+It runs the access-review dot sh script.
+Then uploads the report to S3.
+
+159
+00:07:00,000 --> 00:07:30,000
+After the report is generated, a separate webhook posts it to a Slack channel.
+The compliance lead reviews the report and clicks approve.
+The approval action is logged in the same channel.
+
+160
+00:07:30,000 --> 00:08:00,000
+The completed report and the Slack approval message together form the evidence.
+The report proves what was reviewed.
+The Slack message proves who approved it and when.
+
+161
+00:08:00,000 --> 00:08:30,000
+Run the script manually before your audit.
+Review the report for any REVOKE question mark items.
+Revoke any unused keys with kubectl exec psql.
+
+162
+00:08:30,000 --> 00:09:00,000
+Save the signed report to the evidence bucket.
+Upload it with aws s3 cp.
+Send the approval request to your compliance team.
+
+163
+00:09:00,000 --> 00:09:30,000
+Your lab exercise is to run the access review script.
+Review the generated report.
+Revoke any unused API keys.
+
+164
+00:09:30,000 --> 00:10:00,000
+Save the report to the evidence bucket.
+Simulate the approval process.
+Document the review for your auditor.
+
+165
+00:10:00,000 --> 00:10:30,000
+In the final lecture of Phase 3, we will recap what your auditor will test.
+And prepare for Phase 4: Immutable Audit Logging.
+
+---
+
+[## LECTURE 3.8 — PHASE 3 RECAP: WHAT YOUR AUDITOR WILL TEST]
+
+166
+00:00:00,000 --> 00:00:30,000
+By the end of Phase 3, you have eliminated static credentials.
+Every database password is dynamic, short-lived, and audited.
+Your pods authenticate to Vault using Kubernetes service account tokens.
+
+167
+00:00:30,000 --> 00:01:00,000
+IAM roles are scoped to exactly what each service needs.
+No wildcard permissions. No overprivileged roles.
+Explicit deny statements block dangerous actions.
+
+168
+00:01:00,000 --> 00:01:30,000
+Kubernetes RBAC prevents namespace escape.
+The API service account cannot read secrets or list pods.
+Pod Security Standards enforce restricted mode.
+
+169
+00:01:30,000 --> 00:02:00,000
+API keys have a ninety-day TTL with automated rotation notifications.
+Revocation is immediate. No grace period.
+Unused keys are flagged for review.
+
+170
+00:02:00,000 --> 00:02:30,000
+etcd encryption protects Kubernetes secrets at rest.
+Even if someone gains access to the etcd storage,
+the secrets are unreadable without the KMS key.
+
+171
+00:02:30,000 --> 00:03:00,000
+Every access attempt is logged with a unique request ID.
+Failed authentications generate warning-level logs.
+API key lifecycle events are tracked with actor and reason.
+
+172
+00:03:00,000 --> 00:03:30,000
+Quarterly access reviews are automated and documented.
+The evidence bucket contains signed review reports.
+Each report shows exactly which access was reviewed and approved.
+
+173
+00:03:30,000 --> 00:04:00,000
+Here is what your auditor will test for CC6.1.
+First, no static database passwords.
+They will ask to see how the API pod authenticates to PostgreSQL.
+
+174
+00:04:00,000 --> 00:04:30,000
+Your answer is Vault dynamic credentials.
+Show them forward slash vault forward slash secrets forward slash db-creds exists in the running pod.
+And the username matches the pattern v dash k8s dash rag-app dash random.
+
+175
+00:04:30,000 --> 00:05:00,000
+Second, least privilege IAM.
+They will ask what permissions the API pod has in AWS.
+Show them the IAM policy document.
+It grants specific S3 prefixes and specific CloudWatch log groups.
+
+176
+00:05:00,000 --> 00:05:30,000
+Third, RBAC namespace isolation.
+They will run kubectl auth can-i tests against your service accounts.
+Confirm that the API service account cannot read secrets or list pods.
+
+177
+00:05:30,000 --> 00:06:00,000
+Fourth, API key rotation.
+They will ask how often keys are rotated and how revocation works.
+Answer: ninety-day TTL enforced by the database constraint on expires_at.
+Immediate revocation via the is_active equals false flag.
+
+178
+00:06:00,000 --> 00:06:30,000
+Fifth, access reviews.
+They will ask for the last three quarterly review reports.
+Show them three Markdown files in the evidence bucket.
+Each with timestamps, reviewer names, and any revocation actions taken.
+
+179
+00:06:30,000 --> 00:07:00,000
+What is ready for your auditor.
+No static database credentials anywhere.
+Every IAM role has least privilege documented.
+
+180
+00:07:00,000 --> 00:07:30,000
+RBAC prevents namespace escape.
+API keys rotate every ninety days.
+etcd encryption verified.
+Service account tokens expire.
+
+181
+00:07:30,000 --> 00:08:00,000
+Every access is logged.
+Quarterly reviews prove ongoing compliance.
+This is the foundation for CC6.1.
+
+182
+00:08:00,000 --> 00:08:30,000
+In Phase 4, we will build the immutable audit logging system.
+The analysis_history table will become append-only.
+With hash chaining and digital signatures for tamper detection.
+
+183
+00:08:30,000 --> 00:09:00,000
+CloudWatch logs will have seven-year retention with KMS encryption.
+S3 Object Lock in COMPLIANCE mode will make archives immutable.
+pgAudit will log every database operation.
+
+184
+00:09:00,000 --> 00:09:30,000
+And monthly audit reports will be generated automatically.
+With integrity verification of the entire hash chain.
+
+185
+00:09:30,000 --> 00:10:00,000
+Continue to Phase 4 when you are ready.
+
+---
+
+**End of Phase 3 SRT**
+
+**Total lines:** 185
+**Duration:** ~2 hours
+
+Shall I continue with **Phase 4 — Immutable Audit Logging**?

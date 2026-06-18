@@ -90,7 +90,7 @@ class CacheClient:
 
         try:
             self._pool = ConnectionPool.from_url(
-                settings.REDIS_URL,
+                settings.REDIS_URL.get_secret_value(),
                 max_connections=settings.REDIS_MAX_CONNECTIONS,
                 socket_timeout=settings.REDIS_SOCKET_TIMEOUT_SECONDS,
                 socket_connect_timeout=settings.REDIS_CONNECT_TIMEOUT_SECONDS,

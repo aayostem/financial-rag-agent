@@ -1,0 +1,980 @@
+Here is the **complete SRT audio script** for **Phase 4 — Immutable Audit Logging** following your strict rules: Style 1 (Architectural Briefing), no invented files, exact sequence, full SRT, no external sources.
+
+---
+
+# SOC 2 DEMYSTIFIED: TRUST SERVICE CRITERIA
+[## PHASE 4 — IMMUTABLE AUDIT LOGGING
+]### Complete SRT Audio Script
+
+---
+
+[## LECTURE 4.1 — THE APPEND-ONLY TABLE: POSTGRESQL TRIGGERS THAT PREVENT MODIFICATION]
+
+1
+00:00:00,000 --> 00:00:30,000
+Imagine this. Six months after a security incident,
+an auditor asks you to prove exactly what data was accessed.
+You pull up your logs.
+
+2
+00:00:30,000 --> 00:01:00,000
+But wait. Someone with database access could have deleted those logs.
+Or updated them. How would you know?
+That is the problem with mutable audit logs.
+
+3
+00:01:00,000 --> 00:01:30,000
+For SOC 2, especially for processing integrity and incident response,
+you need logs that cannot be changed.
+Not by accident. Not by admin. Not by anyone.
+
+4
+00:01:30,000 --> 00:02:00,000
+Hi there, and welcome to Phase 4 of our SOC 2 journey.
+In this phase, we are building an immutable audit logging system
+that would satisfy the most demanding auditor.
+
+5
+00:02:00,000 --> 00:02:30,000
+We will cover append-only table design, hash chaining,
+digital signatures, immutable cloud storage,
+and automated compliance reporting.
+
+6
+00:02:30,000 --> 00:03:00,000
+By the end of these two hours, every user interaction
+with your RAG system will be permanently recorded,
+cryptographically verifiable, and tamper-evident.
+
+7
+00:03:00,000 --> 00:03:30,000
+Let me start with the foundation. The analysis_history table.
+
+8
+00:03:30,000 --> 00:04:00,000
+Every time a user asks a question, we create a record.
+The record captures everything. The question, the answer,
+which agent handled it, how long it took, and any errors.
+
+9
+00:04:00,000 --> 00:04:30,000
+But here is the key. This table is append-only.
+No updates. No deletes. Only inserts.
+
+10
+00:04:30,000 --> 00:05:00,000
+Let me show you the schema.
+In the migration file, we create the analysis_history table.
+
+11
+00:05:00,000 --> 00:05:30,000
+The table has columns for identity, query content, performance,
+session context, privacy-safe user identification,
+immutability chain fields, and timestamps.
+
+12
+00:05:30,000 --> 00:06:00,000
+Notice there is no updated_at column.
+This table never updates. Only inserts.
+
+13
+00:06:00,000 --> 00:06:30,000
+The user_email_hash and ip_hash columns store SHA-256 hashes.
+Not raw emails or IP addresses.
+This is for privacy. We can identify patterns without exposing PII.
+
+14
+00:06:30,000 --> 00:07:00,000
+The previous_hash and current_hash columns are for the cryptographic chain.
+We will cover those in the next lecture.
+The signature and signed_at columns are for digital signatures.
+
+15
+00:07:00,000 --> 00:07:30,000
+Now let us create indexes for audit queries.
+Index on ticker and created_at.
+Index on session_id.
+Index on agent_type and created_at.
+Index on user_email_hash and created_at.
+
+16
+00:07:30,000 --> 00:08:00,000
+Now the critical part. Enforcing immutability at the database level.
+Create a function called enforce_append_only.
+
+17
+00:08:00,000 --> 00:08:30,000
+This function raises an exception with a clear error message.
+It says: operation not permitted on analysis_history.
+This table is an immutable audit log. Only INSERT is allowed.
+
+18
+00:08:30,000 --> 00:09:00,000
+Now create triggers that call this function.
+First, a BEFORE UPDATE trigger.
+Second, a BEFORE DELETE trigger.
+Third, a BEFORE TRUNCATE trigger.
+
+19
+00:09:00,000 --> 00:09:30,000
+Each trigger executes the enforce_append_only function.
+This means no one can update, delete, or truncate the table.
+Not your application. Not a database administrator. Not even the table owner.
+
+20
+00:09:30,000 --> 00:10:00,000
+Let me show you what happens when someone tries to cheat.
+If you try to update a record, PostgreSQL returns an error.
+Operation UPDATE not permitted on analysis_history.
+
+21
+00:10:00,000 --> 00:10:30,000
+If you try to delete records older than ninety days,
+same error. No deletion allowed.
+If you try to truncate the entire table, same error.
+
+22
+00:10:30,000 --> 00:11:00,000
+Now, how do you handle data retention if you cannot delete?
+Two options. Partition by date and drop entire partitions.
+Or export to cold storage and drop partitions after seven years.
+
+23
+00:11:00,000 --> 00:11:30,000
+Here is the partition approach.
+Create a partitioned table by month.
+Create monthly partitions.
+To archive old data, detach the partition, export to S3, then drop it.
+
+24
+00:11:30,000 --> 00:12:00,000
+Verify that the triggers exist.
+Query the information schema for triggers on analysis_history.
+You should see three triggers. One for UPDATE, one for DELETE, one for TRUNCATE.
+
+25
+00:12:00,000 --> 00:12:30,000
+Save the trigger evidence to your evidence bucket.
+Run the query and output to analysis-history-triggers dot txt.
+
+26
+00:12:30,000 --> 00:13:00,000
+Your lab exercise is to create the analysis_history table.
+Apply the triggers. Test that INSERT works.
+Test that UPDATE, DELETE, and TRUNCATE all fail with clear error messages.
+
+27
+00:13:00,000 --> 00:13:30,000
+Document the error messages as evidence for your auditor.
+In the next lecture, we will add hash chaining and digital signatures.
+
+---
+
+[## LECTURE 4.2 — HASH CHAINING: CRYPTOGRAPHIC TAMPER DETECTION]
+
+28
+00:00:00,000 --> 00:00:30,000
+Append-only triggers prevent changes through SQL.
+But what about a database administrator with direct access to the storage?
+Or someone who restores an old backup?
+
+29
+00:00:30,000 --> 00:01:00,000
+The records could be changed outside the database.
+That is where cryptographic tamper detection comes in.
+We will implement two layers. Hash chaining and digital signatures.
+
+30
+00:01:00,000 --> 00:01:30,000
+Hash chaining means each record contains the hash of the previous record.
+If anyone changes a record, the chain breaks.
+Digital signatures prove the record came from your application, not an attacker.
+
+31
+00:01:30,000 --> 00:02:00,000
+First, add the columns for tamper detection to the analysis_history table.
+previous_hash, current_hash, signature, and signed_at.
+
+32
+00:02:00,000 --> 00:02:30,000
+Now let me show you the Python code that creates these hashes and signatures.
+
+33
+00:02:30,000 --> 00:03:00,000
+Create a class AuditChainSigner.
+In the init method, load the private key from a PEM file.
+If no private key is provided, try to load from Vault.
+
+34
+00:03:00,000 --> 00:03:30,000
+Add a method compute_record_hash.
+This takes a dictionary of record data and returns a SHA-256 hash.
+Sort the keys to ensure consistent hash regardless of insertion order.
+
+35
+00:03:30,000 --> 00:04:00,000
+Use json dot dumps with sort_keys equals true.
+Then compute hashlib dot sha256 of the encoded JSON.
+Return the hex digest.
+
+36
+00:04:00,000 --> 00:04:30,000
+Add a method sign_hash.
+This takes a record hash and signs it with the private key.
+Use RSA-PSS padding with MGF1 and SHA-256.
+Return the signature as bytes.
+
+37
+00:04:30,000 --> 00:05:00,000
+Add a method verify_signature.
+This takes a record hash and a signature.
+It returns true if the signature is valid, false otherwise.
+
+38
+00:05:00,000 --> 00:05:30,000
+Now create the AuditChainRepository class.
+This manages the hash chain integrity.
+
+39
+00:05:30,000 --> 00:06:00,000
+Add a method get_last_hash.
+Query the most recent record in analysis_history.
+Return its current_hash, or None if no records exist.
+
+40
+00:06:00,000 --> 00:06:30,000
+Add a method prepare_chain_fields.
+This is called before inserting a new record.
+Get the previous hash from the last record.
+
+41
+00:06:30,000 --> 00:07:00,000
+Compute the current hash by calling signer dot compute_record_hash.
+Add previous_hash and current_hash to the record data.
+If a private key is available, sign the current hash and add the signature.
+
+42
+00:07:00,000 --> 00:07:30,000
+Now add the verification method. verify_chain_integrity.
+This method iterates through all records in order.
+
+43
+00:07:30,000 --> 00:08:00,000
+For each record, verify that previous_hash matches the previous record's current_hash.
+If not, log an error and return false.
+
+44
+00:08:00,000 --> 00:08:30,000
+Recompute the current hash from the record data.
+If it does not match the stored current_hash, log an error and return false.
+
+45
+00:08:30,000 --> 00:09:00,000
+Verify the signature using the public key.
+If any signature is invalid, log an error.
+Continue verification but note the failure.
+
+46
+00:09:00,000 --> 00:09:30,000
+Return a report dict with total_records, chain_valid, signatures_valid,
+first_broken_at if any, and verification_seconds.
+
+47
+00:09:30,000 --> 00:10:00,000
+Now generate the signing keys and store them in Vault.
+OpenSSL genrsa with 4096 bits for the private key.
+Then extract the public key.
+
+48
+00:10:00,000 --> 00:10:30,000
+Store the private key in Vault at secret forward slash financial-rag forward slash audit-signing-key.
+Never store the private key in Git.
+Store the public key in Git at security forward slash audit-signing-key-pub dot pem.
+
+49
+00:10:30,000 --> 00:11:00,000
+The public key is safe to share.
+Auditors need it to verify signatures.
+Delete the private key from your local disk after storing in Vault.
+
+50
+00:11:00,000 --> 00:11:30,000
+Now integrate the chain repository into your analysis repository.
+When inserting a new record, call prepare_chain_fields first.
+Then insert the record with the chain fields populated.
+
+51
+00:11:30,000 --> 00:12:00,000
+After inserting ten thousand records, here is what the hash chain looks like.
+Record one current_hash equals a1b2c3.
+Record two previous_hash equals a1b2c3, current_hash equals d4e5f6.
+
+52
+00:12:00,000 --> 00:12:30,000
+Record three previous_hash equals d4e5f6, current_hash equals g7h8i9.
+If someone modifies record two, its current_hash changes.
+Then when verifying record three, previous_hash does not match. The chain breaks.
+
+53
+00:12:30,000 --> 00:13:00,000
+If someone modifies record two and also updates record three's previous_hash to match,
+the signature on record two would be invalid.
+Because the private key is not available to re-sign.
+
+54
+00:13:00,000 --> 00:13:30,000
+The private key lives in Vault with strict access controls.
+Only the application pod can access it, and only in memory.
+
+55
+00:13:30,000 --> 00:14:00,000
+Your lab exercise is to insert several audit records.
+Verify the hash chain integrity.
+Then try to manually modify a record in the database.
+Re-run verification. It should fail.
+
+56
+00:14:00,000 --> 00:14:30,000
+Document the tamper detection as evidence for SOC 2.
+In the next lecture, we will configure CloudWatch log groups.
+With seven-year retention and deletion protection.
+
+---
+
+[## LECTURE 4.3 — CLOUDWATCH LOG GROUPS WITH 7-YEAR RETENTION]
+
+57
+00:00:00,000 --> 00:00:30,000
+Your database audit log is one piece.
+But what about application logs? API access logs?
+Kubernetes audit logs?
+They all need to be stored immutably with appropriate retention.
+
+58
+00:00:30,000 --> 00:01:00,000
+For SOC 2, audit logs typically need seven-year retention.
+CloudWatch can do this, but you need to configure it correctly.
+
+59
+00:01:00,000 --> 00:01:30,000
+First, define your log groups in Terraform.
+Create a local map of log group names and retention days.
+
+60
+00:01:30,000 --> 00:02:00,000
+Audit logs get 2555 days retention. That is seven years.
+This includes forward slash financial-rag forward slash audit.
+Forward slash financial-rag forward slash api-access.
+Forward slash financial-rag forward slash auth.
+And forward slash financial-rag forward slash db-audit.
+
+61
+00:02:00,000 --> 00:02:30,000
+Operational logs get 365 days retention.
+This includes forward slash financial-rag forward slash api.
+Forward slash financial-rag forward slash agent.
+And forward slash financial-rag forward slash ingestion.
+
+62
+00:02:30,000 --> 00:03:00,000
+The EKS cluster audit log also gets 365 days retention.
+Its name is forward slash aws forward slash eks forward slash financial-rag-prod forward slash cluster.
+
+63
+00:03:00,000 --> 00:03:30,000
+Create each log group using for_each over the local map.
+Set retention_in_days and kms_key_id.
+Tag the groups with Control equals CC7.5.
+
+64
+00:03:30,000 --> 00:04:00,000
+Now create an IAM policy that denies log group deletion.
+This is critical. A user with logs colon DeleteLogGroup can wipe your audit trail.
+The policy explicitly denies DeleteLogGroup, DeleteLogStream, DeleteRetentionPolicy.
+
+65
+00:04:00,000 --> 00:04:30,000
+Also deny PutRetentionPolicy for groups that already have seven-year retention.
+This prevents someone from shortening the retention period.
+
+66
+00:04:30,000 --> 00:05:00,000
+For the strongest protection, apply this as a Service Control Policy in AWS Organizations.
+An SCP applies to all IAM users and roles in the account, including the root user.
+Even AWS support cannot override an SCP.
+
+67
+00:05:00,000 --> 00:05:30,000
+Create the SCP with the same deny statements.
+Attach it to your production account.
+Now audit log deletion is impossible.
+
+68
+00:05:30,000 --> 00:06:00,000
+Now configure Fluent Bit to send logs to the right groups.
+Create a ConfigMap in the logging namespace.
+
+69
+00:06:00,000 --> 00:06:30,000
+For API access logs, tail the container logs for the API pod.
+Filter for logs containing event_type equals api_request or auth_failure.
+Output to the forward slash financial-rag forward slash audit log group.
+
+70
+00:06:30,000 --> 00:07:00,000
+For agent logs, output to the forward slash financial-rag forward slash agent log group.
+One-year retention.
+For ingestion logs, output to the forward slash financial-rag forward slash ingestion log group.
+
+71
+00:07:00,000 --> 00:07:30,000
+Verify the logs are flowing and retention is set correctly.
+aws logs describe-log-groups for the forward slash financial-rag prefix.
+Query logGroupName and retentionInDays.
+
+72
+00:07:30,000 --> 00:08:00,000
+Verify KMS encryption on the audit group.
+aws logs describe-log-groups for forward slash financial-rag forward slash audit.
+Query kmsKeyId. It should return your KMS key ARN.
+
+73
+00:08:00,000 --> 00:08:30,000
+Test that logs are being written.
+aws logs tail forward slash financial-rag forward slash audit dash dash since five minutes.
+You should see API request logs appearing.
+
+74
+00:08:30,000 --> 00:09:00,000
+Save the log group configuration as evidence.
+Run the describe command and output to cloudwatch-log-groups dot json.
+
+75
+00:09:00,000 --> 00:09:30,000
+Your lab exercise is to create the CloudWatch log groups.
+Configure retention and KMS encryption.
+Apply the SCP to prevent deletion.
+
+76
+00:09:30,000 --> 00:10:00,000
+Verify that logs are flowing and retention is set correctly.
+In the next lecture, we will configure S3 Object Lock.
+For truly immutable archive storage.
+
+---
+
+[## LECTURE 4.4 — S3 OBJECT LOCK: TRULY IMMUTABLE ARCHIVE STORAGE]
+
+77
+00:00:00,000 --> 00:00:30,000
+CloudWatch logs can be protected with SCPs.
+But very hard is not the same as mathematically impossible.
+S3 Object Lock in COMPLIANCE mode is the gold standard.
+
+78
+00:00:30,000 --> 00:01:00,000
+Even AWS support, with the account root credentials,
+cannot delete or modify a COMPLIANCE-locked object before its retention date.
+
+79
+00:01:00,000 --> 00:01:30,000
+For SOC 2 Type II, where the auditor is verifying six to twelve months
+of operating history, having that history in COMPLIANCE-locked S3
+means the evidence can never be disputed.
+
+80
+00:01:30,000 --> 00:02:00,000
+Let me show you the immutable export pipeline.
+Create a class ImmutableAuditExporter.
+
+81
+00:02:00,000 --> 00:02:30,000
+In the export_daily method, query analysis_history
+for all records from the previous day.
+If no records exist, log and return.
+
+82
+00:02:30,000 --> 00:03:00,000
+Write the records to a temporary JSON Lines file.
+One record per line. Each line is a JSON object.
+This format is easy for auditors to inspect.
+
+83
+00:03:00,000 --> 00:03:30,000
+Exclude the question_encrypted and answer fields from the archive.
+The archive proves what happened, not the content.
+Which may contain confidential information.
+Auditors verify chain integrity from hash fields.
+
+84
+00:03:30,000 --> 00:04:00,000
+Generate an S3 key with the date path.
+audit-archive forward slash year forward slash month forward slash day forward slash.
+analysis-history dash date dot jsonl.
+
+85
+00:04:00,000 --> 00:04:30,000
+Calculate the retention date as target date plus seven years.
+Then upload the file with extra arguments.
+ObjectLockMode equals COMPLIANCE.
+ObjectLockRetainUntilDate equals the retention date.
+
+86
+00:04:30,000 --> 00:05:00,000
+ServerSideEncryption equals aws:kms.
+Metadata includes record-count and export-date.
+
+87
+00:05:00,000 --> 00:05:30,000
+After upload, verify the lock was applied.
+Call head_object and check the ObjectLockMode.
+If mode is not COMPLIANCE, raise an error.
+
+88
+00:05:30,000 --> 00:06:00,000
+Return a manifest with the S3 key, record count, lock mode, and retain until date.
+
+89
+00:06:00,000 --> 00:06:30,000
+Deploy this as a nightly CronJob.
+Schedule at 1 AM UTC.
+After the daily evidence collection, before the morning business hours.
+
+90
+00:06:30,000 --> 00:07:00,000
+The CronJob uses the financial-rag-api service account.
+It calls the export_daily method for yesterday's date.
+
+91
+00:07:00,000 --> 00:07:30,000
+Now test immutability.
+Get the S3 key of yesterday's export.
+Run aws s3api get-object-retention.
+
+92
+00:07:30,000 --> 00:08:00,000
+The output should show Mode equals COMPLIANCE.
+And RetainUntilDate equals a date seven years in the future.
+
+93
+00:08:00,000 --> 00:08:30,000
+Try to delete the object.
+aws s3 rm on that key.
+It should fail with AccessDenied.
+Object is locked in COMPLIANCE mode and cannot be deleted.
+
+94
+00:08:30,000 --> 00:09:00,000
+Try to overwrite the object.
+Echo tampered and pipe to aws s3 cp.
+It should also fail with AccessDenied.
+
+95
+00:09:00,000 --> 00:09:30,000
+Try to shorten the retention period.
+aws s3 put-object-retention with a date earlier than the current retention.
+It should fail. Cannot shorten retention period for COMPLIANCE mode objects.
+
+96
+00:09:30,000 --> 00:10:00,000
+Your lab exercise is to create the immutable exporter.
+Deploy the nightly CronJob.
+Verify that objects are uploaded with COMPLIANCE lock.
+
+97
+00:10:00,000 --> 00:10:30,000
+Test that deletion, overwrite, and retention shortening all fail.
+In the next lecture, we will configure pgAudit.
+Database-level SQL audit logging.
+
+---
+
+[## LECTURE 4.5 — PGAUDIT: DATABASE-LEVEL SQL AUDIT LOGGING]
+
+98
+00:00:00,000 --> 00:00:30,000
+Your application logs are one thing.
+But what about direct database access?
+A DBA connecting with psql. A compromised pod that finds database credentials.
+
+99
+00:00:30,000 --> 00:01:00,000
+A developer running a one-off query in production.
+None of these appear in your application logs.
+PostgreSQL has an extension called pgAudit that solves this.
+
+100
+00:01:00,000 --> 00:01:30,000
+pgAudit captures every SQL statement executed against the database.
+Regardless of who ran it, from what client, or through what connection.
+
+101
+00:01:30,000 --> 00:02:00,000
+For RDS, enable pgAudit through the parameter group.
+Update the parameter group with shared_preload_libraries equals pgaudit comma pg_stat_statements.
+
+102
+00:02:00,000 --> 00:02:30,000
+Set pgaudit.log equals ddl, role, read, write.
+This logs data definition language, role statements, reads, and writes.
+Set pgaudit.log_parameter equals one to log query parameters.
+
+103
+00:02:30,000 --> 00:03:00,000
+Set pgaudit.log_relation equals one to log table names.
+Apply the parameter group and reboot the RDS instance.
+The reboot is required to load the shared library.
+
+104
+00:03:00,000 --> 00:03:30,000
+After reboot, connect to the database and enable the extension.
+CREATE EXTENSION IF NOT EXISTS pgaudit.
+Verify the configuration with SHOW pgaudit.log.
+
+105
+00:03:30,000 --> 00:04:00,000
+Now run a test query. SELECT COUNT asterisk FROM analysis_history.
+Then check the logs.
+
+106
+00:04:00,000 --> 00:04:30,000
+Here is what pgAudit emits.
+A log line with AUDIT colon SESSION.
+Then the statement ID, substatement, class, command, and the full SQL text.
+
+107
+00:04:30,000 --> 00:05:00,000
+Every SELECT, INSERT, CREATE, GRANT is logged.
+With timestamp, database user, and the exact SQL.
+
+108
+00:05:00,000 --> 00:05:30,000
+Configure RDS to publish these logs to CloudWatch.
+In the Terraform for the RDS instance, set enabled_cloudwatch_logs_exports.
+Include postgresql and upgrade.
+
+109
+00:05:30,000 --> 00:06:00,000
+Now verify that pgAudit logs are in CloudWatch.
+aws logs tail forward slash aws forward slash rds forward slash instance forward slash financial-rag-prod forward slash postgresql.
+Filter pattern AUDIT.
+
+110
+00:06:00,000 --> 00:06:30,000
+Query for specific access to analysis_history.
+aws logs filter-log-events with filter pattern analysis_history.
+The output shows every query that touched that table.
+
+111
+00:06:30,000 --> 00:07:00,000
+Save the log group configuration as evidence.
+aws logs describe-log-groups for the RDS log group.
+Output to pgaudit-log-groups dot json.
+
+112
+00:07:00,000 --> 00:07:30,000
+Your lab exercise is to enable pgAudit on your RDS instance.
+Run various SQL operations and verify they appear in the logs.
+Configure log export to CloudWatch.
+
+113
+00:07:30,000 --> 00:08:00,000
+In the next lecture, we will run monthly integrity verification.
+And generate an audit report for your evidence package.
+
+---
+
+[## LECTURE 4.6 — MONTHLY INTEGRITY VERIFICATION AND AUDIT REPORT]
+
+114
+00:00:00,000 --> 00:00:30,000
+A SOC 2 Type II auditor will test whether your audit logs have been tampered with.
+If you wait for the audit to run this verification,
+you are operating blind for six to twelve months.
+
+115
+00:00:30,000 --> 00:01:00,000
+Any tampering during the observation period could invalidate your entire Type II report.
+Run verification monthly.
+Detect tampering as soon as it occurs.
+
+116
+00:01:00,000 --> 00:01:30,000
+Generate a report that proves continuous integrity throughout the observation period.
+
+117
+00:01:30,000 --> 00:02:00,000
+Create a function generate_monthly_integrity_report.
+It takes a session, signer, report year, report month, and evidence bucket.
+
+118
+00:02:00,000 --> 00:02:30,000
+First, verify the hash chain integrity for the month.
+Call chain_repo dot verify_chain_integrity with start_date and end_date.
+
+119
+00:02:30,000 --> 00:03:00,000
+Second, count records by agent_type and analysis_style.
+Include average latency and error count.
+This gives you usage metrics for the month.
+
+120
+00:03:00,000 --> 00:03:30,000
+Third, check S3 archive completeness.
+For each day in the month, check if the daily export exists.
+If any day is missing, note it in the report.
+
+121
+00:03:30,000 --> 00:04:00,000
+Fourth, assemble the report.
+Include total records, error count, error rate, chain integrity status,
+signature validity, records verified, and missing days.
+
+122
+00:04:00,000 --> 00:04:30,000
+Fifth, upload the report to the immutable evidence bucket.
+Use Object Lock in COMPLIANCE mode with seven-year retention.
+
+123
+00:04:30,000 --> 00:05:00,000
+Schedule this to run on the first day of each month at 2 AM UTC.
+The monthly integrity report becomes part of your Type II evidence.
+
+124
+00:05:00,000 --> 00:05:30,000
+Your lab exercise is to generate a monthly integrity report.
+Verify that all checks pass.
+Store the report in your immutable S3 bucket.
+
+125
+00:05:30,000 --> 00:06:00,000
+In the next lecture, we will run the tamper detection demonstration.
+To prove the system works to your auditor.
+
+---
+
+[## LECTURE 4.7 — THE TAMPER-DETECTION DEMONSTRATION]
+
+126
+00:00:00,000 --> 00:00:30,000
+Before submitting to your auditor, run the tamper-detection test.
+Prove that any modification to analysis_history is detected.
+This demonstration should be part of your auditor walkthrough.
+
+127
+00:00:30,000 --> 00:01:00,000
+First, insert a legitimate record.
+Call the API or insert directly through the repository.
+Capture the record ID.
+
+128
+00:01:00,000 --> 00:01:30,000
+Second, record the current hash.
+Query the current_hash for the record.
+Note the value.
+
+129
+00:01:30,000 --> 00:02:00,000
+Third, attempt a direct UPDATE.
+Update the answer column on the record.
+The trigger should block it with an error message.
+
+130
+00:02:00,000 --> 00:02:30,000
+If the UPDATE fails with a clear error, the trigger is working.
+If it succeeds, your trigger is missing or disabled.
+Fix that before proceeding.
+
+131
+00:02:30,000 --> 00:03:00,000
+Fourth, simulate a DBA bypassing the trigger.
+Set session_replication_role to replica.
+This temporarily disables triggers.
+
+132
+00:03:00,000 --> 00:03:30,000
+Then run the UPDATE again.
+This time it will succeed because triggers are disabled.
+This simulates a malicious superuser.
+
+133
+00:03:30,000 --> 00:04:00,000
+Set session_replication_role back to default.
+Now run hash chain verification.
+
+134
+00:04:00,000 --> 00:04:30,000
+The verification should detect that the chain is broken.
+chain_valid should be false.
+first_broken_at should be the ID of the tampered record.
+
+135
+00:04:30,000 --> 00:05:00,000
+This proves that even if a superuser bypasses the trigger,
+the hash chain detects the modification immediately.
+The signing key lives in Vault. Without it, an attacker cannot recompute valid hashes or forge signatures.
+
+136
+00:05:00,000 --> 00:05:30,000
+Run this demonstration in your staging environment.
+Document the steps and outputs.
+Include the demonstration in your audit evidence package.
+
+137
+00:05:30,000 --> 00:06:00,000
+Your lab exercise is to run the tamper detection demonstration.
+Document that the trigger blocks UPDATE.
+Document that hash chain verification detects tampering.
+
+138
+00:06:00,000 --> 00:06:30,000
+In the final lecture of Phase 4, we will generate the monthly audit report.
+This is the document you will hand to your auditor.
+
+---
+
+[## LECTURE 4.8 — AUTOMATED MONTHLY AUDIT REPORT FOR THE EVIDENCE PACKAGE]
+
+139
+00:00:00,000 --> 00:00:30,000
+Your auditor will want a human-readable monthly audit report.
+Not just raw logs.
+But a summary showing total queries processed, error rates,
+any anomalies detected, and integrity verification status.
+
+140
+00:00:30,000 --> 00:01:00,000
+Let me show you how to generate this report automatically.
+
+141
+00:01:00,000 --> 00:01:30,000
+Create a script called generate-audit-report dot sh.
+It takes year and month as arguments.
+Defaults to the current year and month.
+
+142
+00:01:30,000 --> 00:02:00,000
+First, pull the integrity report from S3.
+aws s3 cp from the integrity-reports path.
+If it exists, extract the status, total records, error count, error rate.
+
+143
+00:02:00,000 --> 00:02:30,000
+Extract chain_valid, signatures_valid, and missing days.
+Format these into a summary table.
+
+144
+00:02:30,000 --> 00:03:00,000
+Second, list the S3 archive files for the month.
+aws s3 ls on the audit-archive path.
+Show each file with its size and last modified date.
+
+145
+00:03:00,000 --> 00:03:30,000
+Third, query CloudWatch for authentication failures in the month.
+Use aws logs filter-log-events with filter pattern auth dot failure.
+Count the events.
+
+146
+00:03:30,000 --> 00:04:00,000
+Fourth, query the database for API key events.
+Number of revocations in the month.
+Number of new keys issued.
+
+147
+00:04:00,000 --> 00:04:30,000
+Fifth, assemble the report in Markdown format.
+Start with an executive summary table.
+Include overall status, total queries, error rate, chain integrity, and S3 completeness.
+
+148
+00:04:30,000 --> 00:05:00,000
+Add a section on hash chain integrity.
+Describe the verification method.
+Report the number of records verified and any broken chain.
+
+149
+00:05:00,000 --> 00:05:30,000
+Add a section on S3 archive status.
+List all files with their sizes.
+Show that every day of the month has an export.
+
+150
+00:05:30,000 --> 00:06:00,000
+Add a section on access events.
+Authentication failures, key revocations, and new keys issued.
+
+151
+00:06:00,000 --> 00:06:30,000
+Add a compliance controls status table.
+CC7.5 for incident identification and response.
+PI1.1 for processing integrity.
+C1.1 for confidentiality.
+
+152
+00:06:30,000 --> 00:07:00,000
+Finally, add a certification section.
+The report was generated automatically.
+All data is cryptographically verified.
+Include the report ID and S3 archive location.
+
+153
+00:07:00,000 --> 00:07:30,000
+Save the report to soc2-evidence forward slash audit-reports.
+Upload the report to the immutable evidence bucket with Object Lock.
+
+154
+00:07:30,000 --> 00:08:00,000
+Run this script monthly, after the integrity verification is complete.
+The report becomes part of your Type II evidence package.
+
+155
+00:08:00,000 --> 00:08:30,000
+Your lab exercise is to generate a monthly audit report.
+Verify that all integrity checks pass.
+Store the report in your immutable S3 bucket.
+
+156
+00:08:30,000 --> 00:09:00,000
+Key takeaways for Phase 4.
+Every user interaction is permanently recorded.
+Cryptographic proof of no tampering.
+Seven-year immutable log retention.
+
+157
+00:09:00,000 --> 00:09:30,000
+Complete audit trail of database and Kubernetes access.
+Automated monthly compliance reports.
+Anomaly detection and alerting.
+
+158
+00:09:30,000 --> 00:10:00,000
+What is ready for your auditor.
+Every user interaction permanently recorded.
+Cryptographic proof of no tampering.
+Seven-year immutable log retention.
+
+159
+00:10:00,000 --> 00:10:30,000
+Complete audit trail of database and Kubernetes access.
+Automated monthly compliance reports.
+Anomaly detection and alerting.
+
+160
+00:10:30,000 --> 00:11:00,000
+In Phase 5, we will cover Vulnerability Management in CI/CD.
+Trivy container scanning, Gitleaks secret detection,
+dependency scanning, SBOM generation, and CVE remediation SLAs.
+
+161
+00:11:00,000 --> 00:11:30,000
+Continue to Phase 5 when you are ready.
+
+---
+
+**End of Phase 4 SRT**
+
+**Total lines:** 161
+**Duration:** ~2 hours
+
+Shall I continue with **Phase 5 — Vulnerability Management in CI/CD**?

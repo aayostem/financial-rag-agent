@@ -1,0 +1,710 @@
+1
+00:00:00,374 --> 00:00:02,394
+Let me teach you how to
+set up your environment.
+
+2
+00:00:03,414 --> 00:00:04,904
+Create a folder on your desktop.
+
+3
+00:00:05,343 --> 00:00:09,214
+Let's call this financial-rag-agents.
+
+4
+00:00:09,873 --> 00:00:14,784
+DAI and drop this folder into
+VS Code However, there are
+
+5
+00:00:14,784 --> 00:00:16,224
+many code editors out there.
+
+6
+00:00:16,714 --> 00:00:18,684
+Whichever one you choose, you'll be good.
+
+7
+00:00:19,244 --> 00:00:23,783
+I prefer VS Code, and it's a
+fully-fledged IDE designed specifically
+
+8
+00:00:23,784 --> 00:00:25,834
+for Python and AI development.
+
+9
+00:00:26,384 --> 00:00:31,583
+It offers you everything you need from
+quick project setup, error reporting,
+
+10
+00:00:31,844 --> 00:00:34,104
+integrated terminal, and more.
+
+11
+00:00:34,454 --> 00:00:35,964
+Plus it's completely free.
+
+12
+00:00:36,774 --> 00:00:40,644
+Before creating a AI project, you
+need Python installed on your machine.
+
+17
+00:00:58,394 --> 00:01:02,344
+So head over to python.org
+and download the latest stable
+
+18
+00:01:02,373 --> 00:01:05,693
+version of Python
+
+24
+00:01:29,584 --> 00:01:33,884
+And when you install Python, you'll
+also get a handy tool called Pip,
+
+25
+00:01:33,994 --> 00:01:36,584
+short for Pip installed packages.
+
+26
+00:01:37,423 --> 00:01:41,454
+Instead of writing everything from
+scratch, you can use Pip to quickly
+
+27
+00:01:41,503 --> 00:01:47,694
+add features like database drivers,
+API frameworks, or even AI libraries.
+
+28
+00:01:48,724 --> 00:01:54,064
+It also makes it super easy to keep
+your tools and code up to date, ensuring
+
+29
+00:01:54,124 --> 00:01:55,853
+everything works smoothly together.
+
+30
+00:01:56,484 --> 00:02:02,814
+In simple term, Pip will save you time and
+effort by giving you access to thousands
+
+31
+00:02:02,814 --> 00:02:08,203
+of packages to help you build your
+modern AI applications more efficiently.
+
+32
+00:02:08,714 --> 00:02:13,513
+But with that in mind, now that you
+have all the tools necessary, we are
+
+33
+00:02:13,514 --> 00:02:15,354
+ready to create our AI Agent.
+I'll be using uv to bootstrap the project
+
+38
+00:02:31,394 --> 00:02:37,473
+for its lightning-fast dependency
+resolution, optimized build and speed.
+
+39
+00:02:38,004 --> 00:02:41,534
+It's an excellent choice for
+quickly setting up a Python project.
+
+54
+00:03:28,410 --> 00:03:31,579
+Open the VS Code terminal.
+
+55
+00:03:32,140 --> 00:03:34,070
+Go to View and then select Terminal,
+or simply use Ctrl plus Backtick.
+
+56
+00:03:34,070 --> 00:03:34,810
+Now type pip
+
+57
+00:03:39,970 --> 00:03:41,660
+install uv,
+
+58
+00:03:41,660 --> 00:03:41,810
+uv
+
+59
+00:03:44,100 --> 00:03:47,660
+init . to initialize UV
+in our current directory.
+
+60
+00:03:47,660 --> 00:03:51,420
+UV has bootstrapped some of our files.
+
+61
+00:03:51,630 --> 00:03:55,739
+For new developers starting out,
+let's quickly go over these files.
+
+62
+00:03:56,439 --> 00:04:01,650
+The .gitignore is a configuration file
+that tells Git which file or folder
+
+63
+00:04:01,650 --> 00:04:03,500
+to exclude from version control.
+
+64
+00:04:04,280 --> 00:04:08,750
+This helps to prevent committing
+sensitive data, such as sensitive
+
+65
+00:04:08,750 --> 00:04:12,109
+data or large files or temporary
+files to your repository.
+
+66
+00:04:13,500 --> 00:04:16,399
+You should know that files listed
+here are never uploaded to GitHub.
+
+67
+00:04:18,009 --> 00:04:20,060
+Next is the .python-version.
+
+68
+00:04:21,279 --> 00:04:26,130
+This is a single line file specifying
+which Python version to use.
+
+69
+00:04:26,800 --> 00:04:30,670
+UV reads this to know which
+Python to download or use.
+
+70
+00:04:31,590 --> 00:04:37,740
+Then the pyenv read this to switch
+versions automatically, ensuring all
+
+71
+00:04:37,769 --> 00:04:40,230
+team members use the same Python version.
+
+72
+00:04:41,200 --> 00:04:44,870
+The main.py is the entry
+point of your application.
+
+73
+00:04:45,320 --> 00:04:47,099
+This is the first file that runs.
+
+74
+00:04:47,890 --> 00:04:50,460
+U- UV creates this as a starting template.
+
+75
+00:04:51,939 --> 00:04:53,840
+Next is the pyproject.toml
+
+76
+00:04:56,014 --> 00:05:00,384
+This is the central configuration
+file for modern Python projects.
+
+77
+00:05:00,584 --> 00:05:05,694
+It replaces setup.py,
+requirements.txt, and setup.cfg.
+
+78
+00:05:06,244 --> 00:05:09,024
+We can say this is one file
+that rules every other.
+
+79
+00:05:09,024 --> 00:05:14,154
+UV uses this for dependencies,
+scripts, and settings.
+
+80
+00:05:15,194 --> 00:05:19,864
+Next is the README.md, which is the
+markdown file that describes your project.
+
+81
+00:05:20,384 --> 00:05:23,694
+This is what you and others will see.
+
+82
+00:05:24,024 --> 00:05:26,404
+This is what you see on
+the GitHub front page.
+
+83
+00:05:27,363 --> 00:05:30,194
+Now, let's create a file called .env.
+
+84
+00:05:31,004 --> 00:05:35,854
+It's a private file containing your
+actual configuration values and
+
+85
+00:05:36,154 --> 00:05:40,004
+secrets, such as API keys and password.
+
+86
+00:05:40,584 --> 00:05:43,494
+You must never commit this to your GitHub.
+
+87
+00:05:44,244 --> 00:05:47,954
+You must never commit this file
+to your Git or GitHub because it
+
+88
+00:05:47,974 --> 00:05:51,034
+contains real password and API keys.
+
+89
+00:05:51,414 --> 00:05:56,194
+Therefore, you need to add this
+inside of the .gitignore so
+
+90
+00:05:56,194 --> 00:05:58,134
+that Git can ignore this file.
+
+91
+00:05:58,924 --> 00:06:03,544
+However, if you want a template
+showing what configuration values
+
+92
+00:06:03,544 --> 00:06:08,414
+are needed for this project without
+the actual secret values, then
+
+93
+00:06:08,464 --> 00:06:11,904
+you can create a .env.example.
+
+    # ── make directory ─────────────────────────────────────────────────────────────────
+1
+00:00:01,000 --> 00:00:03,500
+Now, let's establish our core project directory structure.
+
+2
+00:00:03,500 --> 00:00:07,000
+We'll use mkdir to build out our src package,
+infrastructure, and test suites.
+
+1
+00:00:00,000 --> 00:00:05,000
+mkdir -p src/financial_rag/config src/financial_rag/storage/repositories 
+
+2
+00:00:05,000 --> 00:00:10,000
+src/financial_rag/ingestion src/financial_rag/parsing src/financial_rag/processing 
+
+3
+00:00:10,000 --> 00:00:15,000
+src/financial_rag/retrieval src/financial_rag/agents src/financial_rag/api/routes 
+
+4
+00:00:15,000 --> 00:00:20,000
+src/financial_rag/monitoring src/financial_rag/security infrastructure/docker/init
+
+5
+00:00:20,000 --> 00:00:25,000
+migrations/versions tests/unit tests/integration notebooks scripts docs
+
+6
+00:00:25,000 --> 00:00:30,000
+touch src/__init__.py src/financial_rag/__init__.py src/financial_rag/config/__init__.py
+
+7
+00:00:30,000 --> 00:00:35,000
+src/financial_rag/storage/__init__.py src/financial_rag/storage/repositories/__init__.py
+
+8
+00:00:35,000 --> 00:00:40,000
+src/financial_rag/ingestion/__init__.py src/financial_rag/parsing/__init__.py
+
+9
+00:00:40,000 --> 00:00:45,000
+src/financial_rag/processing/__init__.py src/financial_rag/retrieval/__init__.py
+
+10
+00:00:45,000 --> 00:00:50,000
+src/financial_rag/agents/__init__.py src/financial_rag/api/__init__.py
+
+11
+00:00:50,000 --> 00:00:55,000
+src/financial_rag/monitoring/__init__.py src/financial_rag/security/__init__.py
+
+12
+00:00:55,000 --> 00:01:00,000
+touch tests/__init__.py tests/unit/__init__.py tests/integration/__init__.py
+
+
+3
+00:00:07,000 --> 00:00:10,000
+Next, we need to mark these directories
+as Python packages.
+
+4
+00:00:10,000 --> 00:00:14,500
+We'll create an __init__.py file for every directory
+in our src and tests trees.
+
+5
+00:00:14,500 --> 00:00:18,000
+This ensures Python treats them as importable modules
+throughout our entire application.
+
+    # ── TOUCH ─────────────────────────────────────────────────────────────────
+
+236
+00:16:23,810 --> 00:16:26,580
+Let's create our Python package markers.
+
+237
+00:16:27,100 --> 00:16:34,250
+On the terminal, type touch source
+slash underscore underscore init
+
+238
+00:16:34,350 --> 00:16:37,610
+underscore underscore dot py.
+
+239
+00:16:37,620 --> 00:16:43,610
+This has already created our init.py
+file inside of the source directory.
+
+241
+00:16:47,640 --> 00:16:52,979
+Now go into your financial
+AI , then source.
+
+242
+00:16:53,620 --> 00:16:56,270
+You will find the init.py file we created.
+
+    # ── PYPROJECT ─────────────────────────────────────────────────────────────────
+
+275
+00:19:38,760 --> 00:19:42,380
+Before now, we've discussed
+briefly on the pyproject.
+
+276
+00:19:43,090 --> 00:19:49,480
+Let's go inside the pyproject and replace
+all of this initial file with our…
+
+277
+00:19:49,519 --> 00:19:51,579
+Now, let me explain the key sections.
+
+278
+00:19:52,570 --> 00:19:57,190
+The project section contains
+the project metadata, the name,
+
+279
+00:19:57,730 --> 00:19:59,750
+version, and dependencies.
+
+280
+00:20:00,620 --> 00:20:05,500
+The project.dependencies contains list
+of dependencies that our project needs.
+
+281
+00:20:06,389 --> 00:20:13,010
+The project.optional-dependencies contains
+dev dependencies such as pytest, rough,
+
+282
+00:20:15,410 --> 00:20:16,750
+and etc. Rough and more.
+
+283
+00:20:16,750 --> 00:20:21,580
+The build system contains
+how to build your package.
+
+284
+00:20:21,960 --> 00:20:25,960
+The tool.rough contains
+configuration for Rough linter.
+
+285
+00:20:26,530 --> 00:20:27,010
+The tool.
+
+286
+00:20:27,010 --> 00:20:29,790
+pytest contains configuration for pytest.
+
+287
+00:20:30,430 --> 00:20:36,350
+The tool.mypy contains
+configuration for type checking.
+
+    # ── virtual environment ─────────────────────────────────────────────────────────────────
+
+288
+00:20:37,030 --> 00:20:42,240
+Before we install all these dependencies,
+let's set up our virtual environment.
+
+289
+00:20:42,240 --> 00:20:47,280
+A virtual environment is an isolated
+Python workspace for each project.
+
+290
+00:20:47,280 --> 00:20:49,120
+Here is why it's essential.
+
+291
+00:20:49,930 --> 00:20:53,170
+Let's say we have two projects
+that needs different version.
+
+292
+00:20:53,280 --> 00:20:59,400
+Say, pip install Django 3.2 and…
+What happens is that when we install
+
+293
+00:20:59,410 --> 00:21:05,950
+Django 5.0, this replaces the Django
+3.2 because we are using a global
+
+294
+00:21:05,990 --> 00:21:08,480
+Python environment that is system-wide.
+
+295
+00:21:08,510 --> 00:21:13,789
+For instance, when Django 3.2 is
+installed for project A, it works.
+
+296
+00:21:14,550 --> 00:21:19,510
+However, at a later time, when Django
+5.0 is installed for project B, it
+
+297
+00:21:19,570 --> 00:21:24,740
+overrides that of the project A because
+only one version can exist globally.
+
+298
+00:21:25,680 --> 00:21:28,170
+The solution to this is
+the virtual environment.
+
+299
+00:21:29,100 --> 00:21:35,698
+Each project gets its own
+environment Project A has a venv
+
+300
+00:21:36,018 --> 00:21:42,448
+that houses the Django 3.2, while
+project B has its own Django 5.0.
+
+301
+00:21:43,028 --> 00:21:44,208
+They don't interfere.
+
+302
+00:21:44,438 --> 00:21:47,217
+Each project has its own isolated Python.
+
+303
+00:21:48,087 --> 00:21:52,968
+So the-- we can say that the real
+problems that the virtual environment
+
+304
+00:21:52,968 --> 00:21:58,618
+solve are the version conflicts,
+the permission errors, and the team
+
+305
+00:21:58,618 --> 00:22:01,637
+collaboration, and can go as small…
+
+306
+00:22:02,387 --> 00:22:03,997
+And the team collaboration issue.
+
+307
+00:22:04,847 --> 00:22:11,308
+Now, you can use UV to create your virtual
+environment automatically using uv venv.
+
+308
+00:22:11,928 --> 00:22:14,708
+Then you s- you activate it using source
+
+309
+00:22:18,368 --> 00:22:20,588
+.venv/bin/activate on Mac or Linux.
+
+310
+00:22:20,688 --> 00:22:23,048
+While on Window, you can say .venv.
+
+311
+00:22:24,998 --> 00:22:30,108
+However, some of us are used with
+the traditional ve… We can also
+
+312
+00:22:30,108 --> 00:22:34,048
+create this using the traditional
+way, using python -m venv
+
+313
+00:22:36,988 --> 00:22:38,698
+space .venv.
+
+314
+00:22:39,108 --> 00:22:39,578
+Enter.
+
+315
+00:22:40,387 --> 00:22:42,687
+This will create our virtual environment.
+
+316
+00:22:43,448 --> 00:22:45,217
+We can activate it using source
+
+317
+00:22:47,598 --> 00:22:53,988
+.venv/bin/activate or source dot.
+
+318
+00:22:54,387 --> 00:23:00,884
+Good So this, for those of you who are
+curious to know what's inside the .venv,
+
+319
+00:23:03,224 --> 00:23:06,053
+our .venv looks like this.
+
+320
+00:23:06,914 --> 00:23:07,234
+Good.
+
+321
+00:23:07,543 --> 00:23:11,634
+Now, with venv, we have
+isolated dependencies, user
+
+322
+00:23:11,634 --> 00:23:15,014
+permissions, clean per project.
+
+323
+00:23:15,063 --> 00:23:16,803
+It is also clean per project.
+
+324
+00:23:17,093 --> 00:23:19,343
+It guarantees reproducibility.
+
+325
+00:23:19,934 --> 00:23:23,303
+Then we can deletE our virtual environments.
+
+326
+00:23:24,073 --> 00:23:27,283
+Virtual environments are not optional
+for professional development.
+
+327
+00:23:27,404 --> 00:23:28,363
+They are essential.
+
+328
+00:23:29,204 --> 00:23:32,224
+Now let's install the project
+dependencies using pip.
+
+329
+00:23:32,744 --> 00:23:38,714
+We say pip install -e dev in brackets
+
+331
+00:23:44,724 --> 00:23:46,524
+to install our dependencies.
+
+332
+00:23:47,404 --> 00:23:53,174
+The virtual environment that is the
+.venv folder contains all the installed
+
+333
+00:23:53,174 --> 00:23:55,214
+dependencies for your project.
+
+334
+00:23:55,543 --> 00:24:01,634
+Everything, everything from
+FastAPI to SQLAlchemy and more.
+
+335
+00:24:02,133 --> 00:24:05,783
+This folder is huge and contains
+even more folders within it.
+
+336
+00:24:06,364 --> 00:24:08,213
+You never really have to get into it.
+
+337
+00:24:08,644 --> 00:24:10,303
+It's just there for your app to work.
+
+338
+00:24:10,634 --> 00:24:14,303
+It's completely managed by pip, and you
+don't have to interact with it directly.
+
+339
+00:24:15,254 --> 00:24:15,583
+Good.
+
+340
+00:24:15,974 --> 00:24:20,353
+Now that we are done with our initial
+setup, let's go into the settings.
+
+341
+00:24:21,234 --> 00:24:23,033
+Now let's go into the settings.
+
+342
+00:24:23,614 --> 00:24:29,904
+Inside of the config directory, let's
+create a file with the file icon.
