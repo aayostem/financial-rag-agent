@@ -162,7 +162,7 @@ jobs:
           PGPASSWORD: test-pg-password-32-chars-minimum
         run: |
           psql -h localhost -U finrag -d financial_rag_test \
-            -f infrastructure/docker/init/create_schema.sql
+            -f infrastructure/docker/init/01_create_schema.sql
       - name: Run tests
         env:
           APP_ENV: testing

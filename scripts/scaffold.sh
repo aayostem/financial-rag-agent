@@ -129,7 +129,7 @@ echo "  ✔ Python files created"
 # # =============================================================================
 # other_files=(
 #     "$PROJECT/infrastructure/docker/docker-compose.yml"
-#     "$PROJECT/infrastructure/docker/init/create_schema.sql"
+#     "$PROJECT/infrastructure/docker/init/01create_schema.sql"
 #     "$PROJECT/infrastructure/docker/init/create_hnsw_index.sql"
 #     "$PROJECT/scripts/start_dev.sh"
 #     "$PROJECT/scripts/stop_dev.sh"
