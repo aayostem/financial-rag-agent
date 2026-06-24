@@ -1,0 +1,63 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-notifications-cm
+  namespace: argocd
+data:
+  service.slack: |
+    token: $slack-token
+    username: ArgoCD
+    icon: ":argo:"
+  service.pagerduty: |
+    serviceKeys:
+      prod-oncall: $pagerduty-prod-key
+  template.app-sync-succeeded: |
+    slack:
+      attachments: |
+        [{
+          "color": "#18be52",
+          "title": "✅ {{.app.metadata.name}} synced",
+          "fields": [
+            {"title": "Environment", "value": "{{.app.metadata.labels.environment}}", "short": true},
+            {"title": "Revision", "value": "{{.app.status.sync.revision}}", "short": true}
+          ]
+        }]
+  template.app-sync-failed: |
+    slack:
+      attachments: |
+        [{
+          "color": "#e51b00",
+          "title": "❌ {{.app.metadata.name}} sync FAILED",
+          "fields": [
+            {"title": "Environment", "value": "{{.app.metadata.labels.environment}}", "short": true},
+            {"title": "Error", "value": "{{.app.status.operationState.message}}", "short": false}
+          ]
+        }]
+    pagerduty:
+      summary: "ArgoCD sync failed: {{.app.metadata.name}}"
+      severity: error
+  template.app-health-degraded: |
+    slack:
+      attachments: |
+        [{
+          "color": "#f4c030",
+          "title": "⚠️ {{.app.metadata.name}} health DEGRADED",
+          "fields": [
+            {"title": "Health", "value": "{{.app.status.health.status}}", "short": true}
+          ]
+        }]
+    pagerduty:
+      summary: "App degraded: {{.app.metadata.name}}"
+      severity: warning
+  trigger.on-sync-succeeded: |
+    - when: app.status.operationState.phase in ['Succeeded']
+      send: [app-sync-succeeded]
+  trigger.on-sync-failed: |
+    - when: app.status.operationState.phase in ['Error', 'Failed']
+      send: [app-sync-failed]
+  trigger.on-health-degraded: |
+    - when: app.status.health.status == 'Degraded'
+      send: [app-health-degraded]
+  defaultTriggers: |
+    - on-sync-failed
+    - on-health-degraded

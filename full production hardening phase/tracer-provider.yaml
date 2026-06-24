@@ -1,0 +1,100 @@
+# =============================================================================
+# observability/tracing/tracer-provider.yaml
+# OpenTelemetry Collector + Tracer Provider configuration.
+# Collects traces from: FastAPI (via opentelemetry-instrumentation-fastapi),
+# SQLAlchemy (asyncpg), Redis, httpx (LLM API calls).
+# Exports to: OTLP → Jaeger (in-cluster) + AWS X-Ray (prod).
+# =============================================================================
+apiVersion: opentelemetry.io/v1alpha1
+kind: OpenTelemetryCollector
+metadata:
+  name: financial-rag-otel-collector
+  namespace: financial-rag
+spec:
+  mode: Deployment
+  replicas: 2
+  image: otel/opentelemetry-collector-contrib:0.96.0
+
+  config: |
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+            endpoint: 0.0.0.0:4317
+          http:
+            endpoint: 0.0.0.0:4318
+
+    processors:
+      # Add resource attributes to all spans
+      resource:
+        attributes:
+          - key: service.namespace
+            value: financial-rag
+            action: upsert
+          - key: deployment.environment
+            from_attribute: k8s.namespace.name
+            action: upsert
+
+      # Batch for performance
+      batch:
+        timeout: 5s
+        send_batch_size: 1024
+        send_batch_max_size: 2048
+
+      # Tail sampling — keep 100% of error traces, 1% of success traces
+      tail_sampling:
+        decision_wait: 10s
+        num_traces: 100000
+        expected_new_traces_per_sec: 500
+        policies:
+          - name: errors-policy
+            type: status_code
+            status_code: {status_codes: [ERROR]}
+          - name: slow-traces-policy
+            type: latency
+            latency: {threshold_ms: 2000}
+          - name: llm-traces-policy
+            type: string_attribute
+            string_attribute:
+              key: component
+              values: [llm-client, agent]
+          - name: probabilistic-policy
+            type: probabilistic
+            probabilistic: {sampling_percentage: 1}
+
+      # Memory limiter — prevent OOM on trace bursts
+      memory_limiter:
+        check_interval: 1s
+        limit_mib: 512
+        spike_limit_mib: 128
+
+    exporters:
+      # Jaeger for in-cluster trace visualization
+      jaeger:
+        endpoint: jaeger-collector.monitoring.svc.cluster.local:14250
+        tls:
+          insecure: true
+
+      # AWS X-Ray for prod trace storage (30-day retention)
+      awsxray:
+        region: us-east-1
+        no_verify_ssl: false
+        local_mode: false
+
+      # Prometheus exporter for trace-based metrics
+      prometheus:
+        endpoint: "0.0.0.0:8889"
+        namespace: financial_rag
+        const_labels:
+          project: financial-rag-agent
+
+    service:
+      pipelines:
+        traces:
+          receivers: [otlp]
+          processors: [memory_limiter, resource, tail_sampling, batch]
+          exporters: [jaeger, awsxray]
+        metrics:
+          receivers: [otlp]
+          processors: [memory_limiter, resource, batch]
+          exporters: [prometheus]

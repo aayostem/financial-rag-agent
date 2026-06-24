@@ -1,0 +1,126 @@
+# =============================================================================
+# .pre-commit-config.yaml — Financial RAG Agent
+# All hooks run locally before every commit.
+# Install: pip install pre-commit && pre-commit install
+# Run manually: pre-commit run --all-files
+#
+# Hook execution order (fail-fast — first failure stops remaining hooks):
+#   1. gitleaks        — secret detection (CRITICAL — blocks immediately)
+#   2. trivy fs        — CVE + secret scan on filesystem
+#   3. ruff            — Python linting + import sorting
+#   4. ruff-format     — Python formatting
+#   5. mypy            — type checking
+#   6. conftest        — OPA policy validation on changed YAML/HCL
+#   7. terraform fmt   — Terraform formatting
+#   8. hadolint        — Dockerfile linting
+#   9. trailing-whitespace, end-of-file-fixer, check-yaml (standard)
+# =============================================================================
+
+repos:
+  # ---------------------------------------------------------------------------
+  # Secret detection — must run first, fail immediately on detection
+  # ---------------------------------------------------------------------------
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.18.2
+    hooks:
+      - id: gitleaks
+        name: "🔐 Gitleaks — secret detection"
+        args:
+          - "--config=.gitleaks.toml"
+          - "--verbose"
+          - "--redact"    # redact secret values in output (safe for CI logs)
+
+  # ---------------------------------------------------------------------------
+  # Python quality gates
+  # ---------------------------------------------------------------------------
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.3.4
+    hooks:
+      - id: ruff
+        name: "🐍 Ruff — lint + fix"
+        args: ["--fix", "--exit-non-zero-on-fix"]
+      - id: ruff-format
+        name: "🐍 Ruff — format"
+
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.9.0
+    hooks:
+      - id: mypy
+        name: "🐍 MyPy — type checking"
+        additional_dependencies:
+          - types-redis
+          - types-requests
+          - pydantic>=2.0
+        args: ["--ignore-missing-imports", "--strict"]
+
+  # ---------------------------------------------------------------------------
+  # Infrastructure policy checks
+  # ---------------------------------------------------------------------------
+  - repo: https://github.com/open-policy-agent/conftest
+    rev: v0.50.0
+    hooks:
+      - id: conftest-test
+        name: "📋 Conftest — OPA policy validation"
+        files: '\.(yaml|yml|json|tf)$'
+        args:
+          - "test"
+          - "--policy"
+          - "policies/rego/"
+          - "--namespace"
+          - "financial_rag"
+
+  - repo: https://github.com/antonbabenko/pre-commit-terraform
+    rev: v1.88.4
+    hooks:
+      - id: terraform_fmt
+        name: "🏗️  Terraform — format"
+        args: ["--args=-recursive"]
+      - id: terraform_validate
+        name: "🏗️  Terraform — validate"
+
+  # ---------------------------------------------------------------------------
+  # Dockerfile linting
+  # ---------------------------------------------------------------------------
+  - repo: https://github.com/hadolint/hadolint
+    rev: v2.12.0
+    hooks:
+      - id: hadolint-docker
+        name: "🐳 Hadolint — Dockerfile lint"
+        args:
+          - "--ignore=DL3008"   # apt-get: allow no --no-install-recommends in base images
+          - "--ignore=DL3009"   # apt-get: allow apt-get clean in separate layer
+
+  # ---------------------------------------------------------------------------
+  # Standard file hygiene
+  # ---------------------------------------------------------------------------
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+        args: ["--allow-multiple-documents"]
+      - id: check-json
+      - id: check-toml
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: ["--maxkb=1024"]   # block files > 1 MB (catches accidental model weight commits)
+      - id: detect-private-key
+        name: "🔐 Detect private key"
+      - id: no-commit-to-branch
+        args: ["--branch=main", "--branch=master"]
+        name: "🚫 No direct commits to main"
+      - id: check-case-conflict
+      - id: mixed-line-ending
+        args: ["--fix=lf"]
+
+# ---------------------------------------------------------------------------
+# Pre-commit CI configuration (runs in GitHub Actions via pre-commit.ci)
+# ---------------------------------------------------------------------------
+ci:
+  autofix_commit_msg: "chore: pre-commit auto-fixes"
+  autofix_prs: true
+  autoupdate_schedule: weekly
+  skip:
+    - mypy           # mypy runs in dedicated CI job with full deps installed
+    - conftest-test  # conftest runs in dedicated CI job

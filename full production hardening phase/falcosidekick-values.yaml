@@ -1,0 +1,67 @@
+# =============================================================================
+# falco/sidekick/falcosidekick-values.yaml
+# Falcosidekick routes Falco alerts to Slack, PagerDuty, and CloudWatch.
+# Deployed alongside Falco via Helm in kube-system namespace.
+# =============================================================================
+
+replicaCount: 2
+
+image:
+  repository: falcosecurity/falcosidekick
+  tag: "2.28.0"
+
+config:
+  # Slack — all warnings and above
+  slack:
+    webhookurl: ""              # set via --set config.slack.webhookurl=$SLACK_WEBHOOK
+    channel: "#security-alerts"
+    iconemoji: ":rotating_light:"
+    username: "Falco | financial-rag"
+    outputformat: "all"
+    minimumpriority: "warning"
+    messageformat: |
+      *{{ .Rule }}* | Priority: {{ .Priority }} | Pod: {{ .OutputFields.k8s_pod_name }}
+
+  # PagerDuty — CRITICAL only
+  pagerduty:
+    routingkey: ""              # set via secret
+    minimumpriority: "critical"
+    region: "us"
+
+  # CloudWatch — all events for SOC2 audit trail
+  aws:
+    cloudwatchlogs:
+      loggroup: "/aws/falco/financial-rag"
+      logstream: ""             # auto-generated per instance
+      minimumpriority: "warning"
+      region: "us-east-1"
+
+  # Prometheus metrics for alerting on Falco event rates
+  prometheus:
+    extralabels: ""
+
+  # WebUI for local debugging
+  webui:
+    enabled: false
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 200m
+    memory: 256Mi
+
+serviceMonitor:
+  enabled: true
+  labels:
+    release: kube-prometheus-stack
+
+# HA — two replicas on different nodes
+affinity:
+  podAntiAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      - labelSelector:
+          matchLabels:
+            app.kubernetes.io/name: falcosidekick
+        topologyKey: kubernetes.io/hostname

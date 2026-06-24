@@ -1,0 +1,31 @@
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: ingestion-policy
+  namespace: financial-rag
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/component: ingestion
+  ingress: []
+  egress:
+    - toEndpoints:
+        - matchLabels:
+            app.kubernetes.io/component: pgvector
+      toPorts:
+        - ports:
+            - port: "5432"
+              protocol: TCP
+    - toEndpoints:
+        - matchLabels:
+            app.kubernetes.io/component: redis
+      toPorts:
+        - ports:
+            - port: "6379"
+              protocol: TCP
+    - toEntities:
+        - world
+      toPorts:
+        - ports:
+            - port: "443"
+              protocol: TCP

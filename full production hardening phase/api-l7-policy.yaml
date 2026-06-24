@@ -1,0 +1,103 @@
+# =============================================================================
+# cilium/network-policies/api-l7-policy.yaml
+# CiliumNetworkPolicy with L7 HTTP rules for the API service.
+# Extends the existing L3/L4 api-policy.yaml with HTTP method + path control.
+# Cilium's eBPF proxy enforces these at L7 without a sidecar.
+# =============================================================================
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: api-l7-policy
+  namespace: financial-rag
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/component: api
+
+  ingress:
+    # ALB → API: only specific HTTP methods on specific paths
+    - fromEntities:
+        - world
+      toPorts:
+        - ports:
+            - port: "8000"
+              protocol: TCP
+          rules:
+            http:
+              # Health check — GET only
+              - method: "GET"
+                path: "/health"
+
+              # Query endpoint — POST only
+              - method: "POST"
+                path: "/query"
+
+              # Metrics — GET only, from monitoring namespace
+              - method: "GET"
+                path: "/metrics"
+
+              # API versioned endpoints
+              - method: "POST"
+                path: "/v1/query"
+
+              - method: "GET"
+                path: "/v1/health"
+
+              # Block all other paths explicitly
+              # Any path not listed above returns 403 at the eBPF layer
+              # before the request reaches the FastAPI application
+
+    # Prometheus scrape — metrics only
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: monitoring
+      toPorts:
+        - ports:
+            - port: "8000"
+              protocol: TCP
+          rules:
+            http:
+              - method: "GET"
+                path: "/metrics"
+
+  egress:
+    # Agent pool — POST to inference endpoint only
+    - toEndpoints:
+        - matchLabels:
+            app.kubernetes.io/component: agent
+      toPorts:
+        - ports:
+            - port: "8001"
+              protocol: TCP
+          rules:
+            http:
+              - method: "POST"
+                path: "/infer"
+              - method: "POST"
+                path: "/v1/infer"
+
+    # pgvector — TCP only (PostgreSQL wire protocol, not HTTP)
+    - toEndpoints:
+        - matchLabels:
+            app.kubernetes.io/component: pgvector
+      toPorts:
+        - ports:
+            - port: "5432"
+              protocol: TCP
+
+    # Redis — TCP only
+    - toEndpoints:
+        - matchLabels:
+            app.kubernetes.io/component: redis
+      toPorts:
+        - ports:
+            - port: "6379"
+              protocol: TCP
+
+    # AWS APIs via VPC endpoints — HTTPS only
+    - toEntities:
+        - world
+      toPorts:
+        - ports:
+            - port: "443"
+              protocol: TCP

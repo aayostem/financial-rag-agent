@@ -1,0 +1,51 @@
+# =============================================================================
+# cilium/ebpf/hubble-config.yaml
+# Hubble UI + Relay configuration for L7 flow observability.
+# Hubble uses eBPF to capture flows at the kernel level — no sidecar needed.
+# =============================================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hubble-config
+  namespace: kube-system
+data:
+  config.yaml: |
+    peer-service: unix:///var/run/cilium/hubble.sock
+    listen-address: :4245
+    dial-timeout: 5s
+    retry-timeout: 30s
+    sort-buffer-len-max: 100
+    sort-buffer-drain-timeout: 1s
+    tls-hubble-server-cert-file: /var/lib/cilium/tls/hubble/server.crt
+    tls-hubble-server-key-file: /var/lib/cilium/tls/hubble/server.key
+    tls-hubble-client-cert-file: /var/lib/cilium/tls/hubble/client.crt
+    tls-hubble-client-key-file: /var/lib/cilium/tls/hubble/client.key
+    tls-hubble-ca-cert-files: /var/lib/cilium/tls/hubble/client-ca.crt
+    metrics:
+      - dns:query;ignoreAAAA
+      - drop
+      - tcp
+      - flow
+      - icmp
+      - http
+---
+# Hubble metrics Service for Prometheus scraping
+apiVersion: v1
+kind: Service
+metadata:
+  name: hubble-metrics
+  namespace: kube-system
+  labels:
+    app.kubernetes.io/name: hubble
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "9965"
+spec:
+  clusterIP: None
+  selector:
+    k8s-app: cilium
+  ports:
+    - name: hubble-metrics
+      port: 9965
+      protocol: TCP
+      targetPort: 9965

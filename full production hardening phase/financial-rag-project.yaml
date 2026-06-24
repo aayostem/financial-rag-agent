@@ -1,0 +1,92 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: financial-rag
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  description: "Financial RAG Agent — all environments and infrastructure"
+  sourceRepos:
+    - "https://github.com/aayostem/financial-rag-agent.git"
+    - "https://helm.cilium.io/"
+    - "https://helm.releases.hashicorp.com"
+    - "https://charts.karpenter.sh/"
+    - "https://istio-release.storage.googleapis.com/charts"
+    - "https://argoproj.github.io/argo-helm"
+    - "https://aws.github.io/eks-charts"
+    - "oci://public.ecr.aws/karpenter"
+    - "https://falcosecurity.github.io/charts"
+    - "https://open-telemetry.github.io/opentelemetry-helm-charts"
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: financial-rag
+    - server: https://kubernetes.default.svc
+      namespace: istio-system
+    - server: https://kubernetes.default.svc
+      namespace: karpenter
+    - server: https://kubernetes.default.svc
+      namespace: vault-system
+    - server: https://kubernetes.default.svc
+      namespace: monitoring
+    - server: https://kubernetes.default.svc
+      namespace: kube-system
+    - server: https://kubernetes.default.svc
+      namespace: argocd
+    - server: https://kubernetes.default.svc
+      namespace: falco
+  clusterResourceWhitelist:
+    - group: ""
+      kind: Namespace
+    - group: "rbac.authorization.k8s.io"
+      kind: ClusterRole
+    - group: "rbac.authorization.k8s.io"
+      kind: ClusterRoleBinding
+    - group: "apiextensions.k8s.io"
+      kind: CustomResourceDefinition
+    - group: "karpenter.sh"
+      kind: NodePool
+    - group: "karpenter.k8s.aws"
+      kind: EC2NodeClass
+    - group: "networking.istio.io"
+      kind: Gateway
+    - group: "storage.k8s.io"
+      kind: StorageClass
+    - group: "monitoring.coreos.com"
+      kind: PrometheusRule
+    - group: "monitoring.coreos.com"
+      kind: ClusterRole
+  syncWindows:
+    - kind: allow
+      schedule: "* * * * *"
+      duration: 24h
+      applications: ["*-dev", "*-staging"]
+      manualSync: true
+    - kind: allow
+      schedule: "0 2 * * *"
+      duration: 4h
+      applications: ["*-prod"]
+      manualSync: true
+    - kind: deny
+      schedule: "0 8 * * 1-5"
+      duration: 10h
+      applications: ["*-prod"]
+      manualSync: false
+  roles:
+    - name: platform-engineer
+      description: Full sync access all environments
+      policies:
+        - p, proj:financial-rag:platform-engineer, applications, *, financial-rag/*, allow
+      groups: [financial-rag:platform]
+    - name: developer
+      description: Sync dev/staging only
+      policies:
+        - p, proj:financial-rag:developer, applications, get, financial-rag/*, allow
+        - p, proj:financial-rag:developer, applications, sync, financial-rag/*-dev, allow
+        - p, proj:financial-rag:developer, applications, sync, financial-rag/*-staging, allow
+      groups: [financial-rag:developers]
+    - name: ci-bot
+      description: CI pipeline sync
+      policies:
+        - p, proj:financial-rag:ci-bot, applications, get, financial-rag/*, allow
+        - p, proj:financial-rag:ci-bot, applications, sync, financial-rag/*, allow

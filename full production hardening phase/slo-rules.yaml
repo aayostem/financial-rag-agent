@@ -1,0 +1,214 @@
+# =============================================================================
+# observability/slo/slo-rules.yaml
+# SLO recording rules and alerting rules using multi-window multi-burn-rate.
+# Based on Google SRE workbook Chapter 5 alerting methodology.
+#
+# SLOs defined:
+#   SLO-1: API availability — 99.5% over 30 days
+#   SLO-2: Query latency P99 < 120s — 95% of requests
+#   SLO-3: Ingestion success rate — 99% over 7 days
+# =============================================================================
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: financial-rag-slos
+  namespace: monitoring
+  labels:
+    release: kube-prometheus-stack
+    slo: "true"
+spec:
+  groups:
+    # =========================================================================
+    # SLO-1: API Availability — 99.5% (error budget: 0.5% = 3.65 hours/month)
+    # =========================================================================
+    - name: financial-rag.slo.availability.recording
+      interval: 30s
+      rules:
+        # Good requests = non-5xx
+        - record: financial_rag:api_request_success:rate5m
+          expr: |
+            sum(rate(http_requests_total{
+              namespace="financial-rag",component="api",status!~"5.."
+            }[5m]))
+            /
+            sum(rate(http_requests_total{
+              namespace="financial-rag",component="api"
+            }[5m]))
+
+        # Rolling window error rates for burn rate calculation
+        - record: financial_rag:api_error_rate:rate1h
+          expr: |
+            1 - (
+              sum(rate(http_requests_total{namespace="financial-rag",component="api",status!~"5.."}[1h]))
+              / sum(rate(http_requests_total{namespace="financial-rag",component="api"}[1h]))
+            )
+
+        - record: financial_rag:api_error_rate:rate6h
+          expr: |
+            1 - (
+              sum(rate(http_requests_total{namespace="financial-rag",component="api",status!~"5.."}[6h]))
+              / sum(rate(http_requests_total{namespace="financial-rag",component="api"}[6h]))
+            )
+
+        - record: financial_rag:api_error_rate:rate24h
+          expr: |
+            1 - (
+              sum(rate(http_requests_total{namespace="financial-rag",component="api",status!~"5.."}[24h]))
+              / sum(rate(http_requests_total{namespace="financial-rag",component="api"}[24h]))
+            )
+
+        - record: financial_rag:api_error_rate:rate72h
+          expr: |
+            1 - (
+              sum(rate(http_requests_total{namespace="financial-rag",component="api",status!~"5.."}[72h]))
+              / sum(rate(http_requests_total{namespace="financial-rag",component="api"}[72h]))
+            )
+
+    - name: financial-rag.slo.availability.alerts
+      rules:
+        # Tier 1: Fast burn — 14.4x burn rate — pages immediately
+        # Burns 2% of monthly budget in 1 hour
+        - alert: SLOAvailabilityFastBurn
+          expr: |
+            financial_rag:api_error_rate:rate1h > (14.4 * 0.005)
+            and
+            financial_rag:api_error_rate:rate6h > (14.4 * 0.005)
+          labels:
+            severity: critical
+            slo: availability
+            project: financial-rag
+          annotations:
+            summary: "SLO-1 CRITICAL: API availability fast burn rate"
+            description: >
+              Error rate: 1h={{ $value | humanizePercentage }}.
+              Burn rate: 14.4x. At this rate the monthly error budget
+              (3.65 hours) will be exhausted in 1 hour.
+              Immediate action required.
+            runbook: "https://github.com/aayostem/financial-rag-agent/docs/runbooks/slo-availability.md"
+
+        # Tier 2: Slow burn — 6x burn rate — warning, investigate today
+        # Burns 5% of monthly budget in 6 hours
+        - alert: SLOAvailabilitySlowBurn
+          expr: |
+            financial_rag:api_error_rate:rate6h > (6 * 0.005)
+            and
+            financial_rag:api_error_rate:rate24h > (6 * 0.005)
+          labels:
+            severity: warning
+            slo: availability
+          annotations:
+            summary: "SLO-1 WARNING: API availability slow burn rate"
+            description: >
+              Error rate: 6h={{ $value | humanizePercentage }}.
+              Burn rate: 6x. Budget will exhaust in ~5 days if sustained.
+
+        # Error budget remaining (recording rule for dashboards)
+        - record: financial_rag:slo1:error_budget_remaining
+          expr: |
+            1 - (financial_rag:api_error_rate:rate72h / 0.005)
+
+    # =========================================================================
+    # SLO-2: Query Latency — P99 < 120s for 95% of windows
+    # =========================================================================
+    - name: financial-rag.slo.latency.recording
+      interval: 30s
+      rules:
+        - record: financial_rag:query_latency_slo:rate5m
+          expr: |
+            sum(rate(http_request_duration_seconds_bucket{
+              namespace="financial-rag",component="api",
+              path=~"/query.*",le="120"
+            }[5m]))
+            /
+            sum(rate(http_request_duration_seconds_count{
+              namespace="financial-rag",component="api",path=~"/query.*"
+            }[5m]))
+
+        - record: financial_rag:query_latency_error_rate:rate1h
+          expr: |
+            1 - (
+              sum(rate(http_request_duration_seconds_bucket{
+                namespace="financial-rag",component="api",path=~"/query.*",le="120"
+              }[1h]))
+              / sum(rate(http_request_duration_seconds_count{
+                namespace="financial-rag",component="api",path=~"/query.*"
+              }[1h]))
+            )
+
+        - record: financial_rag:query_latency_error_rate:rate6h
+          expr: |
+            1 - (
+              sum(rate(http_request_duration_seconds_bucket{
+                namespace="financial-rag",component="api",path=~"/query.*",le="120"
+              }[6h]))
+              / sum(rate(http_request_duration_seconds_count{
+                namespace="financial-rag",component="api",path=~"/query.*"
+              }[6h]))
+            )
+
+    - name: financial-rag.slo.latency.alerts
+      rules:
+        - alert: SLOLatencyFastBurn
+          expr: |
+            financial_rag:query_latency_error_rate:rate1h > (14.4 * 0.05)
+            and
+            financial_rag:query_latency_error_rate:rate6h > (14.4 * 0.05)
+          labels:
+            severity: critical
+            slo: latency
+          annotations:
+            summary: "SLO-2 CRITICAL: Query latency fast burn rate"
+            description: "More than 5% of queries exceeding 120s P99 latency SLO. Burn rate 14.4x."
+
+        - alert: SLOLatencySlowBurn
+          expr: |
+            financial_rag:query_latency_error_rate:rate6h > (6 * 0.05)
+            and
+            financial_rag:query_latency_error_rate:rate6h < (14.4 * 0.05)
+          labels:
+            severity: warning
+            slo: latency
+          annotations:
+            summary: "SLO-2 WARNING: Query latency slow burn rate"
+            description: "Latency SLO burn rate 6x — budget will exhaust in ~5 days."
+
+    # =========================================================================
+    # SLO-3: Ingestion Success Rate — 99% over 7 days
+    # =========================================================================
+    - name: financial-rag.slo.ingestion
+      interval: 60s
+      rules:
+        - record: financial_rag:ingestion_success_rate:rate24h
+          expr: |
+            sum(financial_rag_ingestion_filings_processed_total)
+            /
+            (sum(financial_rag_ingestion_filings_processed_total)
+             + sum(financial_rag_ingestion_filings_failed_total))
+
+        - alert: SLOIngestionFailureRate
+          expr: |
+            financial_rag:ingestion_success_rate:rate24h < 0.99
+          for: 30m
+          labels:
+            severity: warning
+            slo: ingestion
+          annotations:
+            summary: "SLO-3: Ingestion success rate below 99%"
+            description: "Ingestion success rate: {{ $value | humanizePercentage }}. Check EDGAR API connectivity and SHA-256 dedup logic."
+
+    # =========================================================================
+    # SLO Dashboard recording rules (used by Grafana)
+    # =========================================================================
+    - name: financial-rag.slo.dashboard
+      interval: 60s
+      rules:
+        - record: financial_rag:slo_budget_consumed_percent:30d
+          expr: |
+            (
+              sum(financial_rag:api_error_rate:rate72h) * 30
+            ) / 0.005 * 100
+
+        - record: financial_rag:cost_per_query_cents:1h
+          expr: |
+            (financial_rag_llm_cost_usd_total + financial_rag_infra_cost_usd_total)
+            / financial_rag_queries_total * 100

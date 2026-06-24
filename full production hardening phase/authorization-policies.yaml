@@ -1,0 +1,60 @@
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: deny-all
+  namespace: financial-rag
+spec: {}
+---
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: allow-gateway-to-api
+  namespace: financial-rag
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: api
+  rules:
+    - from:
+        - source:
+            principals:
+              - "cluster.local/ns/istio-system/sa/istio-ingressgateway"
+      to:
+        - operation:
+            methods: ["GET", "POST"]
+            ports: ["8000"]
+---
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: allow-api-to-agent
+  namespace: financial-rag
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: agent
+  rules:
+    - from:
+        - source:
+            principals:
+              - "cluster.local/ns/financial-rag/sa/financial-rag-prod-api"
+      to:
+        - operation:
+            methods: ["POST"]
+            ports: ["8001"]
+---
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: allow-prometheus-scrape
+  namespace: financial-rag
+spec:
+  rules:
+    - from:
+        - source:
+            principals:
+              - "cluster.local/ns/monitoring/sa/kube-prometheus-stack-prometheus"
+      to:
+        - operation:
+            methods: ["GET"]
+            paths: ["/metrics", "/health"]

@@ -1,0 +1,28 @@
+# =============================================================================
+# policies/conftest.toml
+# Configuration for conftest policy testing.
+# Run: conftest test <file> --policy policies/rego/ --namespace financial_rag
+# =============================================================================
+
+[output]
+# Show all results including warnings, not just failures
+show-skipped = true
+
+# Fail on warnings in CI (promote warnings to errors for known critical rules)
+fail-on-warn = false   # set to true for strict mode on main branch
+
+[policy]
+# Default policy directory
+policy = ["policies/rego"]
+
+# Namespace to use when multiple packages exist
+namespace = "financial_rag"
+
+# Parser configuration per file type
+[parser]
+# Kubernetes YAML files
+"**/*.yaml" = "yaml"
+# Terraform plan JSON
+"**/plan.json" = "json"
+# Helm-rendered templates
+"**/templates/*.yaml" = "yaml"

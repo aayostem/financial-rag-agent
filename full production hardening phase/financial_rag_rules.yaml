@@ -1,0 +1,222 @@
+# =============================================================================
+# falco/rules/financial_rag_rules.yaml
+# Custom Falco rules for financial-rag-agent threat model.
+# These rules are loaded after the built-in ruleset and extend it with
+# application-specific detection logic.
+# =============================================================================
+
+# ---------------------------------------------------------------------------
+# Macros — reusable conditions
+# ---------------------------------------------------------------------------
+- macro: financial_rag_namespace
+  condition: k8s.ns.name = "financial-rag"
+
+- macro: api_container
+  condition: >
+    financial_rag_namespace and
+    k8s.pod.label.app.kubernetes.io/component = "api"
+
+- macro: agent_container
+  condition: >
+    financial_rag_namespace and
+    k8s.pod.label.app.kubernetes.io/component = "agent"
+
+- macro: ingestion_container
+  condition: >
+    financial_rag_namespace and
+    k8s.pod.label.app.kubernetes.io/component = "ingestion"
+
+- macro: vault_agent_container
+  condition: container.name = "vault-agent"
+
+- macro: istio_proxy_container
+  condition: container.name = "istio-proxy"
+
+- macro: allowed_containers
+  condition: >
+    vault_agent_container or
+    istio_proxy_container or
+    container.name in (api, agent, ingestion)
+
+# ---------------------------------------------------------------------------
+# Rule: Shell spawned in financial-rag pod
+# A shell in a production pod = likely post-exploit activity
+# ---------------------------------------------------------------------------
+- rule: Shell Spawned in Financial RAG Pod
+  desc: >
+    A shell (bash, sh, zsh, dash) was spawned inside a financial-rag pod.
+    This should never happen in production — containers are read-only and
+    no legitimate workload spawns a shell.
+  condition: >
+    spawned_process and
+    financial_rag_namespace and
+    shell_procs and
+    not vault_agent_container and
+    not istio_proxy_container
+  output: >
+    Shell spawned in financial-rag pod
+    (user=%user.name user_uid=%user.uid
+     command=%proc.cmdline
+     pod=%k8s.pod.name
+     container=%container.name
+     namespace=%k8s.ns.name
+     image=%container.image.repository:%container.image.tag)
+  priority: CRITICAL
+  tags: [financial-rag, shell, post-exploit, T1059]
+
+# ---------------------------------------------------------------------------
+# Rule: Unexpected outbound connection from agent pod
+# Agent pods should only reach pgvector (5432), Redis (6379), HTTPS (443)
+# ---------------------------------------------------------------------------
+- rule: Unexpected Outbound Connection from Agent Pod
+  desc: >
+    Agent pod established a connection to an unexpected destination.
+    Cilium policy blocks this at L3/L4, but Falco detects the attempt
+    at the syscall layer — useful for detecting policy bypass attempts.
+  condition: >
+    outbound and
+    agent_container and
+    not fd.sport in (5432, 6379, 443, 15001, 15006) and
+    not fd.sip = "127.0.0.1"
+  output: >
+    Unexpected outbound connection from agent pod
+    (command=%proc.cmdline
+     connection=%fd.name
+     pod=%k8s.pod.name
+     namespace=%k8s.ns.name)
+  priority: HIGH
+  tags: [financial-rag, network, lateral-movement, T1071]
+
+# ---------------------------------------------------------------------------
+# Rule: Write to filesystem outside allowed paths
+# All containers have readOnlyRootFilesystem=true
+# Only /tmp and /vault/secrets should be writable
+# ---------------------------------------------------------------------------
+- rule: Write Outside Allowed Paths in Financial RAG
+  desc: >
+    A container wrote to a path outside the allowed writable paths.
+    With readOnlyRootFilesystem=true, this indicates a bypass attempt.
+  condition: >
+    open_write and
+    financial_rag_namespace and
+    not fd.name startswith "/tmp/" and
+    not fd.name startswith "/vault/secrets/" and
+    not fd.name startswith "/var/run/" and
+    not fd.name startswith "/proc/" and
+    not fd.name = "/dev/null" and
+    not vault_agent_container and
+    not istio_proxy_container
+  output: >
+    Write outside allowed paths
+    (user=%user.name
+     file=%fd.name
+     command=%proc.cmdline
+     pod=%k8s.pod.name
+     container=%container.name)
+  priority: HIGH
+  tags: [financial-rag, filesystem, T1565]
+
+# ---------------------------------------------------------------------------
+# Rule: Vault secret file read by unexpected process
+# Only the application process should read /vault/secrets/*
+# ---------------------------------------------------------------------------
+- rule: Vault Secret Read by Unexpected Process
+  desc: >
+    A process other than the application binary read a Vault secret file.
+    The Vault agent writes to /vault/secrets/ and the app reads it.
+    Any other reader is unexpected.
+  condition: >
+    open_read and
+    financial_rag_namespace and
+    fd.name startswith "/vault/secrets/" and
+    not proc.name in (python3, python, uvicorn, gunicorn, vault) and
+    not vault_agent_container
+  output: >
+    Unexpected process reading Vault secret
+    (process=%proc.name
+     file=%fd.name
+     pod=%k8s.pod.name
+     container=%container.name)
+  priority: CRITICAL
+  tags: [financial-rag, vault, credential-access, T1552]
+
+# ---------------------------------------------------------------------------
+# Rule: Privilege escalation attempt
+# ---------------------------------------------------------------------------
+- rule: Privilege Escalation in Financial RAG Pod
+  desc: setuid/setgid binary executed in financial-rag namespace.
+  condition: >
+    financial_rag_namespace and
+    evt.type = execve and
+    (proc.is_suid_binary = true or proc.is_sgid_binary = true) and
+    not proc.name in (sudo, ping)
+  output: >
+    Privilege escalation attempt
+    (command=%proc.cmdline
+     pod=%k8s.pod.name
+     container=%container.name
+     user=%user.name)
+  priority: CRITICAL
+  tags: [financial-rag, privilege-escalation, T1548]
+
+# ---------------------------------------------------------------------------
+# Rule: Crypto mining detection
+# Financial RAG pods should not perform heavy CPU computation outside
+# of inference calls (which are bounded by Groq/OpenAI latency)
+# ---------------------------------------------------------------------------
+- rule: Crypto Mining Process in Financial RAG
+  desc: Known crypto mining process names detected in financial-rag namespace.
+  condition: >
+    financial_rag_namespace and
+    spawned_process and
+    proc.name in (xmrig, minerd, cpuminer, ethminer, nbminer,
+                  phoenix, t-rex, gminer, lolminer, wildrig)
+  output: >
+    Crypto mining process detected
+    (process=%proc.name
+     pod=%k8s.pod.name
+     container=%container.name
+     args=%proc.args)
+  priority: CRITICAL
+  tags: [financial-rag, crypto-mining, T1496]
+
+# ---------------------------------------------------------------------------
+# Rule: kubectl exec into production pod
+# Legitimate debugging should use EKS console or pre-approved runbooks
+# ---------------------------------------------------------------------------
+- rule: kubectl exec in Financial RAG Namespace
+  desc: >
+    kubectl exec was used to attach to a financial-rag pod.
+    This is a SOC2 CC6.1 audit event — all exec sessions must be logged.
+    Alert: not deny. Exec is allowed via approved runbook with MFA.
+  condition: >
+    ka.verb = "create" and
+    ka.target.resource = "pods/exec" and
+    ka.target.namespace = "financial-rag"
+  output: >
+    kubectl exec into financial-rag pod
+    (user=%ka.user.name
+     pod=%ka.target.name
+     namespace=%ka.target.namespace
+     command=%ka.uri.param[command])
+  priority: WARNING
+  tags: [financial-rag, exec, audit, CC6.1]
+
+# ---------------------------------------------------------------------------
+# Rule: Sensitive environment variable access
+# Processes reading /proc/*/environ may be harvesting credentials
+# ---------------------------------------------------------------------------
+- rule: Read Process Environment in Financial RAG
+  desc: A process read another process's environment variables via /proc.
+  condition: >
+    open_read and
+    financial_rag_namespace and
+    fd.name glob "/proc/*/environ" and
+    not proc.name in (ps, top, htop)
+  output: >
+    Process environment read (possible credential harvest)
+    (command=%proc.cmdline
+     file=%fd.name
+     pod=%k8s.pod.name)
+  priority: HIGH
+  tags: [financial-rag, credential-access, T1082]

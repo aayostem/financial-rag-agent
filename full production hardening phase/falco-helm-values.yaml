@@ -1,0 +1,65 @@
+# =============================================================================
+# falco/config/falco-helm-values.yaml
+# Helm values for deploying Falco on EKS.
+# helm upgrade --install falco falcosecurity/falco \
+#   --namespace kube-system \
+#   -f falco/config/falco-helm-values.yaml
+# =============================================================================
+
+# Use eBPF driver — no kernel module, works on EKS managed nodes
+driver:
+  enabled: true
+  kind: ebpf
+
+# Load our custom rules
+falco:
+  rules_file:
+    - /etc/falco/falco_rules.yaml
+    - /etc/falco/falco_rules.local.yaml
+    - /etc/falco/rules.d/financial_rag_rules.yaml
+  json_output: true
+  json_include_output_property: true
+  log_level: info
+  priority: warning
+  grpc:
+    enabled: true
+    bind_address: "unix:///var/run/falco/falco.sock"
+  grpc_output:
+    enabled: true
+
+# Mount custom rules ConfigMap
+extraVolumes:
+  - name: financial-rag-rules
+    configMap:
+      name: falco-financial-rag-rules
+
+extraVolumeMounts:
+  - mountPath: /etc/falco/rules.d
+    name: financial-rag-rules
+
+# Falcosidekick integration
+falcosidekick:
+  enabled: true
+  fullfqdn: false
+  listenPort: ""
+
+# Resources
+resources:
+  requests:
+    cpu: 100m
+    memory: 512Mi
+  limits:
+    cpu: 1000m
+    memory: 1024Mi
+
+# Node affinity — run on all nodes
+tolerations:
+  - operator: Exists
+    effect: NoSchedule
+  - operator: Exists
+    effect: NoExecute
+
+serviceMonitor:
+  enabled: true
+  labels:
+    release: kube-prometheus-stack

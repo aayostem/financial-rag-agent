@@ -1,0 +1,92 @@
+# =============================================================================
+# SLO Alerting Rules — Multi-window multi-burn-rate (Google SRE Workbook Ch.5)
+# Separate file for SLO alerts to keep them distinct from symptom-based alerts
+# =============================================================================
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: financial-rag-slo-alerts
+  namespace: monitoring
+  labels:
+    release: kube-prometheus-stack
+    slo: "true"
+spec:
+  groups:
+    - name: financial-rag.slo.page
+      rules:
+        # Page: burns >2% budget in 1h (fast burn 14.4x)
+        - alert: SLOErrorBudgetFastBurn
+          expr: |
+            (
+              financial_rag:api_error_rate:rate1h > (14.4 * 0.005)
+              and
+              financial_rag:api_error_rate:rate6h > (14.4 * 0.005)
+            )
+            or
+            (
+              financial_rag:query_latency_error_rate:rate1h > (14.4 * 0.05)
+              and
+              financial_rag:query_latency_error_rate:rate6h > (14.4 * 0.05)
+            )
+          labels:
+            severity: critical
+            slo: "true"
+            page: "true"
+          annotations:
+            summary: "SLO fast burn — error budget draining rapidly"
+            description: >
+              At current burn rate, monthly error budget exhausts in < 1 hour.
+              Immediate investigation and response required.
+            runbook: "https://github.com/aayostem/financial-rag-agent/docs/runbooks/slo-burn.md"
+
+        # Page: burns >5% budget in 6h (slow burn 6x)
+        - alert: SLOErrorBudgetSlowBurn
+          expr: |
+            (
+              financial_rag:api_error_rate:rate6h > (6 * 0.005)
+              and
+              financial_rag:api_error_rate:rate24h > (6 * 0.005)
+            )
+            or
+            (
+              financial_rag:query_latency_error_rate:rate6h > (6 * 0.05)
+              and
+              financial_rag:query_latency_error_rate:rate6h < (14.4 * 0.05)
+            )
+          labels:
+            severity: warning
+            slo: "true"
+          annotations:
+            summary: "SLO slow burn — error budget draining"
+            description: "Budget will exhaust in ~5 days if burn rate is sustained."
+
+    - name: financial-rag.slo.budget
+      interval: 5m
+      rules:
+        # Error budget remaining as percentage — used in Grafana dashboard
+        - record: financial_rag:slo_availability:error_budget_remaining
+          expr: |
+            (1 - (financial_rag:api_error_rate:rate72h / 0.005)) * 100
+
+        - record: financial_rag:slo_latency:error_budget_remaining
+          expr: |
+            (1 - (financial_rag:query_latency_error_rate:rate6h / 0.05)) * 100
+
+        # Alert when < 10% budget remains
+        - alert: SLOErrorBudgetAlmostExhausted
+          expr: financial_rag:slo_availability:error_budget_remaining < 10
+          labels:
+            severity: warning
+            slo: "true"
+          annotations:
+            summary: "Less than 10% of monthly error budget remaining"
+            description: "{{ $value | humanize }}% of availability error budget remains this month."
+
+        - alert: SLOErrorBudgetExhausted
+          expr: financial_rag:slo_availability:error_budget_remaining <= 0
+          labels:
+            severity: critical
+            slo: "true"
+          annotations:
+            summary: "Monthly error budget fully exhausted"
+            description: "100% of the monthly availability error budget has been consumed. All remaining errors exceed the SLO."

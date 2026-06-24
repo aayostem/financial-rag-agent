@@ -1,0 +1,20 @@
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: redis-policy
+  namespace: financial-rag
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/component: redis
+  ingress:
+    - fromEndpoints:
+        - matchExpressions:
+            - key: app.kubernetes.io/component
+              operator: In
+              values: [api, agent, ingestion]
+      toPorts:
+        - ports:
+            - port: "6379"
+              protocol: TCP
+  egress: []

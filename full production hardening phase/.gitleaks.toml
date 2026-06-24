@@ -1,0 +1,149 @@
+# =============================================================================
+# .gitleaks.toml — Financial RAG Agent
+# Gitleaks v8+ configuration.
+# Runs on: pre-commit hook (every commit), GitHub Actions CI (every PR/push).
+# Blocks: any commit containing a detected secret pattern.
+#
+# Built-in rules from gitleaks cover 150+ patterns including AWS keys,
+# GitHub tokens, Stripe keys, etc. This file EXTENDS those with
+# financial-rag-specific patterns and configures allowlists.
+# =============================================================================
+
+title = "Financial RAG Agent — Gitleaks Configuration"
+
+[extend]
+# Extend the upstream gitleaks default rules
+useDefault = true
+
+# ---------------------------------------------------------------------------
+# Custom rules — financial-rag-specific secret patterns
+# ---------------------------------------------------------------------------
+
+[[rules]]
+id          = "fra-openai-key"
+description = "OpenAI API key"
+regex       = '''sk-[a-zA-Z0-9]{20,}T3BlbkFJ[a-zA-Z0-9]{20,}'''
+tags        = ["key", "openai", "llm"]
+severity    = "CRITICAL"
+
+  [rules.allowlist]
+  # Allow in test fixtures that use obviously fake keys
+  paths = ['''tests/fixtures/.*''', '''docs/examples/.*''']
+
+[[rules]]
+id          = "fra-openai-project-key"
+description = "OpenAI project API key (new format)"
+regex       = '''sk-proj-[a-zA-Z0-9_\-]{48,}'''
+tags        = ["key", "openai", "llm"]
+severity    = "CRITICAL"
+
+[[rules]]
+id          = "fra-groq-key"
+description = "Groq API key"
+regex       = '''gsk_[a-zA-Z0-9]{52}'''
+tags        = ["key", "groq", "llm"]
+severity    = "CRITICAL"
+
+[[rules]]
+id          = "fra-vault-token"
+description = "HashiCorp Vault service token"
+regex       = '''hvs\.[a-zA-Z0-9_\-]{24,}'''
+tags        = ["vault", "token"]
+severity    = "CRITICAL"
+
+[[rules]]
+id          = "fra-vault-root-token"
+description = "Vault root token in any file"
+regex       = '''(?i)(vault[_\-]?(?:root[_\-]?)?token|VAULT_TOKEN)\s*[=:]\s*['""]?[shb]\.[A-Za-z0-9_\-]{24,}'''
+tags        = ["vault", "root", "token"]
+severity    = "CRITICAL"
+
+[[rules]]
+id          = "fra-hcp-client-secret"
+description = "HCP service principal client secret"
+regex       = '''HCP_CLIENT_SECRET\s*[=:]\s*['""]?[a-zA-Z0-9_\-]{32,}'''
+tags        = ["hcp", "vault", "credentials"]
+severity    = "CRITICAL"
+
+[[rules]]
+id          = "fra-postgres-dsn"
+description = "PostgreSQL connection string with embedded password"
+regex       = '''postgresql(?:ql)?://[^:@\s]+:[^@\s]{8,}@[^/\s]+'''
+tags        = ["database", "postgres", "credentials"]
+severity    = "CRITICAL"
+
+  [rules.allowlist]
+  # Allow localhost DSNs in test configs
+  regexes = ['''postgresql://.*localhost.*''', '''postgresql://.*127\.0\.0\.1.*''']
+
+[[rules]]
+id          = "fra-redis-dsn"
+description = "Redis connection string with auth token"
+regex       = '''rediss?://:[^@\s]{8,}@[^/\s]+'''
+tags        = ["database", "redis", "credentials"]
+severity    = "CRITICAL"
+
+[[rules]]
+id          = "fra-edgar-api-key"
+description = "SEC EDGAR API key"
+regex       = '''(?i)edgar[_\-]?(?:api[_\-]?)?key\s*[=:]\s*['""]?[a-zA-Z0-9_\-]{16,}'''
+tags        = ["edgar", "sec", "api"]
+severity    = "HIGH"
+
+[[rules]]
+id          = "fra-azure-openai-key"
+description = "Azure OpenAI API key"
+regex       = '''(?i)(azure[_\-]?openai[_\-]?(?:api[_\-]?)?key|AZURE_OPENAI_API_KEY)\s*[=:]\s*['""]?[a-f0-9]{32}'''
+tags        = ["azure", "openai", "llm"]
+severity    = "CRITICAL"
+
+[[rules]]
+id          = "fra-aws-account-id-in-code"
+description = "Hardcoded AWS account ID outside of env.hcl/tfvars"
+regex       = '''\b\d{12}\b'''
+tags        = ["aws", "account-id", "infrastructure"]
+severity    = "MEDIUM"
+
+  [rules.allowlist]
+  # Account IDs are allowed in env.hcl (authorised location) and docs
+  paths = [
+    '''environments/.*/env\.hcl''',
+    '''docs/.*''',
+    '''README.*''',
+    '''.*\.md''',
+  ]
+
+# ---------------------------------------------------------------------------
+# Global allowlist — patterns that are always safe to ignore
+# ---------------------------------------------------------------------------
+[allowlist]
+description = "Global allowlist — test fixtures, example values, documentation"
+
+# Git commit hashes that look like secrets (40-char hex)
+regexes = [
+  # Common placeholder values used in documentation
+  '''REPLACE[_\-]?ME''',
+  '''YOUR[_\-]?(?:API[_\-]?)?KEY[_\-]?HERE''',
+  '''EXAMPLE[_\-]?KEY''',
+  # Test/fixture account IDs that are clearly fake
+  '''123456789012''',
+  # GitHub Actions expressions (not secrets)
+  '''\$\{\{[^}]+\}\}''',
+]
+
+# Files that are always safe to skip
+paths = [
+  '''\.git/.*''',
+  '''\.terragrunt-cache/.*''',
+  '''\.terraform/.*''',
+  '''.*\.tfstate''',
+  '''.*\.tfstate\.backup''',
+  '''.*_test\.go''',
+  '''tests/fixtures/.*''',
+  '''docs/.*''',
+  '''.*\.md''',
+  '''CHANGELOG.*''',
+]
+
+# Specific commits to ignore (use sparingly — add reason as comment)
+# commits = ["abc123def456..."]  # reason: test commit with fake keys

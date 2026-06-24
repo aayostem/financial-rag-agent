@@ -1,0 +1,98 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: apps-appset
+  namespace: argocd
+spec:
+  strategy:
+    type: RollingSync
+    rollingSync:
+      steps:
+        - matchExpressions:
+            - key: environment
+              operator: In
+              values: [dev]
+        - matchExpressions:
+            - key: environment
+              operator: In
+              values: [staging]
+        - matchExpressions:
+            - key: environment
+              operator: In
+              values: [prod]
+  generators:
+    - list:
+        elements:
+          - environment: dev
+            targetRevision: HEAD
+            namespace: financial-rag
+            valuesFile: values.yaml
+            autoSync: "true"
+            prune: "true"
+            selfHeal: "true"
+            imageTag: "latest"
+          - environment: staging
+            targetRevision: HEAD
+            namespace: financial-rag
+            valuesFile: values.yaml
+            autoSync: "true"
+            prune: "true"
+            selfHeal: "true"
+            imageTag: "latest"
+          - environment: prod
+            targetRevision: HEAD
+            namespace: financial-rag
+            valuesFile: values.prod.yaml
+            autoSync: "false"
+            prune: "false"
+            selfHeal: "true"
+            imageTag: "1.0.0"
+  template:
+    metadata:
+      name: "financial-rag-{{environment}}"
+      namespace: argocd
+      labels:
+        environment: "{{environment}}"
+        component: financial-rag-agent
+      annotations:
+        notifications.argoproj.io/subscribe.on-sync-succeeded.slack: deployments
+        notifications.argoproj.io/subscribe.on-sync-failed.slack: platform-alerts
+        notifications.argoproj.io/subscribe.on-health-degraded.pagerduty: "{{environment}}-oncall"
+    spec:
+      project: financial-rag
+      sources:
+        - repoURL: https://github.com/aayostem/financial-rag-agent.git
+          targetRevision: "{{targetRevision}}"
+          path: helm/financial-rag-agent
+          helm:
+            valueFiles:
+              - values.yaml
+              - "{{valuesFile}}"
+            parameters:
+              - name: global.image.tag
+                value: "{{imageTag}}"
+              - name: global.environment
+                value: "{{environment}}"
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: "{{namespace}}"
+      syncPolicy:
+        automated:
+          prune: "{{prune}}"
+          selfHeal: "{{selfHeal}}"
+        syncOptions:
+          - CreateNamespace=true
+          - ServerSideApply=true
+          - PrunePropagationPolicy=foreground
+          - PruneLast=true
+        retry:
+          limit: 5
+          backoff:
+            duration: 30s
+            factor: 2
+            maxDuration: 5m
+      ignoreDifferences:
+        - group: apps
+          kind: Deployment
+          jsonPointers:
+            - /spec/replicas

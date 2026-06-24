@@ -1,0 +1,223 @@
+# =============================================================================
+# observability/prometheus-rules/financial-rag-alerts.yaml
+# PrometheusRule CRD — alerting rules for financial-rag-agent.
+# Loaded by kube-prometheus-stack via label selector: release=kube-prometheus-stack
+# =============================================================================
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: financial-rag-alerts
+  namespace: monitoring
+  labels:
+    release: kube-prometheus-stack
+    app: financial-rag-agent
+spec:
+  groups:
+    # -------------------------------------------------------------------------
+    # API availability and latency
+    # -------------------------------------------------------------------------
+    - name: financial-rag.api
+      interval: 30s
+      rules:
+        - alert: APIHighErrorRate
+          expr: |
+            (
+              sum(rate(http_requests_total{namespace="financial-rag",component="api",status=~"5.."}[5m]))
+              /
+              sum(rate(http_requests_total{namespace="financial-rag",component="api"}[5m]))
+            ) > 0.05
+          for: 2m
+          labels:
+            severity: critical
+            team: platform
+            project: financial-rag
+          annotations:
+            summary: "API error rate above 5%"
+            description: "financial-rag API error rate is {{ $value | humanizePercentage }} over the last 5 minutes. SLO breach imminent."
+            runbook: "https://github.com/aayostem/financial-rag-agent/docs/runbooks/api-errors.md"
+
+        - alert: APIHighLatency
+          expr: |
+            histogram_quantile(0.99,
+              sum by (le) (rate(http_request_duration_seconds_bucket{
+                namespace="financial-rag",component="api",path=~"/query.*"
+              }[5m]))
+            ) > 120
+          for: 5m
+          labels:
+            severity: warning
+            team: platform
+          annotations:
+            summary: "API P99 query latency above 120s"
+            description: "P99 query latency is {{ $value }}s. Expected < 120s (LLM pipeline SLO)."
+
+        - alert: APIPodCrashLooping
+          expr: |
+            rate(kube_pod_container_status_restarts_total{
+              namespace="financial-rag",container="api"
+            }[15m]) * 60 * 15 > 3
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "API pod crash-looping"
+            description: "Pod {{ $labels.pod }} has restarted {{ $value }} times in 15 minutes."
+
+        - alert: APIHPAMaxReplicas
+          expr: |
+            kube_horizontalpodautoscaler_status_current_replicas{
+              namespace="financial-rag",horizontalpodautoscaler="financial-rag-agent-api"
+            } >= kube_horizontalpodautoscaler_spec_max_replicas{
+              namespace="financial-rag",horizontalpodautoscaler="financial-rag-agent-api"
+            }
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "API HPA at maximum replicas"
+            description: "API HPA has been at maxReplicas for 10 minutes — scale limit may be causing latency."
+
+    # -------------------------------------------------------------------------
+    # LLM cost and token metrics
+    # -------------------------------------------------------------------------
+    - name: financial-rag.llm
+      interval: 60s
+      rules:
+        - alert: LLMHighTokenUsage
+          expr: |
+            avg(financial_rag_llm_tokens_input_per_query) > 4500
+          for: 10m
+          labels:
+            severity: warning
+            team: finops
+          annotations:
+            summary: "LLM average context window above 4,500 tokens"
+            description: "Average input tokens per query: {{ $value }}. Retrieval pipeline may be over-fetching. Check RRF top-k setting."
+
+        - alert: LLMProviderErrors
+          expr: |
+            sum(rate(financial_rag_llm_api_errors_total[5m])) > 0.1
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: "LLM API errors detected"
+            description: "LLM API error rate: {{ $value }} errors/sec. Check API key validity and provider status."
+
+        - alert: SemanticCacheHitRateLow
+          expr: |
+            (
+              sum(rate(financial_rag_cache_hits_total[30m]))
+              /
+              sum(rate(financial_rag_cache_requests_total[30m]))
+            ) < 0.75
+          for: 30m
+          labels:
+            severity: warning
+            team: finops
+          annotations:
+            summary: "Semantic cache hit rate below 75%"
+            description: "Cache hit rate: {{ $value | humanizePercentage }}. LLM costs rising — review cache TTL and similarity threshold."
+
+    # -------------------------------------------------------------------------
+    # Agent pool
+    # -------------------------------------------------------------------------
+    - name: financial-rag.agent
+      interval: 30s
+      rules:
+        - alert: AgentPoolHighLatency
+          expr: |
+            histogram_quantile(0.95,
+              sum by (le) (rate(financial_rag_agent_inference_duration_seconds_bucket[5m]))
+            ) > 60
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Agent P95 inference latency above 60s"
+            description: "Agent tool-use loop P95 latency: {{ $value }}s. Check LLM provider response times."
+
+        - alert: AgentHPAMaxReplicas
+          expr: |
+            kube_horizontalpodautoscaler_status_current_replicas{
+              namespace="financial-rag",
+              horizontalpodautoscaler="financial-rag-agent-agent"
+            } >= kube_horizontalpodautoscaler_spec_max_replicas{
+              namespace="financial-rag",
+              horizontalpodautoscaler="financial-rag-agent-agent"
+            }
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Agent HPA at maximum replicas for 15 minutes"
+
+    # -------------------------------------------------------------------------
+    # Database and cache
+    # -------------------------------------------------------------------------
+    - name: financial-rag.storage
+      interval: 60s
+      rules:
+        - alert: PgvectorHighQueryLatency
+          expr: |
+            histogram_quantile(0.95,
+              sum by (le) (rate(financial_rag_db_query_duration_seconds_bucket[5m]))
+            ) > 2
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "pgvector P95 query latency above 2s"
+            description: "Database query P95: {{ $value }}s. Check HNSW index status and connection pool."
+
+        - alert: RedisConnectionsNearLimit
+          expr: |
+            financial_rag_redis_connected_clients > 180
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Redis connections approaching limit (200)"
+            description: "Current Redis connections: {{ $value }}. Review connection pool sizing."
+
+    # -------------------------------------------------------------------------
+    # Security — Falco + Cilium integration
+    # -------------------------------------------------------------------------
+    - name: financial-rag.security
+      interval: 30s
+      rules:
+        - alert: FalcoCriticalEventDetected
+          expr: |
+            sum(rate(falco_events_total{
+              namespace="financial-rag",priority="Critical"
+            }[5m])) > 0
+          for: 0m
+          labels:
+            severity: critical
+            team: security
+          annotations:
+            summary: "Falco CRITICAL security event in financial-rag"
+            description: "Falco detected a critical security event. Immediate investigation required."
+            runbook: "https://github.com/aayostem/financial-rag-agent/docs/runbooks/security-incident.md"
+
+        - alert: CiliumDropRateHigh
+          expr: |
+            sum(rate(hubble_drop_total{namespace="financial-rag"}[5m])) > 10
+          for: 2m
+          labels:
+            severity: warning
+            team: security
+          annotations:
+            summary: "High Cilium drop rate in financial-rag namespace"
+            description: "{{ $value }} drops/sec in financial-rag. May indicate lateral movement attempt or policy misconfiguration."
+
+        - alert: VaultTokenRenewalFailure
+          expr: |
+            sum(rate(financial_rag_vault_token_renewal_errors_total[5m])) > 0
+          for: 1m
+          labels:
+            severity: critical
+            team: security
+          annotations:
+            summary: "Vault token renewal failing"
+            description: "Pods cannot renew Vault tokens — secrets will expire causing application failures."

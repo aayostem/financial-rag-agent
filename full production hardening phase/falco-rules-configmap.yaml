@@ -1,0 +1,63 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: falco-financial-rag-rules
+  namespace: kube-system
+data:
+  financial_rag_rules.yaml: |
+    - macro: financial_rag_namespace
+      condition: k8s.ns.name = "financial-rag"
+    - macro: agent_container
+      condition: financial_rag_namespace and k8s.pod.label.app.kubernetes.io/component = "agent"
+    - rule: Shell Spawned in Financial RAG Pod
+      desc: Shell spawned inside a financial-rag pod — should never happen in production.
+      condition: >
+        spawned_process and financial_rag_namespace and shell_procs and
+        not container.name in (vault-agent, istio-proxy)
+      output: >
+        Shell spawned (user=%user.name command=%proc.cmdline pod=%k8s.pod.name
+        container=%container.name image=%container.image.repository)
+      priority: CRITICAL
+      tags: [financial-rag, shell, T1059]
+    - rule: Write Outside Allowed Paths
+      desc: Container wrote outside /tmp or /vault/secrets — readOnlyRootFilesystem bypass attempt.
+      condition: >
+        open_write and financial_rag_namespace and
+        not fd.name startswith "/tmp/" and
+        not fd.name startswith "/vault/secrets/" and
+        not fd.name startswith "/var/run/" and
+        not fd.name = "/dev/null" and
+        not container.name in (vault-agent, istio-proxy)
+      output: >
+        Write outside allowed paths (user=%user.name file=%fd.name
+        command=%proc.cmdline pod=%k8s.pod.name)
+      priority: HIGH
+      tags: [financial-rag, filesystem, T1565]
+    - rule: Vault Secret Read by Unexpected Process
+      desc: A process other than the app read a Vault secret file.
+      condition: >
+        open_read and financial_rag_namespace and
+        fd.name startswith "/vault/secrets/" and
+        not proc.name in (python3, python, uvicorn, vault) and
+        not container.name = vault-agent
+      output: >
+        Unexpected Vault secret read (process=%proc.name file=%fd.name pod=%k8s.pod.name)
+      priority: CRITICAL
+      tags: [financial-rag, vault, T1552]
+    - rule: kubectl exec in Financial RAG Namespace
+      desc: kubectl exec into a financial-rag pod — SOC2 CC6.1 audit event.
+      condition: >
+        ka.verb = "create" and ka.target.resource = "pods/exec" and
+        ka.target.namespace = "financial-rag"
+      output: >
+        kubectl exec (user=%ka.user.name pod=%ka.target.name command=%ka.uri.param[command])
+      priority: WARNING
+      tags: [financial-rag, exec, audit, CC6.1]
+    - rule: Crypto Mining in Financial RAG
+      desc: Known crypto mining process detected.
+      condition: >
+        financial_rag_namespace and spawned_process and
+        proc.name in (xmrig, minerd, cpuminer, ethminer, nbminer, t-rex, gminer)
+      output: Crypto mining (process=%proc.name pod=%k8s.pod.name args=%proc.args)
+      priority: CRITICAL
+      tags: [financial-rag, T1496]

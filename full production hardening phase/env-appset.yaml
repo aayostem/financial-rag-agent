@@ -1,0 +1,56 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: env-appset
+  namespace: argocd
+spec:
+  generators:
+    - matrix:
+        generators:
+          - git:
+              repoURL: https://github.com/aayostem/financial-rag-agent.git
+              revision: HEAD
+              directories:
+                - path: gitops/envs/*
+          - list:
+              elements:
+                - environment: dev
+                  clusterUrl: https://kubernetes.default.svc
+                - environment: staging
+                  clusterUrl: https://kubernetes.default.svc
+                - environment: prod
+                  clusterUrl: https://kubernetes.default.svc
+  template:
+    metadata:
+      name: "{{path.basename}}-{{environment}}"
+      namespace: argocd
+      labels:
+        environment: "{{environment}}"
+        config-type: env-config
+      annotations:
+        notifications.argoproj.io/subscribe.on-sync-failed.slack: platform-alerts
+    spec:
+      project: financial-rag
+      source:
+        repoURL: https://github.com/aayostem/financial-rag-agent.git
+        targetRevision: HEAD
+        path: "{{path}}"
+        directory:
+          recurse: true
+          include: "*.yaml"
+      destination:
+        server: "{{clusterUrl}}"
+        namespace: financial-rag
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - ServerSideApply=true
+          - CreateNamespace=true
+        retry:
+          limit: 3
+          backoff:
+            duration: 15s
+            factor: 2
+            maxDuration: 2m

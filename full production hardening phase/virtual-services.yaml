@@ -1,0 +1,41 @@
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: financial-rag-api
+  namespace: financial-rag
+spec:
+  hosts:
+    - financial-rag-agent-api.financial-rag.svc.cluster.local
+    - api.financial-rag.cloudfrugal.com
+  gateways:
+    - financial-rag-gateway
+    - mesh
+  http:
+    - match:
+        - uri:
+            exact: /health
+      route:
+        - destination:
+            host: financial-rag-agent-api.financial-rag.svc.cluster.local
+            port:
+              number: 8000
+      timeout: 5s
+    - match:
+        - uri:
+            prefix: /query
+      route:
+        - destination:
+            host: financial-rag-agent-api.financial-rag.svc.cluster.local
+            port:
+              number: 8000
+      timeout: 120s
+      retries:
+        attempts: 2
+        perTryTimeout: 60s
+        retryOn: gateway-error,connect-failure
+    - route:
+        - destination:
+            host: financial-rag-agent-api.financial-rag.svc.cluster.local
+            port:
+              number: 8000
+      timeout: 30s

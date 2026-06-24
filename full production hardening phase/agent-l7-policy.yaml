@@ -1,0 +1,57 @@
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: agent-l7-policy
+  namespace: financial-rag
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/component: agent
+  ingress:
+    - fromEndpoints:
+        - matchLabels:
+            app.kubernetes.io/component: api
+      toPorts:
+        - ports:
+            - port: "8001"
+              protocol: TCP
+          rules:
+            http:
+              - method: "POST"
+                path: "/infer"
+              - method: "POST"
+                path: "/v1/infer"
+              - method: "GET"
+                path: "/health"
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: monitoring
+      toPorts:
+        - ports:
+            - port: "8001"
+              protocol: TCP
+          rules:
+            http:
+              - method: "GET"
+                path: "/metrics"
+  egress:
+    - toEndpoints:
+        - matchLabels:
+            app.kubernetes.io/component: pgvector
+      toPorts:
+        - ports:
+            - port: "5432"
+              protocol: TCP
+    - toEndpoints:
+        - matchLabels:
+            app.kubernetes.io/component: redis
+      toPorts:
+        - ports:
+            - port: "6379"
+              protocol: TCP
+    - toEntities:
+        - world
+      toPorts:
+        - ports:
+            - port: "443"
+              protocol: TCP

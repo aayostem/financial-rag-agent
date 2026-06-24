@@ -1,0 +1,25 @@
+# Documents the Vault Kubernetes auth configuration.
+# The actual vault write commands are run via vault-bootstrap.sh.
+# This ConfigMap is for ArgoCD tracking and audit evidence.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: vault-auth-config
+  namespace: financial-rag
+  annotations:
+    argocd.argoproj.io/sync-options: Replace=true
+data:
+  auth-method: "kubernetes"
+  auth-path: "kubernetes"
+  roles: |
+    financial-rag-api       -> api-policy       (TTL: 1h, max: 24h)
+    financial-rag-agent     -> agent-policy     (TTL: 1h, max: 24h)
+    financial-rag-ingestion -> ingestion-policy (TTL: 2h, max: 6h)
+  secret-paths: |
+    secret/financial-rag/prod/llm       -> api, agent
+    secret/financial-rag/prod/redis     -> api, agent, ingestion
+    secret/financial-rag/prod/edgar     -> ingestion
+    secret/financial-rag/prod/config    -> api
+    database/creds/api-role             -> api        (dynamic, 1h TTL)
+    database/creds/agent-role           -> agent      (dynamic, 1h TTL)
+    database/creds/ingestion-role       -> ingestion  (dynamic, 2h TTL)

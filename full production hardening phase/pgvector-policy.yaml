@@ -1,0 +1,32 @@
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: pgvector-policy
+  namespace: financial-rag
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/component: pgvector
+  ingress:
+    - fromEndpoints:
+        - matchLabels:
+            app.kubernetes.io/component: api
+      toPorts:
+        - ports:
+            - port: "5432"
+              protocol: TCP
+    - fromEndpoints:
+        - matchLabels:
+            app.kubernetes.io/component: agent
+      toPorts:
+        - ports:
+            - port: "5432"
+              protocol: TCP
+    - fromEndpoints:
+        - matchLabels:
+            app.kubernetes.io/component: ingestion
+      toPorts:
+        - ports:
+            - port: "5432"
+              protocol: TCP
+  egress: []

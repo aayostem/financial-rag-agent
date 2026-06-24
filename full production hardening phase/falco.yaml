@@ -1,0 +1,66 @@
+# =============================================================================
+# falco/config/falco.yaml
+# Falco runtime security engine configuration.
+# Deployed via Helm into kube-system namespace.
+# Detects: container escapes, unexpected processes, lateral movement,
+#          privilege escalation, unusual file access, crypto mining.
+# =============================================================================
+
+# Driver — eBPF preferred (no kernel module required on EKS)
+driver:
+  enabled: true
+  kind: ebpf
+  ebpf:
+    path: ${HOME}/.falco/falco-bpf.o
+    buffered_outputs: false
+
+# Rules files — built-in + custom
+rules_file:
+  - /etc/falco/falco_rules.yaml
+  - /etc/falco/falco_rules.local.yaml
+  - /etc/falco/rules.d/financial_rag_rules.yaml
+
+# Output channels
+json_output: true
+json_include_output_property: true
+json_include_tags_property: true
+
+# Log level
+log_stderr: true
+log_syslog: false
+log_level: info
+
+# Output rate limiting
+outputs:
+  rate: 1
+  max_burst: 1000
+
+# Priority threshold — only alert on WARNING and above
+priority: WARNING
+
+# Buffered outputs for performance
+buffered_outputs: false
+
+# gRPC server for Falcosidekick
+grpc:
+  enabled: true
+  bind_address: "unix:///var/run/falco/falco.sock"
+  threadiness: 8
+
+grpc_output:
+  enabled: true
+
+# Syscall event drops — alert when ring buffer drops events
+syscall_event_drops:
+  actions:
+    - log
+    - alert
+  rate: 0.03333
+  max_burst: 10
+
+# Metrics
+metrics:
+  enabled: true
+  interval: 1h
+  output_rule: true
+  resource_utilization_enabled: true

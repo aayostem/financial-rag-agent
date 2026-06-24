@@ -1,0 +1,130 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: infra-appset
+  namespace: argocd
+spec:
+  strategy:
+    type: RollingSync
+    rollingSync:
+      steps:
+        - matchExpressions:
+            - key: environment
+              operator: In
+              values: [dev]
+        - matchExpressions:
+            - key: environment
+              operator: In
+              values: [staging]
+        - matchExpressions:
+            - key: environment
+              operator: In
+              values: [prod]
+  generators:
+    - matrix:
+        generators:
+          - list:
+              elements:
+                - environment: dev
+                  clusterUrl: https://kubernetes.default.svc
+                  valuesFile: values.yaml
+                - environment: staging
+                  clusterUrl: https://kubernetes.default.svc
+                  valuesFile: values.yaml
+                - environment: prod
+                  clusterUrl: https://kubernetes.default.svc
+                  valuesFile: values.prod.yaml
+          - list:
+              elements:
+                - component: cilium
+                  namespace: kube-system
+                  repoURL: https://helm.cilium.io/
+                  chart: cilium
+                  targetRevision: "1.15.3"
+                  syncWave: "1"
+                - component: vault-injector
+                  namespace: vault-system
+                  repoURL: https://helm.releases.hashicorp.com
+                  chart: vault
+                  targetRevision: "0.27.0"
+                  syncWave: "2"
+                - component: karpenter
+                  namespace: karpenter
+                  repoURL: "oci://public.ecr.aws/karpenter"
+                  chart: karpenter
+                  targetRevision: "v0.37.0"
+                  syncWave: "2"
+                - component: falco
+                  namespace: kube-system
+                  repoURL: https://falcosecurity.github.io/charts
+                  chart: falco
+                  targetRevision: "3.8.0"
+                  syncWave: "3"
+                - component: istiod
+                  namespace: istio-system
+                  repoURL: https://istio-release.storage.googleapis.com/charts
+                  chart: istiod
+                  targetRevision: "1.21.0"
+                  syncWave: "4"
+                - component: istio-gateway
+                  namespace: istio-system
+                  repoURL: https://istio-release.storage.googleapis.com/charts
+                  chart: gateway
+                  targetRevision: "1.21.0"
+                  syncWave: "5"
+                - component: otel-collector
+                  namespace: financial-rag
+                  repoURL: https://open-telemetry.github.io/opentelemetry-helm-charts
+                  chart: opentelemetry-collector
+                  targetRevision: "0.83.0"
+                  syncWave: "5"
+  template:
+    metadata:
+      name: "{{component}}-{{environment}}"
+      namespace: argocd
+      labels:
+        environment: "{{environment}}"
+        component: "{{component}}"
+      annotations:
+        argocd.argoproj.io/sync-wave: "{{syncWave}}"
+        notifications.argoproj.io/subscribe.on-sync-failed.slack: platform-alerts
+        notifications.argoproj.io/subscribe.on-health-degraded.slack: platform-alerts
+    spec:
+      project: financial-rag
+      sources:
+        - repoURL: https://github.com/aayostem/financial-rag-agent.git
+          targetRevision: HEAD
+          ref: values
+        - repoURL: "{{repoURL}}"
+          chart: "{{chart}}"
+          targetRevision: "{{targetRevision}}"
+          helm:
+            valueFiles:
+              - "$values/{{component}}/values.yaml"
+              - "$values/{{component}}/{{valuesFile}}"
+      destination:
+        server: "{{clusterUrl}}"
+        namespace: "{{namespace}}"
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
+          - ServerSideApply=true
+          - RespectIgnoreDifferences=true
+        retry:
+          limit: 3
+          backoff:
+            duration: 30s
+            factor: 2
+            maxDuration: 3m
+      ignoreDifferences:
+        - group: apps
+          kind: Deployment
+          jsonPointers:
+            - /spec/replicas
+        - group: apiextensions.k8s.io
+          kind: CustomResourceDefinition
+          jsonPointers:
+            - /spec/conversion/webhook/clientConfig/caBundle
