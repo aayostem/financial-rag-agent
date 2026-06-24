@@ -51,3 +51,4 @@ chroma.sqlite
 # Infrastructure
 infrastructure/docker/.env
 infrastructure/docker/data/
+combine_files.txt
